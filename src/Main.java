@@ -1,10 +1,31 @@
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import java.util.List;
+import java.util.Scanner;
+
+/**
+ * Main entry point for Chess Kong Fu game.
+ * GitHub: https://github.com/user/chess-kong-fu
+ */
 public class Main {
     public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        
+        List<String[]> boardRows = BoardReader.readBoard(scanner);
+        if (boardRows == null) {
+            scanner.close();
+            return;
+        }
 
+        Board board = BoardReader.createBoardFromRows(boardRows);
+        if (board == null) {
+            scanner.close();
+            return;
+        }
 
-
-
+        GameEngine gameEngine = new GameEngine(board);
+        CommandProcessor commandProcessor = new CommandProcessor(gameEngine);
+        
+        commandProcessor.processCommands(scanner);
+        
+        scanner.close();
     }
 }
