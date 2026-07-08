@@ -1,6 +1,6 @@
-package features;
+package model;
 
-public class Board {
+public class Board implements IBoard {
     private final String[][] grid;
     private final int numRows;
     private final int numCols;
@@ -11,33 +11,40 @@ public class Board {
         this.grid = deepCopyGrid(initialGrid);
     }
 
+    @Override
     public String getPieceAt(int row, int col) {
         validateCoordinates(row, col);
         return grid[row][col];
     }
 
+    @Override
     public void setPieceAt(int row, int col, String piece) {
         validateCoordinates(row, col);
         grid[row][col] = piece;
     }
 
+    @Override
     public void clearCell(int row, int col) {
         validateCoordinates(row, col);
-        grid[row][col] = ".";
+        grid[row][col] = Piece.EMPTY;
     }
 
+    @Override
     public int getNumRows() {
         return numRows;
     }
 
+    @Override
     public int getNumCols() {
         return numCols;
     }
 
+    @Override
     public boolean isWithinBounds(int row, int col) {
         return row >= 0 && row < numRows && col >= 0 && col < numCols;
     }
 
+    @Override
     public void printBoard() {
         for (int i = 0; i < numRows; i++) {
             for (int j = 0; j < numCols; j++) {
@@ -48,10 +55,6 @@ public class Board {
         }
     }
 
-    public String[][] getGrid() {
-        return deepCopyGrid(grid);
-    }
-
     private void validateCoordinates(int row, int col) {
         if (!isWithinBounds(row, col)) {
             throw new IllegalArgumentException("Coordinates out of bounds: (" + row + ", " + col + ")");
@@ -59,9 +62,9 @@ public class Board {
     }
 
     private String[][] deepCopyGrid(String[][] source) {
-        String[][] copy = new String[source.length][source[0].length];
+        String[][] copy = new String[source.length][];
         for (int i = 0; i < source.length; i++) {
-            System.arraycopy(source[i], 0, copy[i], 0, source[i].length);
+            copy[i] = source[i].clone();
         }
         return copy;
     }
