@@ -1,7 +1,6 @@
-/**
- * Represents a piece that is currently airborne (jumping).
- * SRP: Encapsulates jump state and timing.
- */
+package features;
+
+
 public class JumpState {
     private final int row;
     private final int col;

@@ -1,15 +1,15 @@
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 import java.io.StringReader;
 import java.util.Scanner;
 import java.util.List;
-import static org.junit.Assert.*;
 
+import features.*;
 public class BoardReaderTest {
 
     @Test
     public void testReadValidBoard() {
-        String input = "Board:\nwR wN\nbR bN\nCommands:";
+        String input = "features.Board:\nwR wN\nbR bN\nCommands:";
         Scanner scanner = new Scanner(new StringReader(input));
         
         List<String[]> rows = BoardReader.readBoard(scanner);
@@ -22,7 +22,7 @@ public class BoardReaderTest {
 
     @Test
     public void testReadBoardWithEmptyLines() {
-        String input = "Board:\nwR wN\n\nbR bN\nCommands:";
+        String input = "features.Board:\nwR wN\n\nbR bN\nCommands:";
         Scanner scanner = new Scanner(new StringReader(input));
         
         List<String[]> rows = BoardReader.readBoard(scanner);
@@ -33,7 +33,7 @@ public class BoardReaderTest {
 
     @Test
     public void testReadBoardStopsAtCommands() {
-        String input = "Board:\nwR wN\nCommands:\nclick 0 0";
+        String input = "features.Board:\nwR wN\nCommands:\nclick 0 0";
         Scanner scanner = new Scanner(new StringReader(input));
         
         List<String[]> rows = BoardReader.readBoard(scanner);
@@ -44,7 +44,7 @@ public class BoardReaderTest {
 
     @Test
     public void testReadBoardWithInvalidToken() {
-        String input = "Board:\nwR xN\nCommands:";
+        String input = "features.Board:\nwR xN\nCommands:";
         Scanner scanner = new Scanner(new StringReader(input));
         
         List<String[]> rows = BoardReader.readBoard(scanner);
@@ -54,7 +54,7 @@ public class BoardReaderTest {
 
     @Test
     public void testReadBoardMismatchedWidth() {
-        String input = "Board:\nwR wN wB\nwP wP\nCommands:";
+        String input = "features.Board:\nwR wN wB\nwP wP\nCommands:";
         Scanner scanner = new Scanner(new StringReader(input));
         
         List<String[]> rows = BoardReader.readBoard(scanner);
@@ -110,7 +110,7 @@ public class BoardReaderTest {
 
     @Test
     public void testReadFullChessboard() {
-        String input = "Board:\n" +
+        String input = "features.Board:\n" +
             "wR wN wB wQ wK wB wN wR\n" +
             "wP wP wP wP wP wP wP wP\n" +
             ". . . . . . . .\n" +
@@ -133,7 +133,7 @@ public class BoardReaderTest {
 
     @Test
     public void testBoardReaderWithAllPieceTypes() {
-        String input = "Board:\nwK wQ wR wB wN wP . bK\nCommands:";
+        String input = "features.Board:\nwK wQ wR wB wN wP . bK\nCommands:";
         Scanner scanner = new Scanner(new StringReader(input));
         
         List<String[]> rows = BoardReader.readBoard(scanner);
@@ -145,7 +145,7 @@ public class BoardReaderTest {
 
     @Test
     public void testReadBoardWithWhitespace() {
-        String input = "Board:\n  wR  wN  \n  bR  bN  \nCommands:";
+        String input = "features.Board:\n  wR  wN  \n  bR  bN  \nCommands:";
         Scanner scanner = new Scanner(new StringReader(input));
         
         List<String[]> rows = BoardReader.readBoard(scanner);

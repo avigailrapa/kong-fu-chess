@@ -1,10 +1,11 @@
+import features.Board;
+import features.BoardReader;
+import features.CommandProcessor;
+import features.GameEngine;
+
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Main entry point for Chess Kong Fu game.
- * GitHub: https://github.com/user/chess-kong-fu
- */
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);

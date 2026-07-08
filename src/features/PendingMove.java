@@ -1,7 +1,5 @@
-/**
- * Represents a move that is currently in progress.
- * SRP: Encapsulates movement state and timing.
- */
+package features;
+
 public class PendingMove {
     private final int startRow;
     private final int startCol;

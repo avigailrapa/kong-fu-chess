@@ -1,9 +1,7 @@
+package features;
+
 import java.util.Scanner;
 
-/**
- * Processes game commands from input.
- * SRP: Responsible only for parsing and routing commands.
- */
 public class CommandProcessor {
     private final GameEngine gameEngine;
 

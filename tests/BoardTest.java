@@ -1,12 +1,12 @@
-import org.junit.Before;
-import org.junit.Test;
-import static org.junit.Assert.*;
-
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import features.*;
+import org.junit.jupiter.api.BeforeEach;
 public class BoardTest {
     private String[][] initialGrid;
     private Board board;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         initialGrid = new String[][] {
             {"wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"},

@@ -1,11 +1,14 @@
-import org.junit.Before;
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+
+import features.*;
 
 public class GameStateTest {
     private GameState gameState;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         gameState = new GameState();
     }

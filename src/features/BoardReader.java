@@ -1,11 +1,10 @@
+package features;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Reads and validates board configuration from input.
- * SRP: Responsible only for I/O and board validation.
- */
+
 public class BoardReader {
 
     public static List<String[]> readBoard(Scanner scanner) {
@@ -17,7 +16,7 @@ public class BoardReader {
             
             if (line.isEmpty()) continue;
             if (line.startsWith("Commands:")) break;
-            if (line.startsWith("Board:")) continue;
+            if (line.startsWith("features.Board:")) continue;
             
             String[] tokens = line.split("\\s+");
             

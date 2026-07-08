@@ -1,8 +1,5 @@
-/**
- * Validates moves according to chess piece rules.
- * SRP: Single responsibility - move validation only.
- * DRY: All move validation logic in one place.
- */
+package features;
+
 public class MoveValidator {
     private final Board board;
 

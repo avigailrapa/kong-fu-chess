@@ -1,11 +1,13 @@
-import org.junit.Before;
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+
+import features.*;
 
 public class PendingMoveTest {
     private PendingMove move;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         move = new PendingMove(0, 0, 2, 2, "wQ", 1000);
     }

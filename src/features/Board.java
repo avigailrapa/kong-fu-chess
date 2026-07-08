@@ -1,5 +1,4 @@
-import java.util.ArrayList;
-import java.util.List;
+package features;
 
 public class Board {
     private final String[][] grid;

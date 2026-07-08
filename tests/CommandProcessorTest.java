@@ -1,14 +1,16 @@
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import features.*;
 import java.io.StringReader;
 import java.util.Scanner;
-import static org.junit.Assert.*;
+
 
 public class CommandProcessorTest {
     private GameEngine gameEngine;
     private CommandProcessor commandProcessor;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         String[][] grid = new String[][] {
             {"wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"},

@@ -1,11 +1,13 @@
-import org.junit.Before;
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+
+import features.*;
 
 public class JumpStateTest {
     private JumpState jump;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         jump = new JumpState(3, 3, 1000, 2000);
     }

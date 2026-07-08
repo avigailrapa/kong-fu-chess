@@ -1,7 +1,6 @@
-/**
- * Orchestrates game logic: moves, jumps, and board updates.
- * SRP: Responsible for game rules and state transitions.
- */
+package features;
+
+
 public class GameEngine {
     private static final long MOVE_TRAVEL_TIME = 1000L;
     private static final long JUMP_DURATION = 1000L;
@@ -79,7 +78,6 @@ public class GameEngine {
         board.printBoard();
     }
 
-    // Private methods
 
     private void processSelection(int row, int col, String targetCell) {
         if (!targetCell.equals(".") && !gameState.isPieceInFlight(row, col)) {

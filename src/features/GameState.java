@@ -1,12 +1,9 @@
+package features;
+
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
-/**
- * Manages game state: piece selections, pending moves, jumps, and game status.
- * SRP: Responsible for state management only, not rules validation.
- * DRY: Centralized state management.
- */
+
 public class GameState {
     private int selectedRow;
     private int selectedCol;

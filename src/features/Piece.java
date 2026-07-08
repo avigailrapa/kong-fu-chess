@@ -1,3 +1,5 @@
+package features;
+
 public class Piece {
     public static final char WHITE = 'w';
     public static final char BLACK = 'b';
@@ -26,13 +28,13 @@ public class Piece {
 
     public static Piece fromString(String piece) {
         if (piece == null || piece.isEmpty()) {
-            throw new IllegalArgumentException("Piece string cannot be null or empty");
+            throw new IllegalArgumentException("features.Piece string cannot be null or empty");
         }
         if (piece.equals(EMPTY)) {
             throw new IllegalArgumentException("Use isEmpty() for empty cells");
         }
         if (piece.length() != 2) {
-            throw new IllegalArgumentException("Piece string must be 2 characters: " + piece);
+            throw new IllegalArgumentException("features.Piece string must be 2 characters: " + piece);
         }
         return new Piece(piece.charAt(0), piece.charAt(1));
     }

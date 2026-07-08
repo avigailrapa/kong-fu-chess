@@ -1,13 +1,16 @@
-import org.junit.Before;
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+
+import features.*;
 
 public class MoveValidatorTest {
     private String[][] initialGrid;
     private Board board;
     private MoveValidator validator;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         initialGrid = new String[][] {
             {"wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"},

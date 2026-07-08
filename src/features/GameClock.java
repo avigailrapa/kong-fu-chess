@@ -1,7 +1,6 @@
-/**
- * Manages the game clock for timed moves and jumps.
- * SRP: Responsible only for time management.
- */
+package features;
+
+
 public class GameClock {
     private long currentTime;
 
