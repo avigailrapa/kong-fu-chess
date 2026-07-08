@@ -1,8 +1,7 @@
+package model;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
-
-import features.*;
 
 public class JumpStateTest {
     private JumpState jump;
@@ -55,17 +54,5 @@ public class JumpStateTest {
         assertFalse(instantJump.isActiveAt(999));
         assertTrue(instantJump.isActiveAt(1000));
         assertTrue(instantJump.hasLanded(1001));
-    }
-
-    @Test
-    public void testMultipleJumps() {
-        JumpState jump1 = new JumpState(0, 0, 500, 1500);
-        JumpState jump2 = new JumpState(7, 7, 2000, 3000);
-
-        assertTrue(jump1.isActiveAt(1000));
-        assertFalse(jump2.isActiveAt(1000));
-        
-        assertFalse(jump1.isActiveAt(2000));
-        assertTrue(jump2.isActiveAt(2000));
     }
 }

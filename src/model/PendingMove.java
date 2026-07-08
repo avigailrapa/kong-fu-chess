@@ -1,4 +1,4 @@
-package features;
+package model;
 
 public class PendingMove {
     private final int startRow;

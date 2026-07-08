@@ -1,4 +1,4 @@
-package features;
+package model;
 
 public class Piece {
     public static final char WHITE = 'w';

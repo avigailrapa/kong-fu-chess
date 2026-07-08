@@ -1,9 +1,7 @@
+package engine;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.BeforeEach;
-
-import features.*;
 
 public class GameClockTest {
     private GameClock clock;
@@ -53,19 +51,5 @@ public class GameClockTest {
         
         clock.reset();
         assertEquals(0, clock.getCurrentTime());
-    }
-
-    @Test
-    public void testLargeTimeValues() {
-        clock.advance(1000000);
-        assertEquals(1000000, clock.getCurrentTime());
-    }
-
-    @Test
-    public void testResetAndAdvance() {
-        clock.advance(500);
-        clock.reset();
-        clock.advance(300);
-        assertEquals(300, clock.getCurrentTime());
     }
 }

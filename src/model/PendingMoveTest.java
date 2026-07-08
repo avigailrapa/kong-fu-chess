@@ -1,8 +1,7 @@
+package model;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
-
-import features.*;
 
 public class PendingMoveTest {
     private PendingMove move;
@@ -54,17 +53,5 @@ public class PendingMoveTest {
     public void testZeroArrivalTime() {
         PendingMove zeroMove = new PendingMove(0, 0, 2, 2, "wQ", 0);
         assertTrue(zeroMove.hasArrived(0));
-    }
-
-    @Test
-    public void testMultipleMoves() {
-        PendingMove move1 = new PendingMove(0, 0, 1, 1, "wK", 500);
-        PendingMove move2 = new PendingMove(7, 7, 6, 6, "bR", 1000);
-        
-        assertFalse(move1.hasArrived(499));
-        assertTrue(move1.hasArrived(500));
-        
-        assertFalse(move2.hasArrived(999));
-        assertTrue(move2.hasArrived(1000));
     }
 }

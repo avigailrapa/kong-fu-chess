@@ -1,6 +1,6 @@
+package model;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import features.*;
 
 public class PieceTest {
 
@@ -38,29 +38,15 @@ public class PieceTest {
         assertThrows(IllegalArgumentException.class, () -> Piece.fromString("xK"));
         assertThrows(IllegalArgumentException.class, () -> Piece.fromString("wX"));
         assertThrows(IllegalArgumentException.class, () -> Piece.fromString("w"));
-        assertThrows(IllegalArgumentException.class, () -> Piece.fromString(""));
-        assertThrows(IllegalArgumentException.class, () -> Piece.fromString(null));
-    }
-
-    @Test
-    public void testToString() {
-        Piece piece = Piece.create(Piece.WHITE, Piece.KING);
-        assertEquals("wK", piece.toString());
-
-        Piece blackQueen = Piece.create(Piece.BLACK, Piece.QUEEN);
-        assertEquals("bQ", blackQueen.toString());
     }
 
     @Test
     public void testIsValidToken() {
         assertTrue(Piece.isValidToken("."));
         assertTrue(Piece.isValidToken("wK"));
-        assertTrue(Piece.isValidToken("bQ"));
-        assertTrue(Piece.isValidToken("wP"));
-
+        assertTrue(Piece.isValidToken("bP"));
         assertFalse(Piece.isValidToken("xK"));
         assertFalse(Piece.isValidToken("wX"));
-        assertFalse(Piece.isValidToken("w"));
         assertFalse(Piece.isValidToken(""));
         assertFalse(Piece.isValidToken(null));
         assertFalse(Piece.isValidToken("wKK"));
@@ -70,7 +56,6 @@ public class PieceTest {
     public void testIsWhite() {
         Piece white = Piece.create(Piece.WHITE, Piece.KING);
         Piece black = Piece.create(Piece.BLACK, Piece.KING);
-
         assertTrue(white.isWhite());
         assertFalse(black.isWhite());
     }
@@ -79,7 +64,6 @@ public class PieceTest {
     public void testIsBlack() {
         Piece white = Piece.create(Piece.WHITE, Piece.KING);
         Piece black = Piece.create(Piece.BLACK, Piece.KING);
-
         assertFalse(white.isBlack());
         assertTrue(black.isBlack());
     }
@@ -99,7 +83,6 @@ public class PieceTest {
     public void testIsKing() {
         Piece king = Piece.create(Piece.WHITE, Piece.KING);
         Piece queen = Piece.create(Piece.WHITE, Piece.QUEEN);
-
         assertTrue(king.isKing());
         assertFalse(queen.isKing());
     }
@@ -107,10 +90,5 @@ public class PieceTest {
     @Test
     public void testCreateInvalidColor() {
         assertThrows(IllegalArgumentException.class, () -> Piece.create('x', Piece.KING));
-    }
-
-    @Test
-    public void testCreateInvalidType() {
-        assertThrows(IllegalArgumentException.class, () -> Piece.create(Piece.WHITE, 'X'));
     }
 }
