@@ -1,15 +1,17 @@
 package engine;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import model.*;
+import config.GameConfig;
 
 public class GameEngineTest {
     private String[][] initialGrid;
     private IBoard board; 
     private GameEngine engine;
 
-@BeforeEach
+    @BeforeEach
     public void setUp() {
         initialGrid = new String[][] {
             {"wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"},
@@ -24,29 +26,32 @@ public class GameEngineTest {
         board = new Board(initialGrid);
         engine = new GameEngine(board);
     }
-
     @Test
     public void testEngineInitialization() {
-        assertNotNull(engine.getBoard());
-        assertNotNull(engine.getGameState());
-        assertNotNull(engine.getGameClock());
-        assertFalse(engine.getGameState().isGameOver());
+    assertNotNull(engine.getBoard());
+    assertNotNull(engine.getGameState());
+    assertNotNull(engine.getGameClock());
+    assertFalse(engine.getGameState().isGameOver()); 
     }
 
     @Test
     public void testSelectPiece() {
-        engine.handleClick(0, 0);
+        engine.handleClick(10, 10); 
         assertTrue(engine.getGameState().hasSelection());
     }
 
     @Test
     public void testPendingMoveExecution() {
         engine.getBoard().setPieceAt(3, 3, "wQ");
-        engine.handleClick(300, 300);
-        engine.handleClick(400, 400);
+        
+        int scale = GameConfig.PIXELS_PER_CELL;
+        engine.handleClick(3 * scale + 10, 3 * scale + 10);
+        engine.handleClick(4 * scale + 10, 4 * scale + 10);
         
         assertEquals(1, engine.getGameState().getPendingMoves().size());
-        engine.advanceTime(1000);
+        
+        engine.advanceTime(GameConfig.MOVE_TRAVEL_TIME_MS);
+        
         assertEquals(0, engine.getGameState().getPendingMoves().size());
         assertEquals("wQ", engine.getBoard().getPieceAt(4, 4));
     }
@@ -56,11 +61,13 @@ public class GameEngineTest {
         engine.getBoard().setPieceAt(3, 3, "wQ");
         engine.getBoard().setPieceAt(4, 4, "bK");
         
-        engine.handleClick(300, 300);
-        engine.handleClick(400, 400);
+        int scale = GameConfig.PIXELS_PER_CELL;
+        engine.handleClick(3 * scale + 10, 3 * scale + 10);
+        engine.handleClick(4 * scale + 10, 4 * scale + 10);
         
-        engine.handleJump(400, 400);
-        engine.advanceTime(1000);
+        engine.handleJump(4 * scale + 10, 4 * scale + 10);
+        
+        engine.advanceTime(GameConfig.MOVE_TRAVEL_TIME_MS);
         
         assertTrue(engine.getGameState().isGameOver());
     }

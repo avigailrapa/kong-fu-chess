@@ -1,6 +1,6 @@
-package engine;
+import java.util.List;
 import model.*;
-import config.GameConfig;
+import config.*;
 public class GameEngine {
     private final IBoard board;
     private final GameState gameState;
@@ -43,48 +43,21 @@ public class GameEngine {
 
         if (!board.isWithinBounds(row, col)) return;
 
-        String targetCell = board.getPieceAt(row, col);
-
-        if (!gameState.hasSelection()) return;
-
-        int startRow = gameState.getSelectedRow();
-        int startCol = gameState.getSelectedCol();
-
-        if (startRow == row && startCol == col) {
-            gameState.clearSelection();
+        String movingPieceStr = board.getPieceAt(row, col);
+        if (movingPieceStr.equals(Piece.EMPTY)) {
             return;
         }
 
-        String movingPieceStr = board.getPieceAt(startRow, startCol);
-        if (movingPieceStr.equals(Piece.EMPTY) || gameState.isPieceInFlight(startRow, startCol)) {
-            gameState.clearSelection();
+        boolean isAlreadyMoving = gameState.getPendingMoves().stream()
+                .anyMatch(move -> move.getStartRow() == row && move.getStartCol() == col);
+        if (isAlreadyMoving) {
             return;
         }
 
-        Piece movingPiece = Piece.fromString(movingPieceStr);
-
-        if (moveValidator.isValidMove(movingPiece.getType(), movingPiece.getColor(), startRow, startCol, row, col)) {
-            if (gameState.isTargetClaimed(row, col) || gameState.isPieceAirborne(row, col, gameClock.getCurrentTime())) {
-                gameState.clearSelection();
-                return;
-            }
-
-            if (!targetCell.equals(Piece.EMPTY) && Piece.fromString(targetCell).isSameColorAs(movingPiece)) {
-                gameState.clearSelection();
-                return;
-            }
-
-            long startTime = gameClock.getCurrentTime();
-            long endTime = startTime + GameConfig.JUMP_DURATION_MS;
-            JumpState jump = new JumpState(startRow, startCol, startTime, endTime);
-            gameState.addJump(jump);
-
-            long arrivalTime = gameClock.getCurrentTime() + GameConfig.MOVE_TRAVEL_TIME_MS;
-            PendingMove move = new PendingMove(startRow, startCol, row, col, movingPieceStr, arrivalTime);
-            gameState.addPendingMove(move);
-        }
-
-        gameState.clearSelection();
+        long startTime = gameClock.getCurrentTime();
+        long endTime = startTime + GameConfig.JUMP_DURATION_MS;
+        JumpState jump = new JumpState(row, col, startTime, endTime);
+        gameState.addJump(jump);
     }
 
     public void advanceTime(long ms) {
@@ -130,7 +103,7 @@ public class GameEngine {
         Piece movingPiece = Piece.fromString(movingPieceStr);
 
         if (moveValidator.isValidMove(movingPiece.getType(), movingPiece.getColor(), startRow, startCol, row, col)) {
-            if (gameState.isTargetClaimed(row, col) || gameState.isPieceAirborne(row, col, gameClock.getCurrentTime())) {
+            if (gameState.isTargetClaimed(row, col)) {
                 gameState.clearSelection();
                 return;
             }
@@ -140,7 +113,11 @@ public class GameEngine {
                 return;
             }
 
-            long arrivalTime = gameClock.getCurrentTime() + GameConfig.MOVE_TRAVEL_TIME_MS;
+            int deltaRow = Math.abs(row - startRow);
+            int deltaCol = Math.abs(col - startCol);
+            int distance = Math.max(deltaRow, deltaCol);
+
+            long arrivalTime = gameClock.getCurrentTime() + (distance * GameConfig.MOVE_TRAVEL_TIME_MS);
             PendingMove move = new PendingMove(startRow, startCol, row, col, movingPieceStr, arrivalTime);
             gameState.addPendingMove(move);
         }
@@ -155,13 +132,24 @@ public class GameEngine {
             return;
         }
 
-        JumpState interceptingJump = gameState.findActiveJumpAt(move.getStartRow(), move.getStartCol(), move.getArrivalTime());
-        if (interceptingJump != null) {
-            if (Piece.fromString(move.getPiece()).isKing()) {
-                gameState.endGame();
+        boolean isAirborne = gameState.isPieceAirborne(move.getTargetRow(), move.getTargetCol(), move.getArrivalTime()) ||
+                             gameState.isPieceAirborne(move.getTargetRow(), move.getTargetCol(), move.getArrivalTime() - 1);
+
+        if (isAirborne) {
+            String airbornePieceStr = board.getPieceAt(move.getTargetRow(), move.getTargetCol());
+            
+            if (!airbornePieceStr.equals(Piece.EMPTY)) {
+                Piece airbornePiece = Piece.fromString(airbornePieceStr);
+                Piece movingPiece = Piece.fromString(move.getPiece());
+
+                if (!airbornePiece.isSameColorAs(movingPiece)) {
+                    if (movingPiece.isKing()) {
+                        gameState.endGame();
+                    }
+                    board.clearCell(move.getStartRow(), move.getStartCol());
+                    return; 
+                }
             }
-            board.clearCell(move.getStartRow(), move.getStartCol());
-            return;
         }
 
         String capturedPiece = board.getPieceAt(move.getTargetRow(), move.getTargetCol());
@@ -186,19 +174,10 @@ public class GameEngine {
                 return String.valueOf(color) + Piece.QUEEN;
             }
         }
-
         return piece;
     }
 
-    public IBoard getBoard() {
-        return board;
-    }
-
-    public GameState getGameState() {
-        return gameState;
-    }
-
-    public GameClock getGameClock() {
-        return gameClock;
-    }
+    public IBoard getBoard() { return board; }
+    public GameState getGameState() { return gameState; }
+    public GameClock getGameClock() { return gameClock; }
 }

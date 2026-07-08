@@ -16,7 +16,7 @@ public class BoardReader {
             
             if (line.isEmpty()) continue;
             if (line.startsWith("Commands:")) break;
-            if (line.startsWith("features.Board:")) continue;
+            if (line.startsWith("Board:")) continue;
             
             String[] tokens = line.split("\\s+");
             

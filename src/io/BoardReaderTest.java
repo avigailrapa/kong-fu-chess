@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.StringReader;
 import java.util.Scanner;
 import java.util.List;
-import model.*;
 
 public class BoardReaderTest {
 

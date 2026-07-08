@@ -1,9 +1,9 @@
-import model.*;
+import model.Board;
 import java.util.List;
 import java.util.Scanner;
-import config.*;
-import engine.*;
-import io.*;
+import engine.GameEngine;
+import io.BoardReader;
+import io.CommandProcessor;
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
