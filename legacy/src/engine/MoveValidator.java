@@ -1,4 +1,3 @@
-package engine;
 import model.*;
 import model.IBoard;
 public class MoveValidator {
