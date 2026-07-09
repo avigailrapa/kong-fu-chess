@@ -1,9 +1,10 @@
 package rules;
 
-public class RookRule extends SlidingRule {
+public class QueenRule extends SlidingRule {
 
     private static final int[][] DIRECTIONS = {
-            {-1, 0}, {1, 0}, {0, -1}, {0, 1}
+            {-1, 0}, {1, 0}, {0, -1}, {0, 1},
+            {-1, -1}, {-1, 1}, {1, -1}, {1, 1}
     };
 
     @Override
