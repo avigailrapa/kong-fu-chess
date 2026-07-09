@@ -1,6 +1,3 @@
-package engine;
-
-
 public class GameClock {
     private long currentTime;
 
