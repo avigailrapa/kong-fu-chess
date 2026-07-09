@@ -1,83 +1,77 @@
 package model;
 
+import java.util.Objects;
+
 public class Piece {
-    public static final char WHITE = 'w';
-    public static final char BLACK = 'b';
-    public static final char KING = 'K';
-    public static final char QUEEN = 'Q';
-    public static final char ROOK = 'R';
-    public static final char BISHOP = 'B';
-    public static final char KNIGHT = 'N';
-    public static final char PAWN = 'P';
-    public static final String EMPTY = ".";
 
-    private final char color;
-    private final char type;
-
-    private Piece(char color, char type) {
-        this.color = color;
-        this.type = type;
+    public enum Color {
+        WHITE, BLACK
     }
 
-    public static Piece create(char color, char type) {
-        if (!isValidColor(color) || !isValidType(type)) {
-            throw new IllegalArgumentException("Invalid piece: color=" + color + ", type=" + type);
-        }
-        return new Piece(color, type);
+    public enum Kind {
+        KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN
     }
 
-    public static Piece fromString(String piece) {
-        if (piece == null || piece.isEmpty()) {
-            throw new IllegalArgumentException("features.Piece string cannot be null or empty");
-        }
-        if (piece.equals(EMPTY)) {
-            throw new IllegalArgumentException("Use isEmpty() for empty cells");
-        }
-        if (piece.length() != 2) {
-            throw new IllegalArgumentException("features.Piece string must be 2 characters: " + piece);
-        }
-        return new Piece(piece.charAt(0), piece.charAt(1));
+    public enum State {
+        IDLE, MOVING, CAPTURED
     }
 
-    public static boolean isValidToken(String token) {
-        if (token.equals(EMPTY)) return true;
-        if (token.length() != 2) return false;
-        return isValidColor(token.charAt(0)) && isValidType(token.charAt(1));
+    private final String id;
+    private final Color color;
+    private final Kind kind;
+    private Position cell;
+    private State state;
+
+    public Piece(String id, Color color, Kind kind, Position cell) {
+        this.id = Objects.requireNonNull(id, "id must not be null");
+        this.color = Objects.requireNonNull(color, "color must not be null");
+        this.kind = Objects.requireNonNull(kind, "kind must not be null");
+        this.cell = Objects.requireNonNull(cell, "cell must not be null");
+        this.state = State.IDLE;
     }
 
-    public char getColor() {
+    public String getId() {
+        return id;
+    }
+
+    public Color getColor() {
         return color;
     }
 
-    public char getType() {
-        return type;
+    public Kind getKind() {
+        return kind;
     }
 
+    public Position getCell() {
+        return cell;
+    }
+
+    public State getState() {
+        return state;
+    }
+
+    public void setCell(Position cell) {
+        this.cell = Objects.requireNonNull(cell, "cell must not be null");
+    }
+
+    public void setState(State state) {
+        this.state = Objects.requireNonNull(state, "state must not be null");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Piece)) return false;
+        return id.equals(((Piece) o).id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+
+    @Override
     public String toString() {
-        return String.valueOf(color) + type;
-    }
-
-    public boolean isWhite() {
-        return color == WHITE;
-    }
-
-    public boolean isBlack() {
-        return color == BLACK;
-    }
-
-    public boolean isSameColorAs(Piece other) {
-        return this.color == other.color;
-    }
-
-    public boolean isKing() {
-        return type == KING;
-    }
-
-    private static boolean isValidColor(char color) {
-        return color == WHITE || color == BLACK;
-    }
-
-    private static boolean isValidType(char type) {
-        return type == 'K' || type == 'Q' || type == 'R' || type == 'B' || type == 'N' || type == 'P';
+        return color + " " + kind + " #" + id + " @" + cell + " [" + state + "]";
     }
 }
