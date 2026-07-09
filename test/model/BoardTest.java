@@ -64,6 +64,14 @@ public class BoardTest {
     }
 
     @Test
+    public void testAddingDuplicateIdToDifferentCellFails() {
+        board.addPiece(new Piece("dup", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(0, 0)), new Position(0, 0));
+
+        assertThrows(IllegalStateException.class,
+                () -> board.addPiece(new Piece("dup", Piece.Color.BLACK, Piece.Kind.KNIGHT, new Position(5, 5)), new Position(5, 5)));
+    }
+
+    @Test
     public void testMovingPieceUpdatesSourceAndDestination() {
         Position from = new Position(0, 0);
         Position to = new Position(0, 5);
