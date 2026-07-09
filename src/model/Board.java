@@ -1,71 +1,88 @@
 package model;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
 public class Board implements IBoard {
-    private final String[][] grid;
-    private final int numRows;
-    private final int numCols;
 
-    public Board(String[][] initialGrid) {
-        this.numRows = initialGrid.length;
-        this.numCols = initialGrid[0].length;
-        this.grid = deepCopyGrid(initialGrid);
-    }
+    private final int width;
+    private final int height;
+    private final Map<Position, Piece> occupied;
 
-    @Override
-    public String getPieceAt(int row, int col) {
-        validateCoordinates(row, col);
-        return grid[row][col];
-    }
-
-    @Override
-    public void setPieceAt(int row, int col, String piece) {
-        validateCoordinates(row, col);
-        grid[row][col] = piece;
-    }
-
-    @Override
-    public void clearCell(int row, int col) {
-        validateCoordinates(row, col);
-        grid[row][col] = Piece.EMPTY;
-    }
-
-    @Override
-    public int getNumRows() {
-        return numRows;
-    }
-
-    @Override
-    public int getNumCols() {
-        return numCols;
-    }
-
-    @Override
-    public boolean isWithinBounds(int row, int col) {
-        return row >= 0 && row < numRows && col >= 0 && col < numCols;
-    }
-
-    @Override
-    public void printBoard() {
-        for (int i = 0; i < numRows; i++) {
-            for (int j = 0; j < numCols; j++) {
-                System.out.print(grid[i][j]);
-                if (j < numCols - 1) System.out.print(" ");
-            }
-            System.out.println();
+    public Board(int width, int height) {
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException(
+                    "Board dimensions must be positive: width=" + width + ", height=" + height);
         }
+        this.width = width;
+        this.height = height;
+        this.occupied = new HashMap<>();
     }
 
-    private void validateCoordinates(int row, int col) {
-        if (!isWithinBounds(row, col)) {
-            throw new IllegalArgumentException("Coordinates out of bounds: (" + row + ", " + col + ")");
-        }
+    @Override
+    public int getWidth() {
+        return width;
     }
 
-    private String[][] deepCopyGrid(String[][] source) {
-        String[][] copy = new String[source.length][];
-        for (int i = 0; i < source.length; i++) {
-            copy[i] = source[i].clone();
+    @Override
+    public int getHeight() {
+        return height;
+    }
+
+    @Override
+    public boolean isWithinBorder(Position position) {
+        return position.getRow() >= 0 && position.getRow() < height
+                && position.getCol() >= 0 && position.getCol() < width;
+    }
+
+    @Override
+    public Optional<Piece> getPieceAt(Position position) {
+        requireWithinBorder(position);
+        return Optional.ofNullable(occupied.get(position));
+    }
+
+    @Override
+    public void addPiece(Piece piece, Position position) {
+        requireWithinBorder(position);
+        if (occupied.containsKey(position)) {
+            throw new IllegalStateException("Cell already occupied: " + position);
         }
-        return copy;
+        occupied.put(position, piece);
+        piece.setCell(position);
+    }
+
+    @Override
+    public void movePiece(Position from, Position to) {
+        requireWithinBorder(from);
+        requireWithinBorder(to);
+
+        Piece piece = occupied.get(from);
+        if (piece == null) {
+            throw new IllegalStateException("No piece at source position: " + from);
+        }
+        if (occupied.containsKey(to)) {
+            throw new IllegalStateException("Target cell already occupied: " + to);
+        }
+
+        occupied.remove(from);
+        occupied.put(to, piece);
+        piece.setCell(to);
+    }
+
+    @Override
+    public Piece removePiece(Position position) {
+        requireWithinBorder(position);
+        Piece removed = occupied.remove(position);
+        if (removed == null) {
+            throw new IllegalStateException("No piece to remove at: " + position);
+        }
+        return removed;
+    }
+
+    private void requireWithinBorder(Position position) {
+        if (!isWithinBorder(position)) {
+            throw new IllegalArgumentException("Position out of bounds: " + position);
+        }
     }
 }

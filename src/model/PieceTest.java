@@ -1,94 +1,73 @@
 package model;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class PieceTest {
 
     @Test
-    public void testCreatePiece() {
-        Piece piece = Piece.create(Piece.WHITE, Piece.KING);
-        assertEquals(Piece.WHITE, piece.getColor());
-        assertEquals(Piece.KING, piece.getType());
+    public void testCreatePieceStartsIdleAtGivenCell() {
+        Position cell = new Position(0, 0);
+        Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.KING, cell);
+
+        assertEquals("w1", piece.getId());
+        assertEquals(Piece.Color.WHITE, piece.getColor());
+        assertEquals(Piece.Kind.KING, piece.getKind());
+        assertEquals(cell, piece.getCell());
+        assertEquals(Piece.State.IDLE, piece.getState());
     }
 
     @Test
-    public void testCreateAllPieceTypes() {
-        Piece.create(Piece.WHITE, Piece.KING);
-        Piece.create(Piece.WHITE, Piece.QUEEN);
-        Piece.create(Piece.WHITE, Piece.ROOK);
-        Piece.create(Piece.WHITE, Piece.BISHOP);
-        Piece.create(Piece.WHITE, Piece.KNIGHT);
-        Piece.create(Piece.WHITE, Piece.PAWN);
+    public void testStateCanBecomeMoving() {
+        Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(1, 0));
+        piece.setState(Piece.State.MOVING);
+        assertEquals(Piece.State.MOVING, piece.getState());
     }
 
     @Test
-    public void testFromString() {
-        Piece piece = Piece.fromString("wK");
-        assertEquals(Piece.WHITE, piece.getColor());
-        assertEquals(Piece.KING, piece.getType());
-
-        Piece blackPawn = Piece.fromString("bP");
-        assertEquals(Piece.BLACK, blackPawn.getColor());
-        assertEquals(Piece.PAWN, blackPawn.getType());
+    public void testStateCanBecomeCaptured() {
+        Piece piece = new Piece("b1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(6, 0));
+        piece.setState(Piece.State.CAPTURED);
+        assertEquals(Piece.State.CAPTURED, piece.getState());
     }
 
     @Test
-    public void testFromStringInvalid() {
-        assertThrows(IllegalArgumentException.class, () -> Piece.fromString("."));
-        assertThrows(IllegalArgumentException.class, () -> Piece.fromString("xK"));
-        assertThrows(IllegalArgumentException.class, () -> Piece.fromString("wX"));
-        assertThrows(IllegalArgumentException.class, () -> Piece.fromString("w"));
+    public void testSetCellUpdatesOnlyPosition() {
+        Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(0, 0));
+        piece.setCell(new Position(0, 5));
+
+        assertEquals(new Position(0, 5), piece.getCell());
+        assertEquals(Piece.Kind.ROOK, piece.getKind());
+        assertEquals(Piece.Color.WHITE, piece.getColor());
     }
 
     @Test
-    public void testIsValidToken() {
-        assertTrue(Piece.isValidToken("."));
-        assertTrue(Piece.isValidToken("wK"));
-        assertTrue(Piece.isValidToken("bP"));
-        assertFalse(Piece.isValidToken("xK"));
-        assertFalse(Piece.isValidToken("wX"));
-        assertFalse(Piece.isValidToken(""));
-        assertFalse(Piece.isValidToken(null));
-        assertFalse(Piece.isValidToken("wKK"));
+    public void testEqualityIsBasedOnIdOnly() {
+        Piece a = new Piece("shared-id", Piece.Color.WHITE, Piece.Kind.QUEEN, new Position(0, 0));
+        Piece b = new Piece("shared-id", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(5, 5));
+
+        assertEquals(a, b);
+        assertEquals(a.hashCode(), b.hashCode());
     }
 
     @Test
-    public void testIsWhite() {
-        Piece white = Piece.create(Piece.WHITE, Piece.KING);
-        Piece black = Piece.create(Piece.BLACK, Piece.KING);
-        assertTrue(white.isWhite());
-        assertFalse(black.isWhite());
+    public void testDifferentIdsAreNotEqual() {
+        Piece a = new Piece("id-1", Piece.Color.WHITE, Piece.Kind.KING, new Position(0, 0));
+        Piece b = new Piece("id-2", Piece.Color.WHITE, Piece.Kind.KING, new Position(0, 0));
+
+        assertNotEquals(a, b);
     }
 
     @Test
-    public void testIsBlack() {
-        Piece white = Piece.create(Piece.WHITE, Piece.KING);
-        Piece black = Piece.create(Piece.BLACK, Piece.KING);
-        assertFalse(white.isBlack());
-        assertTrue(black.isBlack());
-    }
-
-    @Test
-    public void testIsSameColorAs() {
-        Piece white1 = Piece.create(Piece.WHITE, Piece.KING);
-        Piece white2 = Piece.create(Piece.WHITE, Piece.QUEEN);
-        Piece black = Piece.create(Piece.BLACK, Piece.KING);
-
-        assertTrue(white1.isSameColorAs(white2));
-        assertFalse(white1.isSameColorAs(black));
-        assertFalse(black.isSameColorAs(white1));
-    }
-
-    @Test
-    public void testIsKing() {
-        Piece king = Piece.create(Piece.WHITE, Piece.KING);
-        Piece queen = Piece.create(Piece.WHITE, Piece.QUEEN);
-        assertTrue(king.isKing());
-        assertFalse(queen.isKing());
-    }
-
-    @Test
-    public void testCreateInvalidColor() {
-        assertThrows(IllegalArgumentException.class, () -> Piece.create('x', Piece.KING));
+    public void testConstructorRejectsNulls() {
+        Position cell = new Position(0, 0);
+        assertThrows(NullPointerException.class,
+                () -> new Piece(null, Piece.Color.WHITE, Piece.Kind.KING, cell));
+        assertThrows(NullPointerException.class,
+                () -> new Piece("id", null, Piece.Kind.KING, cell));
+        assertThrows(NullPointerException.class,
+                () -> new Piece("id", Piece.Color.WHITE, null, cell));
+        assertThrows(NullPointerException.class,
+                () -> new Piece("id", Piece.Color.WHITE, Piece.Kind.KING, null));
     }
 }

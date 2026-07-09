@@ -1,11 +1,13 @@
 package model;
 
+import java.util.Optional;
+
 public interface IBoard {
-    String getPieceAt(int row, int col);
-    void setPieceAt(int row, int col, String piece);
-    void clearCell(int row, int col);
-    int getNumRows();
-    int getNumCols();
-    boolean isWithinBounds(int row, int col);
-    void printBoard();
+    int getWidth();
+    int getHeight();
+    boolean isWithinBorder(Position position);
+    Optional<Piece> getPieceAt(Position position);
+    void addPiece(Piece piece, Position position);
+    void movePiece(Position from, Position to);
+    Piece removePiece(Position position);
 }
