@@ -6,9 +6,18 @@ import model.Piece;
 import model.Position;
 import realtime.ArrivalEvent;
 import realtime.RealTimeArbiter;
+import rules.BishopRule;
+import rules.KingRule;
+import rules.KnightRule;
 import rules.MoveValidation;
+import rules.PawnRule;
+import rules.PieceRules;
+import rules.QueenRule;
+import rules.RookRule;
 import rules.RuleEngine;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class GameEngine {
@@ -23,6 +32,24 @@ public class GameEngine {
         this.gameState = gameState;
         this.ruleEngine = ruleEngine;
         this.arbiter = arbiter;
+    }
+
+    public static GameEngine fromBoard(Board board) {
+        RuleEngine ruleEngine = new RuleEngine(createStandardRules());
+        GameState gameState = new GameState();
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        return new GameEngine(board, gameState, ruleEngine, arbiter);
+    }
+
+    private static Map<Piece.Kind, PieceRules> createStandardRules() {
+        Map<Piece.Kind, PieceRules> rules = new EnumMap<>(Piece.Kind.class);
+        rules.put(Piece.Kind.ROOK, new RookRule());
+        rules.put(Piece.Kind.BISHOP, new BishopRule());
+        rules.put(Piece.Kind.QUEEN, new QueenRule());
+        rules.put(Piece.Kind.KNIGHT, new KnightRule());
+        rules.put(Piece.Kind.KING, new KingRule());
+        rules.put(Piece.Kind.PAWN, new PawnRule());
+        return rules;
     }
 
     public MoveResult requestMove(Position source, Position destination) {
@@ -50,5 +77,9 @@ public class GameEngine {
 
     public GameSnapshot snapshot() {
         return new GameSnapshot(board.occupiedPositions());
+    }
+
+    public Board settledBoard() {
+        return board;
     }
 }

@@ -18,6 +18,11 @@ public class TextScriptsTest {
         runScript("01_board_parsing.kfc");
     }
 
+    @Test
+    public void testClickToMoveScript() throws IOException {
+        runScript("02_click_to_move.kfc");
+    }
+
     private void runScript(String fileName) throws IOException {
         String script = Files.readString(SCRIPTS_DIR.resolve(fileName));
         assertDoesNotThrow(() -> new ScriptRunner().run(script));
