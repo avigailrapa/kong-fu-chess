@@ -69,4 +69,18 @@ public class KnightRuleTest {
 
         assertTrue(destinations.contains(new Position(2, 3)));
     }
+
+    @Test
+    public void testExcludesNonLShapedDestinations() {
+        Board board = new Board(8, 8);
+        Piece knight = new Piece("n1", Piece.Color.WHITE, Piece.Kind.KNIGHT, new Position(4, 4));
+        board.addPiece(knight, new Position(4, 4));
+
+        Set<Position> destinations = knightRule.legalDestinations(board, knight);
+
+        assertFalse(destinations.contains(new Position(3, 4))); // one step straight
+        assertFalse(destinations.contains(new Position(5, 5))); // one step diagonal
+        assertFalse(destinations.contains(new Position(6, 4))); // two steps straight
+        assertFalse(destinations.contains(new Position(4, 4))); // same cell
+    }
 }

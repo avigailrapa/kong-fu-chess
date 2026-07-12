@@ -3,6 +3,7 @@ package model;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.Optional;
+import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class BoardTest {
@@ -124,5 +125,20 @@ public class BoardTest {
         assertThrows(IllegalArgumentException.class,
                 () -> board.addPiece(new Piece("x", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(9, 9)), new Position(9, 9)));
         assertThrows(IllegalArgumentException.class, () -> board.removePiece(new Position(9, 9)));
+    }
+
+    @Test
+    public void testOccupiedPositionsReturnsExactSetOfOccupiedCells() {
+        Position a = new Position(0, 0);
+        Position b = new Position(3, 5);
+        board.addPiece(new Piece("w1", Piece.Color.WHITE, Piece.Kind.ROOK, a), a);
+        board.addPiece(new Piece("w2", Piece.Color.WHITE, Piece.Kind.KNIGHT, b), b);
+
+        assertEquals(Set.of(a, b), board.occupiedPositions());
+    }
+
+    @Test
+    public void testOccupiedPositionsIsEmptyOnEmptyBoard() {
+        assertTrue(board.occupiedPositions().isEmpty());
     }
 }
