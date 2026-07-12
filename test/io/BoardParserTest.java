@@ -68,4 +68,29 @@ public class BoardParserTest {
         assertThrows(IllegalArgumentException.class, () -> parser.parse(""));
         assertThrows(IllegalArgumentException.class, () -> parser.parse("   \n   "));
     }
+
+    @Test
+    public void testAcceptsSingleCellBoard() {
+        Board board = parser.parse("wK");
+
+        assertEquals(1, board.getWidth());
+        assertEquals(1, board.getHeight());
+        assertTrue(board.getPieceAt(new Position(0, 0)).isPresent());
+    }
+
+    @Test
+    public void testAcceptsSingleRowBoard() {
+        Board board = parser.parse("wK . . bK");
+
+        assertEquals(4, board.getWidth());
+        assertEquals(1, board.getHeight());
+    }
+
+    @Test
+    public void testAcceptsSingleColumnBoard() {
+        Board board = parser.parse("wK\n.\n.\nbK");
+
+        assertEquals(1, board.getWidth());
+        assertEquals(4, board.getHeight());
+    }
 }

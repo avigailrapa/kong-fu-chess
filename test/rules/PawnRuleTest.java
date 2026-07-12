@@ -95,4 +95,26 @@ public class PawnRuleTest {
 
         assertFalse(destinations.contains(new Position(5, 3)));
     }
+
+    @Test
+    public void testWhitePawnAtBoardEdgeHasNoForwardDestination() {
+        Board board = new Board(8, 8);
+        Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(0, 4));
+        board.addPiece(pawn, new Position(0, 4));
+
+        Set<Position> destinations = pawnRule.legalDestinations(board, pawn);
+
+        assertTrue(destinations.isEmpty());
+    }
+
+    @Test
+    public void testBlackPawnAtBoardEdgeHasNoForwardDestination() {
+        Board board = new Board(8, 8);
+        Piece pawn = new Piece("p1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(7, 4));
+        board.addPiece(pawn, new Position(7, 4));
+
+        Set<Position> destinations = pawnRule.legalDestinations(board, pawn);
+
+        assertTrue(destinations.isEmpty());
+    }
 }

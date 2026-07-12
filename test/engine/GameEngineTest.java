@@ -11,6 +11,7 @@ import rules.RookRule;
 import rules.RuleEngine;
 
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -236,5 +237,69 @@ public class GameEngineTest {
 
         assertTrue(secondMove.isAccepted());
         assertEquals("ok", secondMove.reason());
+    }
+
+    @Test
+    public void testFromBoardWiresAllSixPieceRules() {
+        Board board = new Board(8, 8);
+        board.addPiece(new Piece("b1", Piece.Color.WHITE, Piece.Kind.BISHOP, new Position(7, 2)), new Position(7, 2));
+        board.addPiece(new Piece("n1", Piece.Color.WHITE, Piece.Kind.KNIGHT, new Position(7, 1)), new Position(7, 1));
+        board.addPiece(new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(6, 4)), new Position(6, 4));
+        GameEngine engine = GameEngine.fromBoard(board);
+
+        MoveResult bishopMove = engine.requestMove(new Position(7, 2), new Position(5, 4));
+        assertTrue(bishopMove.isAccepted());
+        engine.waitMs(2000);
+        assertTrue(board.getPieceAt(new Position(5, 4)).isPresent());
+
+        MoveResult knightMove = engine.requestMove(new Position(7, 1), new Position(5, 2));
+        assertTrue(knightMove.isAccepted());
+        engine.waitMs(2000);
+        assertTrue(board.getPieceAt(new Position(5, 2)).isPresent());
+
+        MoveResult pawnMove = engine.requestMove(new Position(6, 4), new Position(5, 4));
+        assertFalse(pawnMove.isAccepted());
+        assertEquals("friendly_destination", pawnMove.reason());
+    }
+
+    @Test
+    public void testSnapshotReflectsOccupiedCells() {
+        Board board = new Board(8, 8);
+        board.addPiece(new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0)), new Position(7, 0));
+        board.addPiece(new Piece("k1", Piece.Color.BLACK, Piece.Kind.KING, new Position(0, 4)), new Position(0, 4));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        GameSnapshot snapshot = engine.snapshot();
+
+        assertEquals(Set.of(new Position(7, 0), new Position(0, 4)), snapshot.occupiedCells());
+        assertTrue(snapshot.isOccupied(new Position(7, 0)));
+        assertFalse(snapshot.isOccupied(new Position(3, 3)));
+    }
+
+    @Test
+    public void testSettledBoardReturnsSameBoardInstance() {
+        Board board = new Board(8, 8);
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        assertSame(board, engine.settledBoard());
+    }
+
+    @Test
+    public void testWaitMsWithNoActiveMotionIsNoOp() {
+        Board board = new Board(8, 8);
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, ruleEngine(), new RealTimeArbiter(board));
+
+        engine.waitMs(500);
+
+        assertFalse(gameState.isGameOver());
+    }
+
+    @Test
+    public void testWaitMsRejectsNegativeMilliseconds() {
+        Board board = new Board(8, 8);
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        assertThrows(IllegalArgumentException.class, () -> engine.waitMs(-1));
     }
 }

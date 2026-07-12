@@ -70,4 +70,16 @@ public class PieceTest {
         assertThrows(NullPointerException.class,
                 () -> new Piece("id", Piece.Color.WHITE, Piece.Kind.KING, null));
     }
+
+    @Test
+    public void testSetCellRejectsNull() {
+        Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(0, 0));
+        assertThrows(NullPointerException.class, () -> piece.setCell(null));
+    }
+
+    @Test
+    public void testSetStateRejectsNull() {
+        Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(0, 0));
+        assertThrows(NullPointerException.class, () -> piece.setState(null));
+    }
 }

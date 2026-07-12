@@ -127,4 +127,18 @@ public class ControllerTest {
 
         assertTrue(controller.getSelectedCell().isEmpty());
     }
+
+    @Test
+    public void testThirdClickStartsFreshIndependentSelectionCycle() {
+        FakeGameEngine fakeEngine = new FakeGameEngine();
+        fakeEngine.occupiedCells = Set.of(new Position(1, 1), new Position(3, 3));
+        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+
+        controller.click(150, 150); // select (1,1)
+        controller.click(350, 150); // second click -> sends move, clears selection
+        controller.click(350, 350); // third click -> select (3,3), a fresh first click
+
+        assertEquals(1, fakeEngine.callCount);
+        assertEquals(new Position(3, 3), controller.getSelectedCell().orElseThrow());
+    }
 }
