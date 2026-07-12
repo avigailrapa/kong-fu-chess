@@ -1,6 +1,7 @@
 package model;
 
 import java.util.Optional;
+import java.util.Set;
 
 public interface IBoard {
     int getWidth();
@@ -10,4 +11,5 @@ public interface IBoard {
     void addPiece(Piece piece, Position position);
     void movePiece(Position from, Position to);
     Piece removePiece(Position position);
+    Set<Position> occupiedPositions();
 }
