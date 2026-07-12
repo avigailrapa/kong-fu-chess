@@ -3,6 +3,7 @@ package model;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class Board implements IBoard {
 
@@ -81,6 +82,11 @@ public class Board implements IBoard {
             throw new IllegalStateException("No piece to remove at: " + position);
         }
         return removed;
+    }
+
+    @Override
+    public Set<Position> occupiedPositions() {
+        return Set.copyOf(occupied.keySet());
     }
 
     private void requireWithinBorder(Position position) {

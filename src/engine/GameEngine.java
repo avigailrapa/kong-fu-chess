@@ -47,4 +47,8 @@ public class GameEngine {
         Optional<ArrivalEvent> event = arbiter.advanceTime(ms);
         event.filter(ArrivalEvent::kingCaptured).ifPresent(e -> gameState.endGame());
     }
+
+    public GameSnapshot snapshot() {
+        return new GameSnapshot(board.occupiedPositions());
+    }
 }
