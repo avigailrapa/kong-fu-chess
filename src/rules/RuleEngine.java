@@ -31,6 +31,9 @@ public class RuleEngine {
         }
 
         PieceRules pieceRules = rulesByKind.get(movingPiece.getKind());
+        if (pieceRules == null) {
+            throw new IllegalStateException("No movement rule configured for " + movingPiece.getKind());
+        }
         Set<Position> legalDestinations = pieceRules.legalDestinations(board, movingPiece);
         if (!legalDestinations.contains(destination)) {
             return MoveValidation.invalid("illegal_piece_move");
