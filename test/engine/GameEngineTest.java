@@ -170,4 +170,71 @@ public class GameEngineTest {
         assertFalse(result.isAccepted());
         assertEquals("game_over", result.reason());
     }
+
+    @Test
+    public void testIllegalMoveLeavesBoardUnchangedEvenAfterWait() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(5, 3));
+        engine.waitMs(5000);
+
+        assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
+        assertEquals(Piece.State.IDLE, rook.getState());
+    }
+
+    @Test
+    public void testBlockedSlidingPathLeavesBoardUnchanged() {
+        Board board = new Board(3, 3);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(0, 0));
+        board.addPiece(rook, new Position(0, 0));
+        Piece blockingPawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(0, 1));
+        board.addPiece(blockingPawn, new Position(0, 1));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        MoveResult result = engine.requestMove(new Position(0, 0), new Position(0, 2));
+        engine.waitMs(3000);
+
+        assertFalse(result.isAccepted());
+        assertEquals("illegal_piece_move", result.reason());
+        assertTrue(board.getPieceAt(new Position(0, 0)).isPresent());
+        assertTrue(board.getPieceAt(new Position(0, 1)).isPresent());
+        assertTrue(board.getPieceAt(new Position(0, 2)).isEmpty());
+    }
+
+    @Test
+    public void testFriendlyDestinationLeavesBoardUnchanged() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        Piece friendlyPawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(4, 0));
+        board.addPiece(friendlyPawn, new Position(4, 0));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        MoveResult result = engine.requestMove(new Position(7, 0), new Position(4, 0));
+        engine.waitMs(3000);
+
+        assertFalse(result.isAccepted());
+        assertEquals("friendly_destination", result.reason());
+        assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
+        assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
+    }
+
+    @Test
+    public void testInvalidCommandDoesNotStartMotion() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        Piece otherRook = new Piece("r2", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 7));
+        board.addPiece(otherRook, new Position(7, 7));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(5, 3));
+        MoveResult secondMove = engine.requestMove(new Position(7, 7), new Position(4, 7));
+
+        assertTrue(secondMove.isAccepted());
+        assertEquals("ok", secondMove.reason());
+    }
 }
