@@ -2,6 +2,7 @@ package engine;
 
 import model.Board;
 import model.GameState;
+import model.Piece;
 import model.Position;
 import realtime.ArrivalEvent;
 import realtime.RealTimeArbiter;
@@ -16,7 +17,6 @@ public class GameEngine {
     private final GameState gameState;
     private final RuleEngine ruleEngine;
     private final RealTimeArbiter arbiter;
-    private long currentTimeMs = 0;
 
     public GameEngine(Board board, GameState gameState, RuleEngine ruleEngine, RealTimeArbiter arbiter) {
         this.board = board;
@@ -38,13 +38,13 @@ public class GameEngine {
             return new MoveResult(false, validation.reason());
         }
 
-        arbiter.startMotion(source, destination, currentTimeMs);
+        Piece piece = board.getPieceAt(source).orElseThrow();
+        arbiter.startMotion(piece, source, destination);
         return new MoveResult(true, "ok");
     }
 
     public void waitMs(long ms) {
-        currentTimeMs += ms;
-        Optional<ArrivalEvent> event = arbiter.advanceTime(currentTimeMs);
+        Optional<ArrivalEvent> event = arbiter.advanceTime(ms);
         event.filter(ArrivalEvent::kingCaptured).ifPresent(e -> gameState.endGame());
     }
 }

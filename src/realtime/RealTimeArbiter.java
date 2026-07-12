@@ -12,6 +12,7 @@ public class RealTimeArbiter {
 
     private final Board board;
     private Motion activeMotion;
+    private long elapsedMs;
 
     public RealTimeArbiter(Board board) {
         this.board = board;
@@ -21,28 +22,33 @@ public class RealTimeArbiter {
         return activeMotion != null;
     }
 
-    public void startMotion(Position source, Position destination, long currentTimeMs) {
+    public void startMotion(Piece piece, Position source, Position destination) {
         if (activeMotion != null) {
             throw new IllegalStateException("a motion is already in progress");
         }
-        Piece piece = board.getPieceAt(source)
-                .orElseThrow(() -> new IllegalStateException("no piece at source: " + source));
 
         long distance = Math.max(
                 Math.abs(source.getRow() - destination.getRow()),
                 Math.abs(source.getCol() - destination.getCol()));
 
         piece.setState(Piece.State.MOVING);
-        activeMotion = new Motion(piece, source, destination, currentTimeMs, distance * MILLIS_PER_CELL);
+        activeMotion = new Motion(piece, source, destination, distance * MILLIS_PER_CELL);
+        elapsedMs = 0;
     }
 
-    public Optional<ArrivalEvent> advanceTime(long currentTimeMs) {
-        if (activeMotion == null || currentTimeMs < activeMotion.arrivalTimeMs()) {
+    public Optional<ArrivalEvent> advanceTime(long ms) {
+        if (activeMotion == null) {
+            return Optional.empty();
+        }
+
+        elapsedMs += ms;
+        if (elapsedMs < activeMotion.durationMs()) {
             return Optional.empty();
         }
 
         Motion motion = activeMotion;
         activeMotion = null;
+        elapsedMs = 0;
 
         Piece capturedPiece = board.getPieceAt(motion.destination()).orElse(null);
         boolean kingCaptured = capturedPiece != null && capturedPiece.getKind() == Piece.Kind.KING;
