@@ -3,9 +3,12 @@ package engine;
 import model.Board;
 import model.GameState;
 import model.Position;
+import realtime.ArrivalEvent;
 import realtime.RealTimeArbiter;
 import rules.MoveValidation;
 import rules.RuleEngine;
+
+import java.util.Optional;
 
 public class GameEngine {
 
@@ -41,6 +44,7 @@ public class GameEngine {
 
     public void waitMs(long ms) {
         currentTimeMs += ms;
-        arbiter.advanceTime(currentTimeMs);
+        Optional<ArrivalEvent> event = arbiter.advanceTime(currentTimeMs);
+        event.filter(ArrivalEvent::kingCaptured).ifPresent(e -> gameState.endGame());
     }
 }
