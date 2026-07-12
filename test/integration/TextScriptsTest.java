@@ -43,6 +43,11 @@ public class TextScriptsTest {
         runScript("06_game_over.kfc");
     }
 
+    @Test
+    public void testSameCellClickScript() throws IOException {
+        runScript("07_same_cell_click.kfc");
+    }
+
     private void runScript(String fileName) throws IOException {
         String script = Files.readString(SCRIPTS_DIR.resolve(fileName));
         assertDoesNotThrow(() -> new ScriptRunner().run(script));

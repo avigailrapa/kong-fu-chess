@@ -71,6 +71,9 @@ public class GameEngine {
     }
 
     public void waitMs(long ms) {
+        if (ms < 0) {
+            throw new IllegalArgumentException("ms must not be negative");
+        }
         Optional<ArrivalEvent> event = arbiter.advanceTime(ms);
         event.filter(ArrivalEvent::kingCaptured).ifPresent(e -> gameState.endGame());
     }

@@ -94,4 +94,25 @@ public class RuleEngineTest {
 
         assertTrue(result.isValid());
     }
+
+    @Test
+    public void testSameCellSourceAndDestinationIsFriendlyDestination() {
+        Position cell = new Position(0, 0);
+        board.addPiece(new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, cell), cell);
+
+        MoveValidation result = ruleEngine.validateMove(board, cell, cell);
+
+        assertFalse(result.isValid());
+        assertEquals("friendly_destination", result.reason());
+    }
+
+    @Test
+    public void testUnregisteredPieceKindFailsWithClearMessage() {
+        RuleEngine engineWithoutQueenRule = new RuleEngine(Map.of(Piece.Kind.ROOK, new RookRule()));
+        Position source = new Position(0, 0);
+        board.addPiece(new Piece("q1", Piece.Color.WHITE, Piece.Kind.QUEEN, source), source);
+
+        assertThrows(IllegalStateException.class,
+                () -> engineWithoutQueenRule.validateMove(board, source, new Position(0, 3)));
+    }
 }
