@@ -121,4 +121,53 @@ public class GameEngineTest {
         assertTrue(result.isAccepted());
         assertEquals("ok", result.reason());
     }
+
+    @Test
+    public void testCapturingEnemyKingEndsTheGame() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        board.addPiece(new Piece("k1", Piece.Color.BLACK, Piece.Kind.KING, new Position(4, 0)), new Position(4, 0));
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(4, 0));
+        engine.waitMs(3000);
+
+        assertTrue(gameState.isGameOver());
+    }
+
+    @Test
+    public void testCapturingNonKingPieceDoesNotEndTheGame() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        board.addPiece(new Piece("q1", Piece.Color.BLACK, Piece.Kind.QUEEN, new Position(4, 0)), new Position(4, 0));
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(4, 0));
+        engine.waitMs(3000);
+
+        assertFalse(gameState.isGameOver());
+    }
+
+    @Test
+    public void testRequestMoveRejectedAfterKingCaptureEndsGame() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        board.addPiece(new Piece("k1", Piece.Color.BLACK, Piece.Kind.KING, new Position(4, 0)), new Position(4, 0));
+        Piece otherRook = new Piece("r2", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 7));
+        board.addPiece(otherRook, new Position(7, 7));
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(4, 0));
+        engine.waitMs(3000);
+        MoveResult result = engine.requestMove(new Position(7, 7), new Position(4, 7));
+
+        assertFalse(result.isAccepted());
+        assertEquals("game_over", result.reason());
+    }
 }
