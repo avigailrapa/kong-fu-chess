@@ -5,6 +5,7 @@ import model.GameState;
 import model.Piece;
 import model.Position;
 import org.junit.jupiter.api.Test;
+import realtime.RealTimeArbiter;
 import rules.PieceRules;
 import rules.RookRule;
 import rules.RuleEngine;

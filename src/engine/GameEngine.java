@@ -3,6 +3,7 @@ package engine;
 import model.Board;
 import model.GameState;
 import model.Position;
+import realtime.RealTimeArbiter;
 import rules.MoveValidation;
 import rules.RuleEngine;
 
