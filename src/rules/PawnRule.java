@@ -1,8 +1,8 @@
-package rules;
+package src.rules;
 
-import model.IBoard;
-import model.Piece;
-import model.Position;
+import src.model.IBoard;
+import src.model.Piece;
+import src.model.Position;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -15,10 +15,19 @@ public class PawnRule implements PieceRules {
         Set<Position> destinations = new HashSet<>();
         Position current = piece.getCell();
         int forward = piece.getColor() == Piece.Color.WHITE ? -1 : 1;
+        int startingRow = piece.getColor() == Piece.Color.WHITE ? board.getHeight() - 1 : 0;
 
         Position forwardCell = new Position(current.getRow() + forward, current.getCol());
-        if (board.isWithinBorder(forwardCell) && board.getPieceAt(forwardCell).isEmpty()) {
+        boolean forwardOpen = board.isWithinBorder(forwardCell) && board.getPieceAt(forwardCell).isEmpty();
+        if (forwardOpen) {
             destinations.add(forwardCell);
+
+            if (current.getRow() == startingRow) {
+                Position twoStepCell = new Position(current.getRow() + forward * 2, current.getCol());
+                if (board.isWithinBorder(twoStepCell) && board.getPieceAt(twoStepCell).isEmpty()) {
+                    destinations.add(twoStepCell);
+                }
+            }
         }
 
         for (int colOffset : new int[]{-1, 1}) {

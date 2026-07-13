@@ -1,8 +1,7 @@
 package realtime;
+import src.model.*;
+import src.realtime.*;
 
-import model.Board;
-import model.Piece;
-import model.Position;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -215,5 +214,71 @@ public class RealTimeArbiterTest {
 
         assertTrue(event.isPresent());
         assertTrue(board.getPieceAt(new Position(1, 1)).isPresent());
+    }
+
+    @Test
+    public void testWhitePawnPromotesToQueenOnArrival() {
+        Board board = new Board(3, 2);
+        Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(1, 1));
+        board.addPiece(pawn, new Position(1, 1));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(pawn, new Position(1, 1), new Position(0, 1));
+
+        ArrivalEvent event = arbiter.advanceTime(1000).orElseThrow();
+
+        Piece atDestination = board.getPieceAt(new Position(0, 1)).orElseThrow();
+        assertEquals(Piece.Kind.QUEEN, atDestination.getKind());
+        assertEquals(Piece.Color.WHITE, atDestination.getColor());
+        assertEquals(Piece.Kind.QUEEN, event.movedPiece().getKind());
+        assertEquals("p1", atDestination.getId());
+    }
+
+    @Test
+    public void testBlackPawnPromotesToQueenOnArrival() {
+        Board board = new Board(3, 2);
+        Piece pawn = new Piece("p1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(0, 1));
+        board.addPiece(pawn, new Position(0, 1));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(pawn, new Position(0, 1), new Position(1, 1));
+
+        arbiter.advanceTime(1000);
+
+        Piece atDestination = board.getPieceAt(new Position(1, 1)).orElseThrow();
+        assertEquals(Piece.Kind.QUEEN, atDestination.getKind());
+        assertEquals(Piece.Color.BLACK, atDestination.getColor());
+    }
+
+    @Test
+    public void testPromotedQueenCanMoveDiagonallyAfterward() {
+        Board board = new Board(3, 3);
+        Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(1, 0));
+        board.addPiece(pawn, new Position(1, 0));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+
+        arbiter.startMotion(pawn, new Position(1, 0), new Position(0, 0));
+        arbiter.advanceTime(1000);
+
+        Piece promoted = board.getPieceAt(new Position(0, 0)).orElseThrow();
+        assertEquals(Piece.Kind.QUEEN, promoted.getKind());
+
+        arbiter.startMotion(promoted, new Position(0, 0), new Position(2, 2));
+        Optional<ArrivalEvent> event = arbiter.advanceTime(2000);
+
+        assertTrue(event.isPresent());
+        assertTrue(board.getPieceAt(new Position(2, 2)).isPresent());
+    }
+
+    @Test
+    public void testPawnNotOnLastRankDoesNotPromote() {
+        Board board = new Board(3, 3);
+        Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(2, 0));
+        board.addPiece(pawn, new Position(2, 0));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(pawn, new Position(2, 0), new Position(1, 0));
+
+        arbiter.advanceTime(1000);
+
+        Piece atDestination = board.getPieceAt(new Position(1, 0)).orElseThrow();
+        assertEquals(Piece.Kind.PAWN, atDestination.getKind());
     }
 }

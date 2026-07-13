@@ -1,4 +1,4 @@
-package rules;
+package src.rules;
 
 public class RookRule extends SlidingRule {
 

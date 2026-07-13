@@ -1,8 +1,8 @@
-package io;
+package src.io;
 
-import model.IBoard;
-import model.Piece;
-import model.Position;
+import src.model.IBoard;
+import src.model.Piece;
+import src.model.Position;
 
 import java.util.Optional;
 

@@ -1,7 +1,8 @@
-package input;
+package src.input;
 
-import engine.GameEngine;
-import model.Position;
+import src.engine.GameEngine;
+import src.engine.MoveResult;
+import src.model.Position;
 
 import java.util.Optional;
 
@@ -33,8 +34,16 @@ public class Controller {
             return;
         }
 
-        gameEngine.requestMove(selectedCell, cell);
+        MoveResult result = gameEngine.requestMove(selectedCell, cell);
+        if (!result.isAccepted() && "friendly_destination".equals(result.reason())) {
+            selectedCell = cell;
+            return;
+        }
         selectedCell = null;
+    }
+
+    public void jump(int x, int y) {
+        boardMapper.pixelToCell(x, y).ifPresent(gameEngine::requestJump);
     }
 
     public Optional<Position> getSelectedCell() {

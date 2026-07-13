@@ -1,7 +1,7 @@
 package integration;
 
 import org.junit.jupiter.api.Test;
-import texttests.ScriptRunner;
+import src.texttests.ScriptRunner;
 
 import java.io.IOException;
 import java.nio.file.Files;

@@ -1,8 +1,8 @@
-package io;
+package src.io;
 
-import model.Board;
-import model.Piece;
-import model.Position;
+import src.model.Board;
+import src.model.Piece;
+import src.model.Position;
 
 public class BoardParser {
 

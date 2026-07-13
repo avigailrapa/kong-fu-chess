@@ -1,21 +1,7 @@
-package engine;
-
-import model.Board;
-import model.GameState;
-import model.Piece;
-import model.Position;
-import realtime.ArrivalEvent;
-import realtime.RealTimeArbiter;
-import rules.BishopRule;
-import rules.KingRule;
-import rules.KnightRule;
-import rules.MoveValidation;
-import rules.PawnRule;
-import rules.PieceRules;
-import rules.QueenRule;
-import rules.RookRule;
-import rules.RuleEngine;
-
+package src.engine;
+import src.model.*;
+import src.realtime.*;
+import src.rules.*;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -68,6 +54,13 @@ public class GameEngine {
         Piece piece = board.getPieceAt(source).orElseThrow();
         arbiter.startMotion(piece, source, destination);
         return new MoveResult(true, "ok");
+    }
+
+    public void requestJump(Position cell) {
+        if (gameState.isGameOver()) {
+            return;
+        }
+        board.getPieceAt(cell).ifPresent(piece -> arbiter.startJump(piece, cell));
     }
 
     public void waitMs(long ms) {

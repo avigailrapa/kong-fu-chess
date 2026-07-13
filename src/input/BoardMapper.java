@@ -1,6 +1,6 @@
-package input;
+package src.input;
 
-import model.Position;
+import src.model.Position;
 
 import java.util.Optional;
 

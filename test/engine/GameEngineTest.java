@@ -1,14 +1,12 @@
 package engine;
-
-import model.Board;
-import model.GameState;
-import model.Piece;
-import model.Position;
+import src.engine.GameEngine;
+import src.engine.GameSnapshot;
+import src.engine.MoveResult;
+import src.model.*;
 import org.junit.jupiter.api.Test;
-import realtime.RealTimeArbiter;
-import rules.PieceRules;
-import rules.RookRule;
-import rules.RuleEngine;
+import src.realtime.*;
+import src.rules.*;
+
 
 import java.util.Map;
 import java.util.Set;
