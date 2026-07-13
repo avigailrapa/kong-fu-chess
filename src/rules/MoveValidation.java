@@ -18,7 +18,7 @@ public class MoveValidation {
     }
 
     public static MoveValidation ok() {
-        return new MoveValidation(true, "");
+        return new MoveValidation(true, "ok");
     }
 
     public static MoveValidation invalid(String reason) {

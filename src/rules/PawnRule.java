@@ -15,7 +15,7 @@ public class PawnRule implements PieceRules {
         Set<Position> destinations = new HashSet<>();
         Position current = piece.getCell();
         int forward = piece.getColor() == Piece.Color.WHITE ? -1 : 1;
-        int startingRow = piece.getColor() == Piece.Color.WHITE ? board.getHeight() - 1 : 0;
+        int startingRow = piece.getColor() == Piece.Color.WHITE ? board.getHeight() - 2 : 1;
 
         Position forwardCell = new Position(current.getRow() + forward, current.getCol());
         boolean forwardOpen = board.isWithinBorder(forwardCell) && board.getPieceAt(forwardCell).isEmpty();
