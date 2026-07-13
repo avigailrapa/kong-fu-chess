@@ -572,4 +572,77 @@ public class RealTimeArbiterTest {
         assertEquals(Piece.State.IDLE, bishop.getState());
         assertFalse(arbiter.hasActiveJump());
     }
+
+    @Test
+    public void testFriendlyPieceArrivingLaterBouncesBackInsteadOfCapturingAlly() {
+        Board board = new Board(8, 8);
+        Piece rookA = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rookA, new Position(7, 0));
+        Piece bishopB = new Piece("b1", Piece.Color.WHITE, Piece.Kind.BISHOP, new Position(4, 2));
+        board.addPiece(bishopB, new Position(4, 2));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(rookA, new Position(7, 0), new Position(6, 0)); // 1000ms
+        arbiter.startMotion(bishopB, new Position(4, 2), new Position(6, 0)); // diagonal, 2 squares = 2000ms
+
+        arbiter.advanceTime(1000); // rookA arrives first, cell (6,0) now occupied by a friendly piece
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r1")).orElse(false));
+
+        List<ArrivalEvent> events = arbiter.advanceTime(1000); // bishopB's motion is now due too
+
+        assertEquals(1, events.size());
+        ArrivalEvent event = events.get(0);
+        assertEquals(bishopB, event.movedPiece());
+        assertEquals(new Position(4, 2), event.from());
+        assertEquals(new Position(4, 2), event.to());
+        assertNull(event.capturedPiece());
+        assertEquals(Piece.State.IDLE, bishopB.getState());
+        assertEquals(Piece.State.IDLE, rookA.getState());
+        assertTrue(board.getPieceAt(new Position(4, 2)).map(p -> p.getId().equals("b1")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r1")).orElse(false));
+    }
+
+    @Test
+    public void testEnemyRaceWinnerDeterminedByOvershootCapturesLoser() {
+        Board board = new Board(8, 8);
+        Piece whiteRook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(whiteRook, new Position(7, 0)); // 1 square to (6,0) = 1000ms
+        Piece blackRook = new Piece("r2", Piece.Color.BLACK, Piece.Kind.ROOK, new Position(4, 0));
+        board.addPiece(blackRook, new Position(4, 0)); // 2 squares to (6,0) = 2000ms
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(whiteRook, new Position(7, 0), new Position(6, 0));
+        arbiter.startMotion(blackRook, new Position(4, 0), new Position(6, 0));
+
+        // Single tick where both are due: whiteRook overshoots by 1000ms, blackRook by 0ms.
+        // blackRook wins (smaller overshoot = arrived later in continuous time).
+        List<ArrivalEvent> events = arbiter.advanceTime(2000);
+
+        assertEquals(2, events.size());
+        assertEquals(Piece.State.CAPTURED, whiteRook.getState());
+        assertEquals(Piece.State.IDLE, blackRook.getState());
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r2")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
+        assertFalse(arbiter.isMoving(whiteRook));
+        assertFalse(arbiter.isMoving(blackRook));
+    }
+
+    @Test
+    public void testFriendlyRaceWinnerDeterminedByOvershootBouncesLoserBack() {
+        Board board = new Board(8, 8);
+        Piece rookA = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rookA, new Position(7, 0)); // 1 square to (6,0) = 1000ms
+        Piece rookB = new Piece("r2", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(4, 0));
+        board.addPiece(rookB, new Position(4, 0)); // 2 squares to (6,0) = 2000ms
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(rookA, new Position(7, 0), new Position(6, 0));
+        arbiter.startMotion(rookB, new Position(4, 0), new Position(6, 0));
+
+        List<ArrivalEvent> events = arbiter.advanceTime(2000);
+
+        assertEquals(2, events.size());
+        assertEquals(Piece.State.IDLE, rookA.getState());
+        assertEquals(Piece.State.IDLE, rookB.getState());
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r2")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.getId().equals("r1")).orElse(false));
+    }
+
 }

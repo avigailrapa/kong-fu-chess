@@ -28,7 +28,7 @@ public class RealTimeArbiter {
     public RealTimeArbiter(Board board) {
         this.motionResolver = new MotionResolver(board);
         this.jumpResolver = new JumpResolver(board);
-        this.collisionResolver = new CollisionResolver(board, jumpResolver);
+        this.collisionResolver = new CollisionResolver(board, jumpResolver, motionResolver);
     }
 
     public boolean hasActiveMotion() {
@@ -86,12 +86,7 @@ public class RealTimeArbiter {
             resolveJumpTick(jumper, duePieces).ifPresent(events::add);
         }
 
-        for (Piece piece : duePieces) {
-            if (!activeMotions.containsKey(piece)) {
-                continue;
-            }
-            resolveMotionTick(piece).ifPresent(events::add);
-        }
+        events.addAll(resolveMotionsForTick(duePieces));
 
         return events;
     }
@@ -129,19 +124,77 @@ public class RealTimeArbiter {
         return jumpResolver.resolveLanding(defender, cell);
     }
 
-    private Optional<ArrivalEvent> resolveMotionTick(Piece piece) {
-        Motion motion = takeMotion(piece);
+    /**
+     * Resolves every due motion for this tick. First resolves any motion landing on a
+     * still-airborne piece as a silent displacement (unchanged from before). Everything else is
+     * grouped by destination cell: a group of one resolves normally (which also covers the
+     * "regular" friendly-fire case, where a friendly piece already sits there from an earlier
+     * tick); a group of two or more is a same-tick race, decided by
+     * {@link CollisionResolver#pickRaceWinner} before any of them touch the board, so the outcome
+     * never depends on map iteration order. Each group re-checks whether its own piece was
+     * already captured by an earlier-resolved group in this same tick (e.g. two motions swapping
+     * cells) before touching the board.
+     */
+    private List<ArrivalEvent> resolveMotionsForTick(List<Piece> duePieces) {
+        List<ArrivalEvent> events = new ArrayList<>();
+        List<Piece> livePieces = new ArrayList<>();
 
-        if (collisionResolver.isPieceAlreadyCaptured(motion)) {
-            return Optional.empty();
+        for (Piece piece : duePieces) {
+            if (!activeMotions.containsKey(piece)) {
+                continue;
+            }
+            Motion motion = activeMotions.get(piece);
+
+            if (collisionResolver.isMotionLandingOnAirbornePiece(motion, activeJumps.keySet())) {
+                takeMotion(piece);
+                collisionResolver.clearCellForDisplacement(motion.destination());
+                events.add(motionResolver.resolveWithoutCapture(motion));
+                continue;
+            }
+
+            livePieces.add(piece);
         }
 
-        if (collisionResolver.isMotionLandingOnAirbornePiece(motion, activeJumps.keySet())) {
-            collisionResolver.clearCellForDisplacement(motion.destination());
-            return Optional.of(motionResolver.resolveWithoutCapture(motion));
+        Map<Position, List<Piece>> competitorsByDestination = new LinkedHashMap<>();
+        for (Piece piece : livePieces) {
+            Position destination = activeMotions.get(piece).destination();
+            competitorsByDestination.computeIfAbsent(destination, unused -> new ArrayList<>()).add(piece);
         }
 
-        return Optional.of(motionResolver.resolve(motion));
+        for (List<Piece> competitors : competitorsByDestination.values()) {
+            List<Piece> stillLive = new ArrayList<>();
+            for (Piece candidate : competitors) {
+                Motion motion = activeMotions.get(candidate);
+                if (collisionResolver.isPieceAlreadyCaptured(motion)) {
+                    takeMotion(candidate);
+                } else {
+                    stillLive.add(candidate);
+                }
+            }
+
+            if (stillLive.isEmpty()) {
+                continue;
+            }
+            if (stillLive.size() == 1) {
+                Motion motion = takeMotion(stillLive.get(0));
+                events.add(motionResolver.resolve(motion));
+                continue;
+            }
+
+            Piece winner = collisionResolver.pickRaceWinner(stillLive, activeMotions, motionElapsedMs);
+            Motion winnerMotion = takeMotion(winner);
+            events.add(motionResolver.resolve(winnerMotion));
+
+            for (Piece loser : stillLive) {
+                if (loser == winner) {
+                    continue;
+                }
+                Motion loserMotion = takeMotion(loser);
+                events.add(collisionResolver.resolveRaceLoserAgainstWinner(winner, winnerMotion, loserMotion));
+            }
+        }
+
+        return events;
     }
 
     private Motion takeMotion(Piece piece) {
