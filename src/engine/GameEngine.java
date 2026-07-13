@@ -3,8 +3,8 @@ import src.model.*;
 import src.realtime.*;
 import src.rules.*;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class GameEngine {
 
@@ -42,13 +42,9 @@ public class GameEngine {
         if (gameState.isGameOver()) {
             return new MoveResult(false, "game_over");
         }
-        if (arbiter.hasActiveMotion()) {
-            return new MoveResult(false, "motion_in_progress");
-        }
-
         Piece pieceAtSource = board.isWithinBorder(source) ? board.getPieceAt(source).orElse(null) : null;
-        if (pieceAtSource != null && arbiter.isOnCooldown(pieceAtSource)) {
-            return new MoveResult(false, "piece_on_cooldown");
+        if (pieceAtSource != null && arbiter.isMoving(pieceAtSource)) {
+            return new MoveResult(false, "motion_in_progress");
         }
 
         MoveValidation validation = ruleEngine.validateMove(board, source, destination);
@@ -72,8 +68,12 @@ public class GameEngine {
         if (ms < 0) {
             throw new IllegalArgumentException("ms must not be negative");
         }
-        Optional<ArrivalEvent> event = arbiter.advanceTime(ms);
-        event.filter(ArrivalEvent::kingCaptured).ifPresent(e -> gameState.endGame());
+        List<ArrivalEvent> events = arbiter.advanceTime(ms);
+        for (ArrivalEvent event : events) {
+            if (event.kingCaptured()) {
+                gameState.endGame();
+            }
+        }
     }
 
     public GameSnapshot snapshot() {
