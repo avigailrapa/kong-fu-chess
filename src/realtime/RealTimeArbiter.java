@@ -4,12 +4,27 @@ import src.model.Board;
 import src.model.Piece;
 import src.model.Position;
 
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 
 public class RealTimeArbiter {
 
     private static final long MILLIS_PER_CELL = 1000;
     private static final long JUMP_DURATION_MS = 1000;
+    private static final long DEFAULT_COOLDOWN_MS = 1000;
+
+    private static final Map<Piece.Kind, Long> COOLDOWN_MS_BY_KIND = new EnumMap<>(Piece.Kind.class);
+    static {
+        COOLDOWN_MS_BY_KIND.put(Piece.Kind.PAWN, 1000L);
+        COOLDOWN_MS_BY_KIND.put(Piece.Kind.KNIGHT, 1000L);
+        COOLDOWN_MS_BY_KIND.put(Piece.Kind.BISHOP, 1000L);
+        COOLDOWN_MS_BY_KIND.put(Piece.Kind.ROOK, 1000L);
+        COOLDOWN_MS_BY_KIND.put(Piece.Kind.QUEEN, 1000L);
+        COOLDOWN_MS_BY_KIND.put(Piece.Kind.KING, 1000L);
+    }
 
     private final Board board;
     private Motion activeMotion;
@@ -18,6 +33,8 @@ public class RealTimeArbiter {
     private Piece jumpingPiece;
     private Position jumpCell;
     private long jumpElapsedMs;
+
+    private final Map<Piece, Long> cooldownRemainingMs = new HashMap<>();
 
     public RealTimeArbiter(Board board) {
         this.board = board;
@@ -29,6 +46,10 @@ public class RealTimeArbiter {
 
     public boolean hasActiveJump() {
         return jumpingPiece != null;
+    }
+
+    public boolean isOnCooldown(Piece piece) {
+        return cooldownRemainingMs.containsKey(piece);
     }
 
     public void startMotion(Piece piece, Position source, Position destination) {
@@ -55,6 +76,8 @@ public class RealTimeArbiter {
     }
 
     public Optional<ArrivalEvent> advanceTime(long ms) {
+        tickCooldowns(ms);
+
         if (activeMotion != null) {
             elapsedMs += ms;
         }
@@ -133,6 +156,7 @@ public class RealTimeArbiter {
             if (isPromotion(arrivedPiece)) {
                 arrivedPiece = promoteToQueen(arrivedPiece);
             }
+            startCooldown(arrivedPiece);
             return Optional.of(new ArrivalEvent(arrivedPiece, motion.source(), motion.destination(), null, false));
         }
 
@@ -149,8 +173,27 @@ public class RealTimeArbiter {
         if (isPromotion(arrivedPiece)) {
             arrivedPiece = promoteToQueen(arrivedPiece);
         }
+        startCooldown(arrivedPiece);
 
         return Optional.of(new ArrivalEvent(arrivedPiece, motion.source(), motion.destination(), capturedPiece, kingCaptured));
+    }
+
+    private void tickCooldowns(long ms) {
+        Iterator<Map.Entry<Piece, Long>> it = cooldownRemainingMs.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Piece, Long> entry = it.next();
+            long remaining = entry.getValue() - ms;
+            if (remaining <= 0) {
+                it.remove();
+            } else {
+                entry.setValue(remaining);
+            }
+        }
+    }
+
+    private void startCooldown(Piece piece) {
+        long duration = COOLDOWN_MS_BY_KIND.getOrDefault(piece.getKind(), DEFAULT_COOLDOWN_MS);
+        cooldownRemainingMs.put(piece, duration);
     }
 
     private boolean isPromotion(Piece piece) {

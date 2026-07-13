@@ -269,6 +269,75 @@ public class RealTimeArbiterTest {
     }
 
     @Test
+    public void testPieceNotOnCooldownBeforeAnyMotion() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+
+        assertFalse(arbiter.isOnCooldown(rook));
+    }
+
+    @Test
+    public void testPieceOnCooldownImmediatelyAfterArrival() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0));
+
+        arbiter.advanceTime(1000);
+
+        assertTrue(arbiter.isOnCooldown(rook));
+    }
+
+    @Test
+    public void testCooldownExpiresAfterConfiguredDuration() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0));
+        arbiter.advanceTime(1000);
+        assertTrue(arbiter.isOnCooldown(rook));
+
+        arbiter.advanceTime(1000);
+
+        assertFalse(arbiter.isOnCooldown(rook));
+    }
+
+    @Test
+    public void testCooldownDoesNotAffectOtherPieces() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        Piece bishop = new Piece("b1", Piece.Color.WHITE, Piece.Kind.BISHOP, new Position(7, 2));
+        board.addPiece(bishop, new Position(7, 2));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0));
+
+        arbiter.advanceTime(1000);
+
+        assertTrue(arbiter.isOnCooldown(rook));
+        assertFalse(arbiter.isOnCooldown(bishop));
+    }
+
+    @Test
+    public void testCapturedPieceStillEntersCooldownState() {
+        Board board = new Board(8, 8);
+        Piece bishop = new Piece("b1", Piece.Color.WHITE, Piece.Kind.BISHOP, new Position(7, 0));
+        board.addPiece(bishop, new Position(7, 0));
+        Piece enemyPawn = new Piece("p1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(4, 3));
+        board.addPiece(enemyPawn, new Position(4, 3));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(bishop, new Position(7, 0), new Position(4, 3));
+
+        arbiter.advanceTime(3000);
+
+        assertTrue(arbiter.isOnCooldown(bishop));
+    }
+
+    @Test
     public void testPawnNotOnLastRankDoesNotPromote() {
         Board board = new Board(3, 3);
         Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(2, 0));

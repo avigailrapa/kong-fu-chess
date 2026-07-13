@@ -46,6 +46,11 @@ public class GameEngine {
             return new MoveResult(false, "motion_in_progress");
         }
 
+        Piece pieceAtSource = board.isWithinBorder(source) ? board.getPieceAt(source).orElse(null) : null;
+        if (pieceAtSource != null && arbiter.isOnCooldown(pieceAtSource)) {
+            return new MoveResult(false, "piece_on_cooldown");
+        }
+
         MoveValidation validation = ruleEngine.validateMove(board, source, destination);
         if (!validation.isValid()) {
             return new MoveResult(false, validation.reason());
