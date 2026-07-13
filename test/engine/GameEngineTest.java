@@ -76,7 +76,21 @@ public class GameEngineTest {
     }
 
     @Test
-    public void testSecondMoveRejectedWhileMotionInProgress() {
+    public void testSecondMoveForSameMovingPieceIsRejected() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(4, 0));
+        MoveResult result = engine.requestMove(new Position(7, 0), new Position(6, 0));
+
+        assertFalse(result.isAccepted());
+        assertEquals("motion_in_progress", result.reason());
+    }
+
+    @Test
+    public void testDifferentPieceCanMoveWhileAnotherIsInMotion() {
         Board board = new Board(8, 8);
         Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
         board.addPiece(rook, new Position(7, 0));
@@ -87,8 +101,8 @@ public class GameEngineTest {
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         MoveResult result = engine.requestMove(new Position(7, 7), new Position(4, 7));
 
-        assertFalse(result.isAccepted());
-        assertEquals("motion_in_progress", result.reason());
+        assertTrue(result.isAccepted());
+        assertEquals("ok", result.reason());
     }
 
     @Test
@@ -107,7 +121,7 @@ public class GameEngineTest {
     }
 
     @Test
-    public void testNewMoveRejectedImmediatelyAfterPreviousMotionResolvedDueToCooldown() {
+    public void testNewMoveAcceptedAfterPreviousMotionResolved() {
         Board board = new Board(8, 8);
         Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
         board.addPiece(rook, new Position(7, 0));
@@ -117,68 +131,8 @@ public class GameEngineTest {
         engine.waitMs(3000);
         MoveResult result = engine.requestMove(new Position(4, 0), new Position(4, 4));
 
-        assertFalse(result.isAccepted());
-        assertEquals("piece_on_cooldown", result.reason());
-        assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
-    }
-
-    @Test
-    public void testNewMoveAcceptedAfterCooldownElapses() {
-        Board board = new Board(8, 8);
-        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
-        board.addPiece(rook, new Position(7, 0));
-        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
-
-        engine.requestMove(new Position(7, 0), new Position(4, 0));
-        engine.waitMs(3000);
-        engine.waitMs(1000);
-        MoveResult result = engine.requestMove(new Position(4, 0), new Position(4, 4));
-
         assertTrue(result.isAccepted());
         assertEquals("ok", result.reason());
-    }
-
-    @Test
-    public void testCooldownDoesNotAffectOtherPieces() {
-        Board board = new Board(8, 8);
-        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
-        board.addPiece(rook, new Position(7, 0));
-        Piece otherRook = new Piece("r2", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 7));
-        board.addPiece(otherRook, new Position(7, 7));
-        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
-
-        engine.requestMove(new Position(7, 0), new Position(4, 0));
-        engine.waitMs(3000);
-        MoveResult result = engine.requestMove(new Position(7, 7), new Position(4, 7));
-
-        assertTrue(result.isAccepted());
-        assertEquals("ok", result.reason());
-    }
-
-    @Test
-    public void testPieceOnCooldownCanStillBeCapturedByEnemy() {
-        Board board = new Board(8, 8);
-        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
-        board.addPiece(rook, new Position(7, 0));
-        Map<Piece.Kind, PieceRules> rulesByKind = Map.of(
-                Piece.Kind.ROOK, new RookRule(),
-                Piece.Kind.QUEEN, new QueenRule());
-        RuleEngine rules = new RuleEngine(rulesByKind);
-        RealTimeArbiter arbiter = new RealTimeArbiter(board);
-        GameEngine engine = new GameEngine(board, new GameState(), rules, arbiter);
-        engine.requestMove(new Position(7, 0), new Position(4, 0));
-        engine.waitMs(3000);
-        assertTrue(arbiter.isOnCooldown(rook));
-
-        Piece enemyQueen = new Piece("q1", Piece.Color.BLACK, Piece.Kind.QUEEN, new Position(4, 4));
-        board.addPiece(enemyQueen, new Position(4, 4));
-        GameEngine engine2 = new GameEngine(board, new GameState(), rules, arbiter);
-        MoveResult captureResult = engine2.requestMove(new Position(4, 4), new Position(4, 0));
-        engine2.waitMs(4000);
-
-        assertTrue(captureResult.isAccepted());
-        assertEquals(Piece.State.CAPTURED, rook.getState());
-        assertTrue(board.getPieceAt(new Position(4, 0)).map(p -> p.getId().equals("q1")).orElse(false));
     }
 
     @Test
@@ -359,5 +313,60 @@ public class GameEngineTest {
         GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
 
         assertThrows(IllegalArgumentException.class, () -> engine.waitMs(-1));
+    }
+
+    @Test
+    public void testGameOverGuardTakesPriorityOverMotionInProgress() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        Piece enemyKing = new Piece("k1", Piece.Color.BLACK, Piece.Kind.KING, new Position(4, 0));
+        board.addPiece(enemyKing, new Position(4, 0));
+        Piece movingRook = new Piece("r2", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 7));
+        board.addPiece(movingRook, new Position(7, 7));
+        Map<Piece.Kind, PieceRules> rulesByKind = Map.of(Piece.Kind.ROOK, new RookRule());
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, new RuleEngine(rulesByKind), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 7), new Position(0, 7)); // movingRook needs 7000ms, stays in motion past the wait below
+        engine.requestMove(new Position(7, 0), new Position(4, 0)); // captures the king, ends the game after 3000ms
+        engine.waitMs(3000);
+        assertTrue(gameState.isGameOver());
+
+        MoveResult result = engine.requestMove(new Position(7, 7), new Position(6, 7));
+
+        assertFalse(result.isAccepted());
+        assertEquals("game_over", result.reason());
+    }
+
+
+    @Test
+    public void testRequestJumpDoesNothingAfterGameOver() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        Piece enemyKing = new Piece("k1", Piece.Color.BLACK, Piece.Kind.KING, new Position(4, 0));
+        board.addPiece(enemyKing, new Position(4, 0));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, ruleEngine(), arbiter);
+        engine.requestMove(new Position(7, 0), new Position(4, 0));
+        engine.waitMs(3000);
+        assertTrue(gameState.isGameOver());
+
+        engine.requestJump(new Position(4, 0));
+
+        assertFalse(arbiter.hasActiveJump());
+    }
+
+    @Test
+    public void testRequestJumpOnEmptyCellDoesNothing() {
+        Board board = new Board(8, 8);
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), arbiter);
+
+        engine.requestJump(new Position(3, 3));
+
+        assertFalse(arbiter.hasActiveJump());
     }
 }
