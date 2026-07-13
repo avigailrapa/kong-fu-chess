@@ -1,11 +1,11 @@
-package texttests;
+package src.texttests;
 
-import engine.GameEngine;
-import input.BoardMapper;
-import input.Controller;
-import io.BoardParser;
-import io.BoardPrinter;
-import model.Board;
+import src.engine.GameEngine;
+import src.input.BoardMapper;
+import src.input.Controller;
+import src.io.BoardParser;
+import src.io.BoardPrinter;
+import src.model.Board;
 
 import java.util.List;
 
@@ -26,20 +26,24 @@ public class ScriptRunner {
     }
 
     private void execute(ScriptCommand command) {
-        switch (command) {
-            case ScriptCommand.BoardCommand boardCommand -> initializeGame(boardCommand.boardText());
-            case ScriptCommand.ClickCommand clickCommand -> {
-                requireInitializedGame();
-                controller.click(clickCommand.x(), clickCommand.y());
-            }
-            case ScriptCommand.WaitCommand waitCommand -> {
-                requireInitializedGame();
-                engine.waitMs(waitCommand.milliseconds());
-            }
-            case ScriptCommand.PrintBoardCommand printBoardCommand -> {
-                requireInitializedGame();
-                assertBoardPrints(printBoardCommand.expectedText());
-            }
+        if (command instanceof ScriptCommand.BoardCommand) {
+            ScriptCommand.BoardCommand boardCommand = (ScriptCommand.BoardCommand) command;
+            initializeGame(boardCommand.boardText());
+            
+        } else if (command instanceof ScriptCommand.ClickCommand) {
+            ScriptCommand.ClickCommand clickCommand = (ScriptCommand.ClickCommand) command;
+            requireInitializedGame();
+            controller.click(clickCommand.x(), clickCommand.y());
+            
+        } else if (command instanceof ScriptCommand.WaitCommand) {
+            ScriptCommand.WaitCommand waitCommand = (ScriptCommand.WaitCommand) command;
+            requireInitializedGame();
+            engine.waitMs(waitCommand.milliseconds());
+            
+        } else if (command instanceof ScriptCommand.PrintBoardCommand) {
+            ScriptCommand.PrintBoardCommand printBoardCommand = (ScriptCommand.PrintBoardCommand) command;
+            requireInitializedGame();
+            assertBoardPrints(printBoardCommand.expectedText());
         }
     }
 
