@@ -1,8 +1,6 @@
 package rules;
-
-import model.Board;
-import model.Piece;
-import model.Position;
+import src.model.*;
+import src.rules.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -36,7 +34,7 @@ public class PawnRuleTest {
     }
 
     @Test
-    public void testNoInitialTwoStepMove() {
+    public void testNoTwoStepMoveFromNonStartingRow() {
         Board board = new Board(8, 8);
         Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(6, 4));
         board.addPiece(pawn, new Position(6, 4));
@@ -44,6 +42,56 @@ public class PawnRuleTest {
         Set<Position> destinations = pawnRule.legalDestinations(board, pawn);
 
         assertFalse(destinations.contains(new Position(4, 4)));
+    }
+
+    @Test
+    public void testWhitePawnTwoStepFromStartingRow() {
+        Board board = new Board(8, 8);
+        Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(7, 4));
+        board.addPiece(pawn, new Position(7, 4));
+
+        Set<Position> destinations = pawnRule.legalDestinations(board, pawn);
+
+        assertTrue(destinations.contains(new Position(5, 4)));
+        assertTrue(destinations.contains(new Position(6, 4)));
+    }
+
+    @Test
+    public void testBlackPawnTwoStepFromStartingRow() {
+        Board board = new Board(8, 8);
+        Piece pawn = new Piece("p1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(0, 4));
+        board.addPiece(pawn, new Position(0, 4));
+
+        Set<Position> destinations = pawnRule.legalDestinations(board, pawn);
+
+        assertTrue(destinations.contains(new Position(2, 4)));
+        assertTrue(destinations.contains(new Position(1, 4)));
+    }
+
+    @Test
+    public void testTwoStepBlockedByPieceInPath() {
+        Board board = new Board(8, 8);
+        Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(7, 4));
+        board.addPiece(pawn, new Position(7, 4));
+        board.addPiece(new Piece("e1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(6, 4)), new Position(6, 4));
+
+        Set<Position> destinations = pawnRule.legalDestinations(board, pawn);
+
+        assertFalse(destinations.contains(new Position(5, 4)));
+        assertFalse(destinations.contains(new Position(6, 4)));
+    }
+
+    @Test
+    public void testTwoStepBlockedByPieceAtDestinationOnly() {
+        Board board = new Board(8, 8);
+        Piece pawn = new Piece("p1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(7, 4));
+        board.addPiece(pawn, new Position(7, 4));
+        board.addPiece(new Piece("e1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(5, 4)), new Position(5, 4));
+
+        Set<Position> destinations = pawnRule.legalDestinations(board, pawn);
+
+        assertTrue(destinations.contains(new Position(6, 4)));
+        assertFalse(destinations.contains(new Position(5, 4)));
     }
 
     @Test

@@ -1,14 +1,49 @@
-package texttests;
+package src.texttests;
 
-public sealed interface ScriptCommand
-        permits ScriptCommand.BoardCommand, ScriptCommand.ClickCommand,
-                ScriptCommand.WaitCommand, ScriptCommand.PrintBoardCommand {
+public interface ScriptCommand {
 
-    record BoardCommand(String boardText) implements ScriptCommand {}
+    public static class BoardCommand implements ScriptCommand {
+        private final String boardText;
 
-    record ClickCommand(int x, int y) implements ScriptCommand {}
+        public BoardCommand(String boardText) {
+            this.boardText = boardText;
+        }
 
-    record WaitCommand(long milliseconds) implements ScriptCommand {}
+        public String boardText() {
+            return boardText;
+        }
+    }
 
-    record PrintBoardCommand(String expectedText) implements ScriptCommand {}
+    public static class ClickCommand implements ScriptCommand {
+        private final int x;
+        private final int y;
+
+        public ClickCommand(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public int x() { return x; }
+        public int y() { return y; }
+    }
+
+    public static class WaitCommand implements ScriptCommand {
+        private final long milliseconds;
+
+        public WaitCommand(long milliseconds) {
+            this.milliseconds = milliseconds;
+        }
+
+        public long milliseconds() { return milliseconds; }
+    }
+
+    public static class PrintBoardCommand implements ScriptCommand {
+        private final String expectedText;
+
+        public PrintBoardCommand(String expectedText) {
+            this.expectedText = expectedText;
+        }
+
+        public String expectedText() { return expectedText; }
+    }
 }

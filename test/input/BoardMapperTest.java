@@ -1,6 +1,8 @@
 package input;
 
-import model.Position;
+import src.model.*;
+import src.input.BoardMapper;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

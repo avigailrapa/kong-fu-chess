@@ -1,6 +1,7 @@
 package io;
 
-import model.Board;
+import src.model.*;
+import src.io.*;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

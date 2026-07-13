@@ -1,9 +1,24 @@
-package rules;
+package src.rules;
 
-public record MoveValidation(boolean isValid, String reason) {
+public class MoveValidation {
+    private final boolean isValid;
+    private final String reason;
+
+    public MoveValidation(boolean isValid, String reason) {
+        this.isValid = isValid;
+        this.reason = reason;
+    }
+
+    public boolean isValid() {
+        return isValid;
+    }
+
+    public String reason() {
+        return reason;
+    }
 
     public static MoveValidation ok() {
-        return new MoveValidation(true, "ok");
+        return new MoveValidation(true, "");
     }
 
     public static MoveValidation invalid(String reason) {

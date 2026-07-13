@@ -1,8 +1,8 @@
-package rules;
+package src.rules;
 
-import model.IBoard;
-import model.Piece;
-import model.Position;
+import src.model.IBoard;
+import src.model.Piece;
+import src.model.Position;
 
 import java.util.Set;
 

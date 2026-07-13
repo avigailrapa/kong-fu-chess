@@ -1,4 +1,4 @@
-package texttests;
+package src.texttests;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ public class ScriptParser {
                 continue;
             }
 
-            if (line.equals("Board")) {
+            if (line.equals("Board:")) {
                 List<String> dataLines = new ArrayList<>();
                 i = collectDataLines(lines, i + 1, dataLines);
                 commands.add(new ScriptCommand.BoardCommand(String.join("\n", dataLines)));
@@ -75,7 +75,7 @@ public class ScriptParser {
     }
 
     private boolean isCommandLine(String line) {
-        return line.equals("Board")
+        return line.equals("Board:")
                 || line.equals("print board")
                 || CLICK_PATTERN.matcher(line).matches()
                 || WAIT_PATTERN.matcher(line).matches();

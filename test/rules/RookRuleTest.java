@@ -1,8 +1,6 @@
 package rules;
-
-import model.Board;
-import model.Piece;
-import model.Position;
+import src.model.*;
+import src.rules.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;

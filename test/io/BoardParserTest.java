@@ -1,8 +1,6 @@
 package io;
-
-import model.Board;
-import model.Piece;
-import model.Position;
+import src.model.*;
+import src.io.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -16,7 +14,7 @@ public class BoardParserTest {
     @Test
     public void testAcceptsRectangularBoard() {
         Board board = parser.parse(
-                "wK . .\n" +
+                "wK . . .\n" +
                 ". wR . .\n" +
                 ". . bN .\n" +
                 ". . . bK"
