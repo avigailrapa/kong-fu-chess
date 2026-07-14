@@ -2,11 +2,8 @@ Board:
 . wR .
 . . .
 . . bK
-
+Commands:
 click 150 50
 click 150 50
 wait 1000
 print board
-. wR .
-. . .
-. . bK
