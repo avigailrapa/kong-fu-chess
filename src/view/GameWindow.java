@@ -35,8 +35,8 @@ public class GameWindow {
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                int x = (int) Math.round(e.getX() / scale);
-                int y = (int) Math.round(e.getY() / scale);
+                int x = (int) Math.round(e.getX() / scale) - renderer.boardOffsetX();
+                int y = (int) Math.round(e.getY() / scale) - renderer.boardOffsetY();
                 if (SwingUtilities.isRightMouseButton(e)) {
                     controller.jump(x, y);
                 } else {

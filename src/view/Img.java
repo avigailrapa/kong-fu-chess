@@ -95,6 +95,16 @@ public class Img {
         g.dispose();
     }
 
+    public void drawRect(int x, int y, int width, int height, Color color, int thickness) {
+        if (img == null) throw new IllegalStateException("Image not loaded.");
+
+        Graphics2D g = img.createGraphics();
+        g.setColor(color);
+        g.setStroke(new BasicStroke(thickness));
+        g.drawRect(x, y, width, height);
+        g.dispose();
+    }
+
     public void putText(String txt, int x, int y, float fontSize,
                         Color color, int thickness /*unused in Java2D*/) {
 
@@ -104,7 +114,7 @@ public class Img {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setColor(color);
-        g.setFont(img.getGraphics().getFont().deriveFont(fontSize * 12));
+        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.round(fontSize * 12)));
         g.drawString(txt, x, y);
         g.dispose();
     }
