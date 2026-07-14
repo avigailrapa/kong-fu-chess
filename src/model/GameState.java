@@ -1,26 +1,37 @@
 package src.model;
 
-public class GameState {
+import java.util.HashMap;
+import java.util.Map;
 
-    private boolean gameOver;
-    private Piece.Color winner;
+public class GameState {
+    private boolean gameOver = false;
+    private Piece.Color winner = null;
+    private Map<Piece.Color, Integer> scores = new HashMap<>();
 
     public GameState() {
-        this.gameOver = false;
-        this.winner = null;
+        scores.put(Piece.Color.WHITE, 0);
+        scores.put(Piece.Color.BLACK, 0);
     }
 
-    public boolean isGameOver() {
-        return gameOver;
+    public void addScore(Piece.Color color, int points) {
+        scores.put(color, scores.get(color) + points);
+    }
+
+    public int getScore(Piece.Color color) {
+        return scores.get(color);
+    }
+
+    public void endGame(Piece.Color winner) {
+        this.gameOver = true;
+        this.winner = winner;
     }
 
     public void endGame() {
         this.gameOver = true;
     }
 
-    public void endGame(Piece.Color winner) {
-        this.gameOver = true;
-        this.winner = winner;
+    public boolean isGameOver() {
+        return gameOver;
     }
 
     public Piece.Color winner() {

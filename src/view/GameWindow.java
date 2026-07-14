@@ -70,7 +70,13 @@ public class GameWindow {
         if (scale == null) {
             scale = computeScale(image.getWidth(), image.getHeight());
         }
-        panel.setImage(image, scale);
+        if (scale < 1.0) {
+            Dimension target = new Dimension(
+                    (int) Math.round(image.getWidth() * scale),
+                    (int) Math.round(image.getHeight() * scale));
+            image = new Img(image).resize(target, false).get();
+        }
+        panel.setImage(image);
 
         if (snapshot.isGameOver() && !gameOverAnnounced) {
             gameOverAnnounced = true;
@@ -79,10 +85,6 @@ public class GameWindow {
         }
     }
 
-    // The board image is a fixed pixel size (from board.png) that can be taller than a smaller
-    // screen's usable area, cutting off the bottom rows with no visible way to reach them.
-    // Shrinking the whole rendered image to fit the screen (rather than relying on scrolling)
-    // keeps the entire board visible and clickable at once.
     private double computeScale(int imageWidth, int imageHeight) {
         Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
         double widthScale = (screenBounds.width - SCREEN_CHROME_ALLOWANCE_PX) / (double) imageWidth;
@@ -92,14 +94,10 @@ public class GameWindow {
 
     private static class ImagePanel extends JPanel {
         private BufferedImage image;
-        private double scale = 1.0;
 
-        void setImage(BufferedImage image, double scale) {
+        void setImage(BufferedImage image) {
             this.image = image;
-            this.scale = scale;
-            setPreferredSize(new Dimension(
-                    (int) Math.round(image.getWidth() * scale),
-                    (int) Math.round(image.getHeight() * scale)));
+            setPreferredSize(new Dimension(image.getWidth(), image.getHeight()));
             revalidate();
             repaint();
         }
@@ -108,9 +106,7 @@ public class GameWindow {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (image != null) {
-                int w = (int) Math.round(image.getWidth() * scale);
-                int h = (int) Math.round(image.getHeight() * scale);
-                g.drawImage(image, 0, 0, w, h, null);
+                g.drawImage(image, 0, 0, null);
             }
         }
     }

@@ -1,3 +1,4 @@
+import engine.MoveLogger;
 import src.engine.GameEngine;
 import src.input.BoardMapper;
 import src.input.Controller;
@@ -23,8 +24,10 @@ public class GuiMain {
     public static void main(String[] args) {
         Board board = new BoardParser().parse(STARTING_BOARD);
         GameEngine engine = GameEngine.fromBoard(board);
+        MoveLogger moveLogger = new MoveLogger();
+        engine.addMoveObserver(moveLogger);
         Controller controller = new Controller(new BoardMapper(board.getWidth(), board.getHeight()), engine);
-        GameWindow window = new GameWindow(engine, controller, new Renderer());
+        GameWindow window = new GameWindow(engine, controller, new Renderer("assets/pieces", moveLogger));
 
         SwingUtilities.invokeLater(window::open);
     }
