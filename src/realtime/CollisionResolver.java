@@ -31,14 +31,8 @@ public class CollisionResolver {
         return Optional.empty();
     }
 
-    /**
-     * Picks the winner among several motions that are all due to arrive at the same destination
-     * cell in the same tick. The winner is whoever overshot its own required duration the least
-     * (elapsedMs - durationMs) - i.e. whoever crossed its own finish line most recently in
-     * continuous time, matching "the piece that arrived later captures the piece that arrived
-     * earlier." Ties (identical overshoot) are broken by iteration order of {@code competitors},
-     * which reflects motion-start order.
-     */
+    // Smallest overshoot (elapsedMs - durationMs) wins: whoever crossed its own finish line most
+    // recently arrived later and captures. Ties keep the first competitor (motion-start order).
     public Piece pickRaceWinner(List<Piece> competitors, Map<Piece, Motion> activeMotions, Map<Piece, Long> motionElapsedMs) {
         Piece winner = null;
         long bestOvershoot = Long.MAX_VALUE;
@@ -52,11 +46,6 @@ public class CollisionResolver {
         return winner;
     }
 
-    /**
-     * Resolves a single loser of a same-tick race against the already-decided winner. An enemy
-     * loser is captured (the winner's arrival stands as the ArrivalEvent). A friendly loser
-     * bounces back to idle at its own source without moving or being captured.
-     */
     public ArrivalEvent resolveRaceLoserAgainstWinner(Piece winner, Motion winnerMotion, Motion loserMotion) {
         Piece loser = loserMotion.piece();
         if (loser.getColor() != winner.getColor()) {

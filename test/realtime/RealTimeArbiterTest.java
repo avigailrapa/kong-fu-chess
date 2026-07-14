@@ -450,7 +450,7 @@ public class RealTimeArbiterTest {
     }
 
     @Test
-    public void testKingCapturedOnJumpLandingReportsKingCaptured() {
+    public void testJumperCapturesPieceThatEnteredItsCellMidFlight() {
         Board board = new Board(8, 8);
         Piece king = new Piece("k1", Piece.Color.WHITE, Piece.Kind.KING, new Position(7, 0));
         board.addPiece(king, new Position(7, 0));
@@ -460,20 +460,24 @@ public class RealTimeArbiterTest {
 
         // Enemy rook starts attacking the king's cell first, and is already half-way there
         // when the king starts its jump - so the rook displaces the king mid-air (no capture yet),
-        // and only when the king's own jump timer expires does it find the rook already there.
+        // and only when the king's own jump timer expires does it land back and capture the rook
+        // that snuck into its cell.
         arbiter.startMotion(enemyRook, new Position(7, 1), new Position(7, 0)); // 1000ms
         arbiter.advanceTime(500);
         arbiter.startJump(king, new Position(7, 0)); // needs its own 1000ms from here
+        assertEquals(Piece.State.JUMPING, king.getState());
         arbiter.advanceTime(500); // rook's motion (500+500=1000ms) resolves as a silent displacement
 
         assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.getId().equals("r1")).orElse(false));
         assertTrue(arbiter.hasActiveJump());
 
-        List<ArrivalEvent> events = arbiter.advanceTime(500); // king's jump (500+500=1000ms) lands into the occupied cell
+        List<ArrivalEvent> events = arbiter.advanceTime(500); // king's jump (500+500=1000ms) lands and eats the rook
 
         assertEquals(1, events.size());
-        assertTrue(events.get(0).kingCaptured());
-        assertEquals(Piece.State.CAPTURED, king.getState());
+        assertFalse(events.get(0).kingCaptured());
+        assertEquals(Piece.State.CAPTURED, enemyRook.getState());
+        assertEquals(Piece.State.IDLE, king.getState());
+        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.getId().equals("k1")).orElse(false));
     }
 
     @Test
@@ -538,6 +542,8 @@ public class RealTimeArbiterTest {
 
         assertTrue(arbiter.isJumping(rook));
         assertTrue(arbiter.isJumping(bishop));
+        assertEquals(Piece.State.JUMPING, rook.getState());
+        assertEquals(Piece.State.JUMPING, bishop.getState());
 
         List<ArrivalEvent> events = arbiter.advanceTime(1000);
 

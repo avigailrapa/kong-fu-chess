@@ -47,6 +47,18 @@ public class RealTimeArbiter {
         return activeJumps.containsKey(piece);
     }
 
+    public Optional<Motion> activeMotion(Piece piece) {
+        return Optional.ofNullable(activeMotions.get(piece));
+    }
+
+    public long motionElapsedMs(Piece piece) {
+        return motionElapsedMs.getOrDefault(piece, 0L);
+    }
+
+    public long jumpElapsedMs(Piece piece) {
+        return jumpElapsedMs.getOrDefault(piece, 0L);
+    }
+
     public void startMotion(Piece piece, Position source, Position destination) {
         if (activeMotions.containsKey(piece)) {
             throw new IllegalStateException("this piece already has a motion in progress");
@@ -65,6 +77,7 @@ public class RealTimeArbiter {
         if (piece.getState() == Piece.State.MOVING || activeJumps.containsKey(piece)) {
             return;
         }
+        piece.setState(Piece.State.JUMPING);
         activeJumps.put(piece, cell);
         jumpElapsedMs.put(piece, 0L);
     }
@@ -124,17 +137,8 @@ public class RealTimeArbiter {
         return jumpResolver.resolveLanding(defender, cell);
     }
 
-    /**
-     * Resolves every due motion for this tick. First resolves any motion landing on a
-     * still-airborne piece as a silent displacement (unchanged from before). Everything else is
-     * grouped by destination cell: a group of one resolves normally (which also covers the
-     * "regular" friendly-fire case, where a friendly piece already sits there from an earlier
-     * tick); a group of two or more is a same-tick race, decided by
-     * {@link CollisionResolver#pickRaceWinner} before any of them touch the board, so the outcome
-     * never depends on map iteration order. Each group re-checks whether its own piece was
-     * already captured by an earlier-resolved group in this same tick (e.g. two motions swapping
-     * cells) before touching the board.
-     */
+    // Due motions are grouped by destination cell before any of them touch the board, so a
+    // same-tick race is decided by pickRaceWinner rather than by map iteration order.
     private List<ArrivalEvent> resolveMotionsForTick(List<Piece> duePieces) {
         List<ArrivalEvent> events = new ArrayList<>();
         List<Piece> livePieces = new ArrayList<>();
