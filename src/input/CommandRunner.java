@@ -21,20 +21,12 @@ public class CommandRunner {
     }
 
     public void run(CommandParser.Command command) {
-        if (command instanceof CommandParser.ClickCommand) {
-            CommandParser.ClickCommand click = (CommandParser.ClickCommand) command;
-            controller.click(click.x, click.y);
-
-        } else if (command instanceof CommandParser.WaitCommand) {
-            CommandParser.WaitCommand wait = (CommandParser.WaitCommand) command;
-            engine.waitMs(wait.milliseconds);
-
-        } else if (command instanceof CommandParser.JumpCommand) {
-            CommandParser.JumpCommand jump = (CommandParser.JumpCommand) command;
-            controller.jump(jump.x, jump.y);
-
-        } else if (command instanceof CommandParser.PrintBoardCommand) {
-            System.out.println(boardPrinter.print(engine.settledBoard()));
+        switch (command) {
+            case CommandParser.ClickCommand click -> controller.click(click.x(), click.y());
+            case CommandParser.WaitCommand wait -> engine.waitMs(wait.milliseconds());
+            case CommandParser.JumpCommand jump -> controller.jump(jump.x(), jump.y());
+            case CommandParser.PrintBoardCommand ignored -> System.out.println(boardPrinter.print(engine.settledBoard()));
+            default -> throw new IllegalArgumentException("Unknown command: " + command);
         }
     }
 }
