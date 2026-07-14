@@ -17,10 +17,12 @@ import java.util.Set;
 public class Renderer {
 
     private static final String BOARD_IMAGE_PATH = "assets/board.png";
-    private static final int SIDE_PANEL_WIDTH = 260;
+    private static final int PANEL_WIDTH = 260;
     private static final int PANEL_PADDING = 16;
     private static final int LOG_LINE_HEIGHT = 26;
-    private static final float COORD_FONT_SIZE = 0.9f;
+    private static final int ROW_LABEL_WIDTH = 32;
+    private static final int COL_LABEL_HEIGHT = 28;
+    private static final float COORD_FONT_SIZE = 1.0f;
 
     private final String piecesRoot;
     private final MoveLogger moveLogger;
@@ -42,16 +44,36 @@ public class Renderer {
         this.moveLogger = moveLogger;
     }
 
+    public int boardOffsetX() {
+        return PANEL_WIDTH + ROW_LABEL_WIDTH;
+    }
+
+    public int boardOffsetY() {
+        return COL_LABEL_HEIGHT;
+    }
+
     public BufferedImage render(GameSnapshot snapshot) {
-        BufferedImage boardImage = copyOf(cachedImage(BOARD_IMAGE_PATH, null));
-        int fullWidth = boardImage.getWidth() + SIDE_PANEL_WIDTH;
-        int fullHeight = boardImage.getHeight();
+        BufferedImage boardImage = cachedImage(BOARD_IMAGE_PATH, null);
+        int boardWidth = boardImage.getWidth();
+        int boardHeight = boardImage.getHeight();
+        int boardOffsetX = boardOffsetX();
+        int boardOffsetY = boardOffsetY();
+        int fullWidth = boardOffsetX + boardWidth + PANEL_WIDTH;
+        int fullHeight = boardOffsetY + boardHeight;
+
         BufferedImage fullCanvas = new BufferedImage(fullWidth, fullHeight, BufferedImage.TYPE_INT_ARGB);
         Img canvas = new Img(fullCanvas);
+        canvas.fillRect(0, 0, fullWidth, fullHeight, new Color(18, 18, 22));
 
-        new Img(boardImage).drawOn(canvas, 0, 0);
-        drawBoardCoordinates(canvas);
-        drawSidePanel(canvas, snapshot);
+        new Img(boardImage).drawOn(canvas, boardOffsetX, boardOffsetY);
+        drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
+
+        List<MoveEvent> blackMoves = moveLogger == null ? List.of() : moveLogger.getBlackMoves();
+        List<MoveEvent> whiteMoves = moveLogger == null ? List.of() : moveLogger.getWhiteMoves();
+        drawSidePanel(canvas, 0, fullHeight, "Black", snapshot.getBlackScore(), blackMoves);
+        drawSidePanel(canvas, boardOffsetX + boardWidth, fullHeight, "White", snapshot.getWhiteScore(), whiteMoves);
+
+        drawSelection(canvas, snapshot, boardOffsetX, boardOffsetY);
 
         for (int row = 0; row < snapshot.height(); row++) {
             for (int col = 0; col < snapshot.width(); col++) {
@@ -59,61 +81,30 @@ public class Renderer {
                 if (piece == null) {
                     continue;
                 }
-                drawPiece(piece, canvas);
+                drawPiece(piece, canvas, boardOffsetX, boardOffsetY);
             }
+        }
+
+        if (snapshot.isGameOver()) {
+            int textX = boardOffsetX + boardWidth / 2 - 70;
+            canvas.putText(snapshot.winner() + " WINS!", textX, boardOffsetY + boardHeight / 2, 1.8f, new Color(220, 20, 20), 0);
         }
 
         return canvas.get();
     }
 
-    private void drawSidePanel(Img canvas, GameSnapshot snapshot) {
-        int boardWidth = cachedImage(BOARD_IMAGE_PATH, null).getWidth();
-        int panelX = boardWidth;
-        int panelY = 0;
-        int panelWidth = SIDE_PANEL_WIDTH;
-        int panelHeight = canvas.get().getHeight();
+    private void drawSidePanel(Img canvas, int panelX, int fullHeight, String label, int score, List<MoveEvent> moves) {
+        canvas.fillRect(panelX, 0, PANEL_WIDTH, fullHeight, new Color(28, 28, 34));
 
-        canvas.fillRect(panelX, panelY, panelWidth, panelHeight, new Color(28, 28, 34));
+        int textX = panelX + PANEL_PADDING;
+        int y = PANEL_PADDING + 18;
+        canvas.putText(label + ": " + score, textX, y, 1.6f, new Color(240, 240, 240), 0);
+        y += 40;
 
-        int titleX = panelX + PANEL_PADDING;
-        int currentY = PANEL_PADDING + 16;
-        canvas.putText("White: " + snapshot.getWhiteScore(), titleX, currentY, 1.5f, new Color(240, 240, 240), 0);
-        currentY += 28;
-        canvas.putText("Black: " + snapshot.getBlackScore(), titleX, currentY, 1.5f, new Color(240, 240, 240), 0);
-
-        currentY += 40;
-        drawMoveLog(canvas, panelX, currentY, panelWidth);
-
-        if (snapshot.isGameOver()) {
-            currentY = panelHeight - PANEL_PADDING;
-            canvas.putText(snapshot.winner() + " WINS!", titleX, currentY - 10, 1.6f, new Color(220, 20, 20), 0);
-        }
-    }
-
-    private void drawMoveLog(Img canvas, int panelX, int startY, int panelWidth) {
-        if (moveLogger == null) {
-            return;
-        }
-
-        List<MoveEvent> whiteMoves = moveLogger.getWhiteMoves();
-        List<MoveEvent> blackMoves = moveLogger.getBlackMoves();
-        int columnWidth = (panelWidth - PANEL_PADDING * 2) / 2;
-        int whiteX = panelX + PANEL_PADDING;
-        int blackX = panelX + PANEL_PADDING + columnWidth;
-        int y = startY;
-
-        canvas.putText("W", whiteX, y, 1.4f, new Color(190, 190, 190), 0);
-        canvas.putText("B", blackX, y, 1.4f, new Color(190, 190, 190), 0);
-        y += LOG_LINE_HEIGHT;
-
-        int rows = Math.max(whiteMoves.size(), blackMoves.size());
-        for (int row = 0; row < rows; row++) {
-            if (row < whiteMoves.size()) {
-                canvas.putText(formatMoveText(whiteMoves.get(row)), whiteX, y, 1.2f, new Color(220, 220, 220), 0);
-            }
-            if (row < blackMoves.size()) {
-                canvas.putText(formatMoveText(blackMoves.get(row)), blackX, y, 1.2f, new Color(220, 220, 220), 0);
-            }
+        int maxVisibleRows = Math.max(0, (fullHeight - y - PANEL_PADDING) / LOG_LINE_HEIGHT);
+        int firstVisible = Math.max(0, moves.size() - maxVisibleRows);
+        for (int i = firstVisible; i < moves.size(); i++) {
+            canvas.putText(formatMoveText(moves.get(i)), textX, y, 1.2f, new Color(220, 220, 220), 0);
             y += LOG_LINE_HEIGHT;
         }
     }
@@ -122,26 +113,35 @@ public class Renderer {
         return moveEvent.formattedRequestTime() + " " + moveEvent.algebraicMove();
     }
 
-    private void drawBoardCoordinates(Img canvas) {
-        int boardWidth = cachedImage(BOARD_IMAGE_PATH, null).getWidth();
-        int boardHeight = cachedImage(BOARD_IMAGE_PATH, null).getHeight();
-        int cols = 8;
-        int rows = 8;
-
-        for (int col = 0; col < cols; col++) {
-            int x = (int) Math.round(col * GameSnapshot.CELL_WIDTH + GameSnapshot.CELL_WIDTH / 2.0);
-            int y = boardHeight - 6;
-            canvas.putText(String.valueOf((char) ('a' + col)), x - 6, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
+    private void drawBoardCoordinates(Img canvas, int boardOffsetX, int boardOffsetY, int boardWidth, int boardHeight) {
+        for (int col = 0; col < 8; col++) {
+            int x = boardOffsetX + (int) Math.round(col * GameSnapshot.CELL_WIDTH + GameSnapshot.CELL_WIDTH / 2.0) - 6;
+            int y = boardOffsetY - 10;
+            canvas.putText(String.valueOf((char) ('a' + col)), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
         }
 
-        for (int row = 0; row < rows; row++) {
-            int x = 8;
-            int y = (int) Math.round(row * GameSnapshot.CELL_HEIGHT + GameSnapshot.CELL_HEIGHT / 2.0 + 6);
+        for (int row = 0; row < 8; row++) {
+            int x = boardOffsetX - ROW_LABEL_WIDTH + 10;
+            int y = boardOffsetY + (int) Math.round(row * GameSnapshot.CELL_HEIGHT + GameSnapshot.CELL_HEIGHT / 2.0 + 6);
             canvas.putText(String.valueOf(8 - row), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
         }
     }
 
-    private void drawPiece(PieceSnapshot piece, Img canvas) {
+    private void drawSelection(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
+        Position selected = snapshot.selectedPosition();
+        if (selected == null) {
+            return;
+        }
+
+        int x = boardOffsetX + (int) Math.round(selected.getCol() * GameSnapshot.CELL_WIDTH);
+        int y = boardOffsetY + (int) Math.round(selected.getRow() * GameSnapshot.CELL_HEIGHT);
+        int width = (int) Math.round(GameSnapshot.CELL_WIDTH);
+        int height = (int) Math.round(GameSnapshot.CELL_HEIGHT);
+
+        canvas.drawRect(x, y, width, height, new Color(255, 215, 0), 4);
+    }
+
+    private void drawPiece(PieceSnapshot piece, Img canvas, int boardOffsetX, int boardOffsetY) {
         String path = spritePath(piece);
         if (!new File(path).isFile()) {
             if (missingSpriteWarnings.add(path)) {
@@ -153,19 +153,12 @@ public class Renderer {
         Dimension cellSize = new Dimension(
                 (int) Math.round(GameSnapshot.CELL_WIDTH), (int) Math.round(GameSnapshot.CELL_HEIGHT));
         BufferedImage sprite = cachedImage(path, cellSize);
-        new Img(sprite).drawOn(canvas, piece.pixelX(), piece.pixelY());
+        new Img(sprite).drawOn(canvas, boardOffsetX + piece.pixelX(), boardOffsetY + piece.pixelY());
     }
 
     private BufferedImage cachedImage(String path, Dimension size) {
         String key = size == null ? path : path + "@" + size.width + "x" + size.height;
         return imageCache.computeIfAbsent(key, unused -> new Img().read(path, size, true, null).get());
-    }
-
-    private BufferedImage copyOf(BufferedImage source) {
-        BufferedImage blank = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Img copy = new Img(blank);
-        new Img(source).drawOn(copy, 0, 0);
-        return blank;
     }
 
     private String spritePath(PieceSnapshot piece) {
