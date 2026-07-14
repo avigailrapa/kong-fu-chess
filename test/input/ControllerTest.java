@@ -4,6 +4,7 @@ import src.model.*;
 import src.rules.*;
 import src.input.*;
 import src.realtime.*;
+import src.view.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -33,8 +34,13 @@ public class ControllerTest {
         }
 
         @Override
-        public GameSnapshot snapshot() {
-            return new GameSnapshot(occupiedCells);
+        public GameSnapshot snapshot(Position selectedPosition) {
+            PieceSnapshot[][] grid = new PieceSnapshot[8][8];
+            for (Position position : occupiedCells) {
+                grid[position.getRow()][position.getCol()] =
+                        new PieceSnapshot("p", Piece.Color.WHITE, Piece.Kind.PAWN, Piece.State.IDLE, 0, 0, 0);
+            }
+            return new GameSnapshot(8, 8, grid, selectedPosition, false, null);
         }
     }
 

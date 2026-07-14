@@ -14,6 +14,8 @@ public class RealTimeArbiter {
 
     private static final long MILLIS_PER_CELL = 1000;
     private static final long JUMP_DURATION_MS = 1000;
+    private static final long LONG_REST_MS = 2000;
+    private static final long SHORT_REST_MS = 500;
 
     private final MotionResolver motionResolver;
     private final JumpResolver jumpResolver;
@@ -24,6 +26,9 @@ public class RealTimeArbiter {
 
     private final Map<Piece, Position> activeJumps = new LinkedHashMap<>();
     private final Map<Piece, Long> jumpElapsedMs = new LinkedHashMap<>();
+
+    private final Map<Piece, Long> restElapsedMs = new LinkedHashMap<>();
+    private final Map<Piece, Long> restDurationMs = new LinkedHashMap<>();
 
     public RealTimeArbiter(Board board) {
         this.motionResolver = new MotionResolver(board);
@@ -59,6 +64,14 @@ public class RealTimeArbiter {
         return jumpElapsedMs.getOrDefault(piece, 0L);
     }
 
+    public boolean isResting(Piece piece) {
+        return restElapsedMs.containsKey(piece);
+    }
+
+    public long restElapsedMs(Piece piece) {
+        return restElapsedMs.getOrDefault(piece, 0L);
+    }
+
     public void startMotion(Piece piece, Position source, Position destination) {
         if (activeMotions.containsKey(piece)) {
             throw new IllegalStateException("this piece already has a motion in progress");
@@ -74,7 +87,10 @@ public class RealTimeArbiter {
     }
 
     public void startJump(Piece piece, Position cell) {
-        if (piece.getState() == Piece.State.MOVING || activeJumps.containsKey(piece)) {
+        if (piece.getState() == Piece.State.MOVING
+                || piece.getState() == Piece.State.LONG_REST
+                || piece.getState() == Piece.State.SHORT_REST
+                || activeJumps.containsKey(piece)) {
             return;
         }
         piece.setState(Piece.State.JUMPING);
@@ -89,6 +105,9 @@ public class RealTimeArbiter {
         for (Piece piece : activeJumps.keySet()) {
             jumpElapsedMs.merge(piece, ms, Long::sum);
         }
+        for (Piece piece : restElapsedMs.keySet()) {
+            restElapsedMs.merge(piece, ms, Long::sum);
+        }
 
         List<Piece> duePieces = dueMotionPieces();
         List<Piece> dueJumpers = dueJumpPieces();
@@ -101,7 +120,29 @@ public class RealTimeArbiter {
 
         events.addAll(resolveMotionsForTick(duePieces));
 
+        resolveRestTicks();
+
         return events;
+    }
+
+    private void resolveRestTicks() {
+        List<Piece> dueRestPieces = new ArrayList<>();
+        for (Map.Entry<Piece, Long> entry : restElapsedMs.entrySet()) {
+            if (entry.getValue() >= restDurationMs.get(entry.getKey())) {
+                dueRestPieces.add(entry.getKey());
+            }
+        }
+        for (Piece piece : dueRestPieces) {
+            restElapsedMs.remove(piece);
+            restDurationMs.remove(piece);
+            piece.setState(Piece.State.IDLE);
+        }
+    }
+
+    private void beginRest(Piece piece, long durationMs, Piece.State restState) {
+        piece.setState(restState);
+        restElapsedMs.put(piece, 0L);
+        restDurationMs.put(piece, durationMs);
     }
 
     private List<Piece> dueMotionPieces() {
@@ -129,12 +170,18 @@ public class RealTimeArbiter {
         jumpElapsedMs.remove(defender);
 
         Optional<Piece> collidingAttacker = collisionResolver.findMotionLandingOnJumpCell(cell, dueMotionPieces, activeMotions);
+        Optional<ArrivalEvent> event;
         if (collidingAttacker.isPresent()) {
             Motion attackerMotion = takeMotion(collidingAttacker.get());
-            return Optional.of(collisionResolver.resolveJumpCountersAttackingMotion(defender, cell, attackerMotion));
+            event = Optional.of(collisionResolver.resolveJumpCountersAttackingMotion(defender, cell, attackerMotion));
+        } else {
+            event = jumpResolver.resolveLanding(defender, cell);
         }
 
-        return jumpResolver.resolveLanding(defender, cell);
+        if (defender.getState() != Piece.State.CAPTURED) {
+            beginRest(defender, SHORT_REST_MS, Piece.State.SHORT_REST);
+        }
+        return event;
     }
 
     // Due motions are grouped by destination cell before any of them touch the board, so a
@@ -152,7 +199,9 @@ public class RealTimeArbiter {
             if (collisionResolver.isMotionLandingOnAirbornePiece(motion, activeJumps.keySet())) {
                 takeMotion(piece);
                 collisionResolver.clearCellForDisplacement(motion.destination());
-                events.add(motionResolver.resolveWithoutCapture(motion));
+                ArrivalEvent event = motionResolver.resolveWithoutCapture(motion);
+                applyRestIfArrived(event);
+                events.add(event);
                 continue;
             }
 
@@ -181,13 +230,17 @@ public class RealTimeArbiter {
             }
             if (stillLive.size() == 1) {
                 Motion motion = takeMotion(stillLive.get(0));
-                events.add(motionResolver.resolve(motion));
+                ArrivalEvent event = motionResolver.resolve(motion);
+                applyRestIfArrived(event);
+                events.add(event);
                 continue;
             }
 
             Piece winner = collisionResolver.pickRaceWinner(stillLive, activeMotions, motionElapsedMs);
             Motion winnerMotion = takeMotion(winner);
-            events.add(motionResolver.resolve(winnerMotion));
+            ArrivalEvent winnerEvent = motionResolver.resolve(winnerMotion);
+            applyRestIfArrived(winnerEvent);
+            events.add(winnerEvent);
 
             for (Piece loser : stillLive) {
                 if (loser == winner) {
@@ -204,5 +257,16 @@ public class RealTimeArbiter {
     private Motion takeMotion(Piece piece) {
         motionElapsedMs.remove(piece);
         return activeMotions.remove(piece);
+    }
+
+    private void applyRestIfArrived(ArrivalEvent event) {
+        Piece piece = event.movedPiece();
+        if (piece.getState() == Piece.State.CAPTURED) {
+            return;
+        }
+        if (event.to().equals(event.from())) {
+            return;
+        }
+        beginRest(piece, LONG_REST_MS, Piece.State.LONG_REST);
     }
 }

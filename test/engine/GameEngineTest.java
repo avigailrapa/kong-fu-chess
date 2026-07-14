@@ -1,7 +1,7 @@
 package engine;
 import src.engine.GameEngine;
-import src.engine.GameSnapshot;
 import src.engine.MoveResult;
+import src.view.GameSnapshot;
 import src.model.*;
 import org.junit.jupiter.api.Test;
 import src.realtime.*;
@@ -9,7 +9,6 @@ import src.rules.*;
 
 
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -117,7 +116,7 @@ public class GameEngineTest {
 
         assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
-        assertEquals(Piece.State.IDLE, rook.getState());
+        assertEquals(Piece.State.LONG_REST, rook.getState());
     }
 
     @Test
@@ -129,10 +128,27 @@ public class GameEngineTest {
 
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         engine.waitMs(3000);
+        engine.waitMs(2000); // let the post-move long rest elapse too
         MoveResult result = engine.requestMove(new Position(4, 0), new Position(4, 4));
 
         assertTrue(result.isAccepted());
         assertEquals("ok", result.reason());
+    }
+
+    @Test
+    public void testMoveRejectedWhilePieceIsRestingAfterItsPreviousMove() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(4, 0));
+        engine.waitMs(3000); // motion resolves, piece enters long rest
+
+        MoveResult result = engine.requestMove(new Position(4, 0), new Position(4, 4));
+
+        assertFalse(result.isAccepted());
+        assertEquals("resting", result.reason());
     }
 
     @Test
@@ -281,9 +297,10 @@ public class GameEngineTest {
         board.addPiece(new Piece("k1", Piece.Color.BLACK, Piece.Kind.KING, new Position(0, 4)), new Position(0, 4));
         GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
 
-        GameSnapshot snapshot = engine.snapshot();
+        GameSnapshot snapshot = engine.snapshot(null);
 
-        assertEquals(Set.of(new Position(7, 0), new Position(0, 4)), snapshot.occupiedCells());
+        assertEquals(Piece.Kind.ROOK, snapshot.pieceAt(new Position(7, 0)).kind());
+        assertEquals(Piece.Kind.KING, snapshot.pieceAt(new Position(0, 4)).kind());
         assertTrue(snapshot.isOccupied(new Position(7, 0)));
         assertFalse(snapshot.isOccupied(new Position(3, 3)));
     }
