@@ -4,9 +4,9 @@ import src.model.Position;
 
 import java.util.Optional;
 
-public class BoardMapper {
+import src.view.GameSnapshot;
 
-    private static final int CELL_SIZE = 100;
+public class BoardMapper {
 
     private final int width;
     private final int height;
@@ -17,8 +17,8 @@ public class BoardMapper {
     }
 
     public Optional<Position> pixelToCell(int x, int y) {
-        int col = Math.floorDiv(x, CELL_SIZE);
-        int row = Math.floorDiv(y, CELL_SIZE);
+        int col = (int) Math.floor(x / GameSnapshot.CELL_WIDTH);
+        int row = (int) Math.floor(y / GameSnapshot.CELL_HEIGHT);
 
         if (row < 0 || row >= height || col < 0 || col >= width) {
             return Optional.empty();
