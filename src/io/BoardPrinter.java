@@ -29,22 +29,6 @@ public class BoardPrinter {
             return ".";
         }
         Piece p = piece.get();
-        return "" + colorChar(p.getColor()) + kindChar(p.getKind());
-    }
-
-    private char colorChar(Piece.Color color) {
-        return color == Piece.Color.WHITE ? 'w' : 'b';
-    }
-
-    private char kindChar(Piece.Kind kind) {
-        switch (kind) {
-            case KING: return 'K';
-            case QUEEN: return 'Q';
-            case ROOK: return 'R';
-            case BISHOP: return 'B';
-            case KNIGHT: return 'N';
-            case PAWN: return 'P';
-            default: throw new IllegalStateException("Unknown piece kind: " + kind);
-        }
+        return "" + Character.toLowerCase(p.getColor().letter()) + p.getKind().letter();
     }
 }

@@ -5,15 +5,31 @@ import java.util.Objects;
 public class Piece {
 
     public enum Color {
-        WHITE, BLACK
+        WHITE, BLACK;
+
+        public char letter() {
+            return name().charAt(0);
+        }
     }
 
     public enum Kind {
-        KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN
+        KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN;
+
+        public char letter() {
+            switch (this) {
+                case KING: return 'K';
+                case QUEEN: return 'Q';
+                case ROOK: return 'R';
+                case BISHOP: return 'B';
+                case KNIGHT: return 'N';
+                case PAWN: return 'P';
+                default: throw new IllegalStateException("Unknown piece kind: " + this);
+            }
+        }
     }
 
     public enum State {
-        IDLE, MOVING, JUMPING, LONG_REST, SHORT_REST, CAPTURED
+        IDLE, MOVING, JUMPING, CAPTURED
     }
 
     private final String id;

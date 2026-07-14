@@ -3,6 +3,7 @@ package src.realtime;
 import src.model.Board;
 import src.model.Piece;
 import src.model.Position;
+import src.view.AnimationConfig;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -12,11 +13,12 @@ import java.util.Optional;
 
 public class RealTimeArbiter {
 
-    private static final long MILLIS_PER_CELL = 1000;
+    private static final double CELL_LENGTH_METERS = 1.5;
     private static final long JUMP_DURATION_MS = 1000;
     private static final long LONG_REST_MS = 2000;
     private static final long SHORT_REST_MS = 500;
 
+    private final String piecesRoot;
     private final MotionResolver motionResolver;
     private final JumpResolver jumpResolver;
     private final CollisionResolver collisionResolver;
@@ -27,10 +29,15 @@ public class RealTimeArbiter {
     private final Map<Piece, Position> activeJumps = new LinkedHashMap<>();
     private final Map<Piece, Long> jumpElapsedMs = new LinkedHashMap<>();
 
-    private final Map<Piece, Long> restElapsedMs = new LinkedHashMap<>();
-    private final Map<Piece, Long> restDurationMs = new LinkedHashMap<>();
+    private final Map<Piece, Long> longRestElapsedMs = new LinkedHashMap<>();
+    private final Map<Piece, Long> shortRestElapsedMs = new LinkedHashMap<>();
 
     public RealTimeArbiter(Board board) {
+        this(board, "assets/pieces");
+    }
+
+    public RealTimeArbiter(Board board, String piecesRoot) {
+        this.piecesRoot = piecesRoot;
         this.motionResolver = new MotionResolver(board);
         this.jumpResolver = new JumpResolver(board);
         this.collisionResolver = new CollisionResolver(board, jumpResolver, motionResolver);
@@ -65,11 +72,23 @@ public class RealTimeArbiter {
     }
 
     public boolean isResting(Piece piece) {
-        return restElapsedMs.containsKey(piece);
+        return isLongResting(piece) || isShortResting(piece);
     }
 
-    public long restElapsedMs(Piece piece) {
-        return restElapsedMs.getOrDefault(piece, 0L);
+    public boolean isLongResting(Piece piece) {
+        return longRestElapsedMs.containsKey(piece);
+    }
+
+    public boolean isShortResting(Piece piece) {
+        return shortRestElapsedMs.containsKey(piece);
+    }
+
+    public long longRestElapsedMs(Piece piece) {
+        return longRestElapsedMs.getOrDefault(piece, 0L);
+    }
+
+    public long shortRestElapsedMs(Piece piece) {
+        return shortRestElapsedMs.getOrDefault(piece, 0L);
     }
 
     public void startMotion(Piece piece, Position source, Position destination) {
@@ -81,21 +100,29 @@ public class RealTimeArbiter {
                 Math.abs(source.getRow() - destination.getRow()),
                 Math.abs(source.getCol() - destination.getCol()));
 
+        double speedMetersPerSecond = moveConfigFor(piece).speedMetersPerSecond();
+        long durationMs = speedMetersPerSecond > 0
+                ? Math.round(distance * CELL_LENGTH_METERS / speedMetersPerSecond * 1000)
+                : 0;
+
         piece.setState(Piece.State.MOVING);
-        activeMotions.put(piece, new Motion(piece, source, destination, distance * MILLIS_PER_CELL));
+        activeMotions.put(piece, new Motion(piece, source, destination, durationMs));
         motionElapsedMs.put(piece, 0L);
     }
 
     public void startJump(Piece piece, Position cell) {
-        if (piece.getState() == Piece.State.MOVING
-                || piece.getState() == Piece.State.LONG_REST
-                || piece.getState() == Piece.State.SHORT_REST
-                || activeJumps.containsKey(piece)) {
+        if (piece.getState() == Piece.State.MOVING || isResting(piece) || activeJumps.containsKey(piece)) {
             return;
         }
         piece.setState(Piece.State.JUMPING);
         activeJumps.put(piece, cell);
         jumpElapsedMs.put(piece, 0L);
+    }
+
+    public void endJump(Piece piece) {
+        activeJumps.remove(piece);
+        jumpElapsedMs.remove(piece);
+        piece.setState(Piece.State.IDLE);
     }
 
     public List<ArrivalEvent> advanceTime(long ms) {
@@ -105,8 +132,11 @@ public class RealTimeArbiter {
         for (Piece piece : activeJumps.keySet()) {
             jumpElapsedMs.merge(piece, ms, Long::sum);
         }
-        for (Piece piece : restElapsedMs.keySet()) {
-            restElapsedMs.merge(piece, ms, Long::sum);
+        for (Piece piece : longRestElapsedMs.keySet()) {
+            longRestElapsedMs.merge(piece, ms, Long::sum);
+        }
+        for (Piece piece : shortRestElapsedMs.keySet()) {
+            shortRestElapsedMs.merge(piece, ms, Long::sum);
         }
 
         List<Piece> duePieces = dueMotionPieces();
@@ -120,29 +150,20 @@ public class RealTimeArbiter {
 
         events.addAll(resolveMotionsForTick(duePieces));
 
-        resolveRestTicks();
+        resolveRestTicks(longRestElapsedMs, LONG_REST_MS);
+        resolveRestTicks(shortRestElapsedMs, SHORT_REST_MS);
 
         return events;
     }
 
-    private void resolveRestTicks() {
-        List<Piece> dueRestPieces = new ArrayList<>();
-        for (Map.Entry<Piece, Long> entry : restElapsedMs.entrySet()) {
-            if (entry.getValue() >= restDurationMs.get(entry.getKey())) {
-                dueRestPieces.add(entry.getKey());
+    private void resolveRestTicks(Map<Piece, Long> elapsedByPiece, long durationMs) {
+        List<Piece> duePieces = new ArrayList<>();
+        for (Map.Entry<Piece, Long> entry : elapsedByPiece.entrySet()) {
+            if (entry.getValue() >= durationMs) {
+                duePieces.add(entry.getKey());
             }
         }
-        for (Piece piece : dueRestPieces) {
-            restElapsedMs.remove(piece);
-            restDurationMs.remove(piece);
-            piece.setState(Piece.State.IDLE);
-        }
-    }
-
-    private void beginRest(Piece piece, long durationMs, Piece.State restState) {
-        piece.setState(restState);
-        restElapsedMs.put(piece, 0L);
-        restDurationMs.put(piece, durationMs);
+        duePieces.forEach(elapsedByPiece::remove);
     }
 
     private List<Piece> dueMotionPieces() {
@@ -179,13 +200,12 @@ public class RealTimeArbiter {
         }
 
         if (defender.getState() != Piece.State.CAPTURED) {
-            beginRest(defender, SHORT_REST_MS, Piece.State.SHORT_REST);
+            startConfiguredRest(defender, jumpConfigFor(defender).nextStateWhenFinished());
         }
         return event;
     }
 
-    // Due motions are grouped by destination cell before any of them touch the board, so a
-    // same-tick race is decided by pickRaceWinner rather than by map iteration order.
+   
     private List<ArrivalEvent> resolveMotionsForTick(List<Piece> duePieces) {
         List<ArrivalEvent> events = new ArrayList<>();
         List<Piece> livePieces = new ArrayList<>();
@@ -267,6 +287,29 @@ public class RealTimeArbiter {
         if (event.to().equals(event.from())) {
             return;
         }
-        beginRest(piece, LONG_REST_MS, Piece.State.LONG_REST);
+        startConfiguredRest(piece, moveConfigFor(piece).nextStateWhenFinished());
+    }
+
+    private void startConfiguredRest(Piece piece, String nextState) {
+        if ("long_rest".equals(nextState)) {
+            longRestElapsedMs.put(piece, 0L);
+        } else if ("short_rest".equals(nextState)) {
+            shortRestElapsedMs.put(piece, 0L);
+        }
+        // "idle" (or anything else): the piece is already idle once its move/jump resolver
+        // ran, so no rest map entry is needed.
+    }
+
+    private AnimationConfig moveConfigFor(Piece piece) {
+        return AnimationConfig.load(configPathFor(piece, "move"));
+    }
+
+    private AnimationConfig jumpConfigFor(Piece piece) {
+        return AnimationConfig.load(configPathFor(piece, "jump"));
+    }
+
+    private String configPathFor(Piece piece, String stateFolder) {
+        return piecesRoot + "/" + piece.getKind().letter() + piece.getColor().letter()
+                + "/states/" + stateFolder + "/config.json";
     }
 }

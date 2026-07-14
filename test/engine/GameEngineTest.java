@@ -2,6 +2,7 @@ package engine;
 import src.engine.GameEngine;
 import src.engine.MoveResult;
 import src.view.GameSnapshot;
+import src.view.PieceSnapshot;
 import src.model.*;
 import org.junit.jupiter.api.Test;
 import src.realtime.*;
@@ -116,7 +117,7 @@ public class GameEngineTest {
 
         assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
-        assertEquals(Piece.State.LONG_REST, rook.getState());
+        assertEquals(Piece.State.IDLE, rook.getState());
     }
 
     @Test
@@ -385,5 +386,63 @@ public class GameEngineTest {
         engine.requestJump(new Position(3, 3));
 
         assertFalse(arbiter.hasActiveJump());
+    }
+
+    @Test
+    public void testOppositeColorRaceToSameCellDoesNotCrash() {
+        Board board = new Board(8, 8);
+        Piece whiteRook = new Piece("wr", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(4, 0));
+        Piece blackRook = new Piece("br", Piece.Color.BLACK, Piece.Kind.ROOK, new Position(4, 7));
+        board.addPiece(whiteRook, new Position(4, 0));
+        board.addPiece(blackRook, new Position(4, 7));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(4, 0), new Position(4, 4));
+        engine.requestMove(new Position(4, 7), new Position(4, 4));
+
+        assertDoesNotThrow(() -> engine.waitMs(4000));
+        assertTrue(board.getPieceAt(new Position(4, 4)).isPresent());
+    }
+
+    @Test
+    public void testJumpingPieceDefeatingAttackerDoesNotCrash() {
+        Board board = new Board(8, 8);
+        Piece jumper = new Piece("wr", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(4, 4));
+        Piece attacker = new Piece("br", Piece.Color.BLACK, Piece.Kind.ROOK, new Position(3, 4));
+        board.addPiece(jumper, new Position(4, 4));
+        board.addPiece(attacker, new Position(3, 4));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestJump(new Position(4, 4));
+        MoveResult attackResult = engine.requestMove(new Position(3, 4), new Position(4, 4));
+        assertTrue(attackResult.isAccepted());
+
+        assertDoesNotThrow(() -> engine.waitMs(1000));
+        assertTrue(board.getPieceAt(new Position(4, 4)).isPresent());
+        assertEquals(jumper, board.getPieceAt(new Position(4, 4)).get());
+    }
+
+    @Test
+    public void testMultiCellMoveDoesNotSnapToDestinationEarly() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
+
+        engine.requestMove(new Position(7, 0), new Position(4, 0)); // 3-cell move, 3000ms duration
+        engine.waitMs(1000); // one third of the way through: still mid-flight, board position unchanged
+
+        // The board only updates on arrival, so the piece is still reported at its source cell (7,0);
+        // what must reflect one-third progress is the interpolated pixel position within that snapshot.
+        PieceSnapshot snapshot = engine.snapshot(null).pieceAt(new Position(7, 0));
+        assertNotNull(snapshot);
+        int expectedPartialPixelY = (int) Math.round(Math.round(7 + (4 - 7) * (1.0 / 3.0)) * GameSnapshot.CELL_HEIGHT);
+        int destinationPixelY = (int) Math.round(4 * GameSnapshot.CELL_HEIGHT);
+        assertEquals(expectedPartialPixelY, snapshot.pixelY());
+        assertNotEquals(destinationPixelY, snapshot.pixelY(),
+                "one third into a 3-cell move the piece must not already be rendered at the destination");
+
+        engine.waitMs(2000); // remaining time to complete the move
+        assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
     }
 }
