@@ -1,4 +1,4 @@
-package engine;
+package src.engine;
 
 import src.model.Piece;
 

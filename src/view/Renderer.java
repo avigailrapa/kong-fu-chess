@@ -1,7 +1,7 @@
 package src.view;
 
-import engine.MoveEvent;
-import engine.MoveLogger;
+import src.engine.MoveEvent;
+import src.engine.MoveLogger;
 import src.model.Position;
 
 import java.awt.Color;

@@ -1,4 +1,4 @@
-import engine.MoveLogger;
+import src.engine.MoveLogger;
 import src.engine.GameEngine;
 import src.input.BoardMapper;
 import src.input.Controller;
