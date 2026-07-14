@@ -16,35 +16,16 @@ public class CommandParser {
     public interface Command {
     }
 
-    public static class ClickCommand implements Command {
-        public final int x;
-        public final int y;
-
-        public ClickCommand(int x, int y) {
-            this.x = x;
-            this.y = y;
-        }
+    public record ClickCommand(int x, int y) implements Command {
     }
 
-    public static class WaitCommand implements Command {
-        public final long milliseconds;
-
-        public WaitCommand(long milliseconds) {
-            this.milliseconds = milliseconds;
-        }
+    public record WaitCommand(long milliseconds) implements Command {
     }
 
-    public static class JumpCommand implements Command {
-        public final int x;
-        public final int y;
-
-        public JumpCommand(int x, int y) {
-            this.x = x;
-            this.y = y;
-        }
+    public record JumpCommand(int x, int y) implements Command {
     }
 
-    public static class PrintBoardCommand implements Command {
+    public record PrintBoardCommand() implements Command {
     }
 
     private static final Pattern CLICK_PATTERN = Pattern.compile("^click\\s+(-?\\d+)\\s+(-?\\d+)$");
