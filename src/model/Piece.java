@@ -13,7 +13,7 @@ public class Piece {
     }
 
     public enum State {
-        IDLE, MOVING, CAPTURED
+        IDLE, MOVING, JUMPING, CAPTURED
     }
 
     private final String id;

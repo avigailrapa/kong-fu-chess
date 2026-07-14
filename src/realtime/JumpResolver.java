@@ -14,20 +14,23 @@ public class JumpResolver {
         this.board = board;
     }
 
-    public Optional<ArrivalEvent> resolveLanding(Piece defender, Position cell) {
+    public Optional<ArrivalEvent> resolveLanding(Piece jumper, Position cell) {
         Piece occupant = board.getPieceAt(cell).orElse(null);
 
-        if (occupant == defender) {
-            markSurvivedJump(defender);
+        if (occupant == null || occupant == jumper) {
+            markSurvivedJump(jumper);
             return Optional.empty();
         }
 
-        defender.setState(Piece.State.CAPTURED);
-        boolean defenderWasKing = defender.getKind() == Piece.Kind.KING;
-        return Optional.of(new ArrivalEvent(defender, cell, cell, occupant, defenderWasKing));
+        boolean occupantWasKing = occupant.getKind() == Piece.Kind.KING;
+        occupant.setState(Piece.State.CAPTURED);
+        board.removePiece(cell);
+        board.addPiece(jumper, cell);
+        markSurvivedJump(jumper);
+        return Optional.of(new ArrivalEvent(jumper, cell, cell, occupant, occupantWasKing));
     }
 
-    public void markSurvivedJump(Piece defender) {
-        defender.setState(Piece.State.IDLE);
+    public void markSurvivedJump(Piece jumper) {
+        jumper.setState(Piece.State.IDLE);
     }
 }
