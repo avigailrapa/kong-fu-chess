@@ -4,7 +4,7 @@ import src.model.Piece;
 import src.model.Position;
 
 public class GameSnapshot {
-    // Measured from CTD26/board.png (822x828px) divided across an 8x8 board - the image has
+    // Measured from assets/board.png (822x828px) divided across an 8x8 board - the image has
     // no border, so a cell's real pixel size is not the round number it would be if CELL_SIZE
     // were square. Using the wrong value here made piece placement drift further off the grid
     // with every row/column.

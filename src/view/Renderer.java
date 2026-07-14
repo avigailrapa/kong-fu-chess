@@ -15,7 +15,7 @@ import java.util.Set;
 
 public class Renderer {
 
-    private static final String BOARD_IMAGE_PATH = "CTD26/board.png";
+    private static final String BOARD_IMAGE_PATH = "assets/board.png";
     private static final long FRAME_DURATION_MS = 150;
 
     private final String piecesRoot;
@@ -24,7 +24,7 @@ public class Renderer {
     private final Set<String> missingSpriteWarnings = new HashSet<>();
 
     public Renderer() {
-        this("CTD26/pieces2");
+        this("assets/pieces");
     }
 
     public Renderer(String piecesRoot) {
