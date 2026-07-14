@@ -1,6 +1,6 @@
 package src.engine;
-import engine.MoveEvent;
-import engine.MoveObserver;
+import src.engine.MoveEvent;
+import src.engine.MoveObserver;
 import src.model.*;
 import src.realtime.*;
 import src.rules.*;
