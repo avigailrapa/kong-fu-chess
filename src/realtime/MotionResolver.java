@@ -1,14 +1,14 @@
 package src.realtime;
 
-import src.model.Board;
+import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 
 public class MotionResolver {
 
-    private final Board board;
+    private final IBoard board;
 
-    public MotionResolver(Board board) {
+    public MotionResolver(IBoard board) {
         this.board = board;
     }
 

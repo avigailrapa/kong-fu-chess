@@ -16,15 +16,14 @@ public class Piece {
         KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN;
 
         public char letter() {
-            switch (this) {
-                case KING: return 'K';
-                case QUEEN: return 'Q';
-                case ROOK: return 'R';
-                case BISHOP: return 'B';
-                case KNIGHT: return 'N';
-                case PAWN: return 'P';
-                default: throw new IllegalStateException("Unknown piece kind: " + this);
-            }
+            return switch (this) {
+                case KING -> 'K';
+                case QUEEN -> 'Q';
+                case ROOK -> 'R';
+                case BISHOP -> 'B';
+                case KNIGHT -> 'N';
+                case PAWN -> 'P';
+            };
         }
     }
 
@@ -77,8 +76,8 @@ public class Piece {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Piece)) return false;
-        return id.equals(((Piece) o).id);
+        if (!(o instanceof Piece other)) return false;
+        return id.equals(other.id);
     }
 
     @Override

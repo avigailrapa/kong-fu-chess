@@ -1,6 +1,4 @@
 package src.engine;
-import src.engine.MoveEvent;
-import src.engine.MoveObserver;
 import src.model.*;
 import src.realtime.*;
 import src.rules.*;
@@ -99,59 +97,57 @@ public class GameEngine {
     }
 
     public void waitMs(long ms) {
-    if (ms < 0) {
-        throw new IllegalArgumentException("ms must not be negative");
-    }
-    gameClockMs += ms;
-    List<ArrivalEvent> events = arbiter.advanceTime(ms);
-    for (ArrivalEvent event : events) {
-        if (event.kingCaptured()) {
-            Piece.Color loserColor = event.capturedPiece().getColor();
-            Piece.Color winner = loserColor == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
-            gameState.endGame(winner);
+        if (ms < 0) {
+            throw new IllegalArgumentException("ms must not be negative");
         }
-        
-        if (event.capturedPiece() != null && event.movedPiece() != null) {
-            Piece.Color capturingColor = event.movedPiece().getColor();
-            int points = getPieceValue(event.capturedPiece().getKind());
-            gameState.addScore(capturingColor, points);
+        gameClockMs += ms;
+        List<ArrivalEvent> events = arbiter.advanceTime(ms);
+        for (ArrivalEvent event : events) {
+            if (event.kingCaptured()) {
+                Piece.Color loserColor = event.capturedPiece().getColor();
+                Piece.Color winner = loserColor == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
+                gameState.endGame(winner);
+            }
+
+            if (event.capturedPiece() != null && event.movedPiece() != null) {
+                Piece.Color capturingColor = event.movedPiece().getColor();
+                int points = getPieceValue(event.capturedPiece().getKind());
+                gameState.addScore(capturingColor, points);
+            }
+
+            if (event.movedPiece() != null) {
+                Long requestTimestamp = motionRequestTimestampMs.remove(event.movedPiece());
+                long effectiveTimestamp = requestTimestamp != null ? requestTimestamp : gameClockMs;
+                fireMoveEvent(event.movedPiece(), event.from(), event.to(), event.capturedPiece() != null, event.kingCaptured(), effectiveTimestamp);
+            }
         }
+    }
 
-        if (event.movedPiece() != null) {
-            Long requestTimestamp = motionRequestTimestampMs.remove(event.movedPiece());
-            long effectiveTimestamp = requestTimestamp != null ? requestTimestamp : gameClockMs;
-            fireMoveEvent(event.movedPiece(), event.from(), event.to(), event.capturedPiece() != null, event.kingCaptured(), effectiveTimestamp);
+    private int getPieceValue(Piece.Kind kind) {
+        return switch (kind) {
+            case PAWN -> 1;
+            case KNIGHT, BISHOP -> 3;
+            case ROOK -> 5;
+            case QUEEN -> 9;
+            case KING -> 0;
+        };
+    }
+
+    public GameSnapshot snapshot(Position selectedPosition) {
+        int width = board.getWidth();
+        int height = board.getHeight();
+        PieceSnapshot[][] grid = new PieceSnapshot[height][width];
+        for (Position position : board.occupiedPositions()) {
+            Piece piece = board.getPieceAt(position).orElseThrow();
+            grid[position.getRow()][position.getCol()] = pieceSnapshotOf(piece, position);
         }
+        Set<Position> legalDestinations = selectedPosition == null
+                ? Set.of()
+                : ruleEngine.legalDestinations(board, selectedPosition);
+        return new GameSnapshot(width, height, grid, selectedPosition, legalDestinations, gameState.isGameOver(),
+                               gameState.winner(), gameState.getScore(Piece.Color.WHITE),
+                               gameState.getScore(Piece.Color.BLACK));
     }
-}
-
-private int getPieceValue(Piece.Kind kind) {
-    switch (kind) {
-        case PAWN: return 1;
-        case KNIGHT:
-        case BISHOP: return 3;
-        case ROOK: return 5;
-        case QUEEN: return 9;
-        case KING: return 0;
-        default: return 0;
-    }
-}
-
-public GameSnapshot snapshot(Position selectedPosition) {
-    int width = board.getWidth();
-    int height = board.getHeight();
-    PieceSnapshot[][] grid = new PieceSnapshot[height][width];
-    for (Position position : board.occupiedPositions()) {
-        Piece piece = board.getPieceAt(position).orElseThrow();
-        grid[position.getRow()][position.getCol()] = pieceSnapshotOf(piece, position);
-    }
-    Set<Position> legalDestinations = selectedPosition == null
-            ? Set.of()
-            : ruleEngine.legalDestinations(board, selectedPosition);
-    return new GameSnapshot(width, height, grid, selectedPosition, legalDestinations, gameState.isGameOver(),
-                           gameState.winner(), gameState.getScore(Piece.Color.WHITE),
-                           gameState.getScore(Piece.Color.BLACK));
-}
 
     private PieceSnapshot pieceSnapshotOf(Piece piece, Position position) {
         int pixelX = (int) Math.round(position.getCol() * GameSnapshot.CELL_WIDTH);

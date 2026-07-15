@@ -12,15 +12,16 @@ import java.util.function.Supplier;
 
 public class GuiMain {
 
-    private static final String STARTING_BOARD =
-            "bR bN bB bQ bK bB bN bR\n" +
-            "bP bP bP bP bP bP bP bP\n" +
-            ".  .  .  .  .  .  .  .\n" +
-            ".  .  .  .  .  .  .  .\n" +
-            ".  .  .  .  .  .  .  .\n" +
-            ".  .  .  .  .  .  .  .\n" +
-            "wP wP wP wP wP wP wP wP\n" +
-            "wR wN wB wQ wK wB wN wR\n";
+    private static final String STARTING_BOARD = """
+            bR bN bB bQ bK bB bN bR
+            bP bP bP bP bP bP bP bP
+            .  .  .  .  .  .  .  .
+            .  .  .  .  .  .  .  .
+            .  .  .  .  .  .  .  .
+            .  .  .  .  .  .  .  .
+            wP wP wP wP wP wP wP wP
+            wR wN wB wQ wK wB wN wR
+            """;
 
     public static void main(String[] args) {
         Supplier<GameWindow.GameComponents> gameFactory = GuiMain::createGame;

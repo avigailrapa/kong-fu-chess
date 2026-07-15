@@ -1,6 +1,6 @@
 package src.realtime;
 
-import src.model.Board;
+import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 
@@ -11,11 +11,11 @@ import java.util.Set;
 
 public class CollisionResolver {
 
-    private final Board board;
+    private final IBoard board;
     private final JumpResolver jumpResolver;
     private final MotionResolver motionResolver;
 
-    public CollisionResolver(Board board, JumpResolver jumpResolver, MotionResolver motionResolver) {
+    public CollisionResolver(IBoard board, JumpResolver jumpResolver, MotionResolver motionResolver) {
         this.board = board;
         this.jumpResolver = jumpResolver;
         this.motionResolver = motionResolver;
