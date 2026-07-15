@@ -429,8 +429,8 @@ public class GameEngineTest {
         board.addPiece(rook, new Position(7, 0));
         GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
 
-        engine.requestMove(new Position(7, 0), new Position(4, 0)); // 3-cell move, 3000ms duration
-        engine.waitMs(1000); // one third of the way through: still mid-flight, board position unchanged
+        engine.requestMove(new Position(7, 0), new Position(4, 0)); // 3-cell move, 1500ms duration
+        engine.waitMs(500); // one third of the way through: still mid-flight, board position unchanged
 
         // The board only updates on arrival, so the piece is still reported at its source cell (7,0);
         // what must reflect one-third progress is the interpolated pixel position within that snapshot.
@@ -442,7 +442,7 @@ public class GameEngineTest {
         assertNotEquals(destinationPixelY, snapshot.pixelY(),
                 "one third into a 3-cell move the piece must not already be rendered at the destination");
 
-        engine.waitMs(2000); // remaining time to complete the move
+        engine.waitMs(1000); // remaining time to complete the move
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
     }
 }

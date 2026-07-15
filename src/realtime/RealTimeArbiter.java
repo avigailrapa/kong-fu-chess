@@ -267,12 +267,16 @@ public class RealTimeArbiter {
             applyRestIfArrived(winnerEvent);
             events.add(winnerEvent);
 
+            boolean winnerActuallyArrived = !winnerEvent.to().equals(winnerEvent.from());
+
             for (Piece loser : stillLive) {
                 if (loser == winner) {
                     continue;
                 }
                 Motion loserMotion = takeMotion(loser);
-                events.add(collisionResolver.resolveRaceLoserAgainstWinner(winner, winnerMotion, loserMotion));
+                events.add(winnerActuallyArrived
+                        ? collisionResolver.resolveRaceLoserAgainstWinner(winner, winnerMotion, loserMotion)
+                        : motionResolver.resolveBounceBack(loserMotion));
             }
         }
 

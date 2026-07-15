@@ -10,8 +10,9 @@ public record GameSnapshot(int width, int height, PieceSnapshot[][] board, List<
                             Set<Position> legalDestinations,
                             boolean gameOver, Piece.Color winner, int whiteScore, int blackScore) {
 
-    public static final double CELL_WIDTH = 822.0 / 8;
-    public static final double CELL_HEIGHT = 828.0 / 8;
+    private static final double BOARD_SCALE = 0.55;
+    public static final double CELL_WIDTH = 822.0 * BOARD_SCALE / 8;
+    public static final double CELL_HEIGHT = 828.0 * BOARD_SCALE / 8;
 
     public PieceSnapshot pieceAt(Position position) {
         return board[position.getRow()][position.getCol()];

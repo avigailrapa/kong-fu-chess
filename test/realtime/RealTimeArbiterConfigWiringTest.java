@@ -41,7 +41,7 @@ public class RealTimeArbiterConfigWiringTest {
 
     @Test
     public void testMoveDurationScalesWithConfiguredSpeed() throws IOException {
-        // Double the shipped 1.5 m/s speed - a 1-cell move should now take half as long (500ms instead of 1000ms).
+        // Double the shipped 1.5 m/s speed - a 1-cell move should now take half as long (250ms instead of 500ms).
         writeConfig("RW", "move", moveConfig(3.0, "long_rest"));
 
         Board board = new Board(8, 8);
@@ -51,7 +51,7 @@ public class RealTimeArbiterConfigWiringTest {
 
         arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0));
 
-        assertEquals(500L, arbiter.activeMotion(rook).orElseThrow().durationMs());
+        assertEquals(250L, arbiter.activeMotion(rook).orElseThrow().durationMs());
     }
 
     @Test
@@ -65,7 +65,7 @@ public class RealTimeArbiterConfigWiringTest {
 
         arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0));
 
-        assertEquals(2000L, arbiter.activeMotion(rook).orElseThrow().durationMs());
+        assertEquals(1000L, arbiter.activeMotion(rook).orElseThrow().durationMs());
     }
 
     @Test

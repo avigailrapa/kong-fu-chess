@@ -88,7 +88,7 @@ public class RealTimeArbiterTest {
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
         arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0));
 
-        List<ArrivalEvent> events = arbiter.advanceTime(999);
+        List<ArrivalEvent> events = arbiter.advanceTime(499);
 
         assertTrue(events.isEmpty());
         assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
@@ -119,12 +119,12 @@ public class RealTimeArbiterTest {
         Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
         board.addPiece(rook, new Position(7, 0));
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
-        arbiter.startMotion(rook, new Position(7, 0), new Position(4, 0)); // 3 squares = 3000ms
+        arbiter.startMotion(rook, new Position(7, 0), new Position(4, 0)); // 3 squares = 1500ms
 
         assertTrue(arbiter.advanceTime(1200).isEmpty());
         assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
 
-        List<ArrivalEvent> events = arbiter.advanceTime(1800); // 1200 + 1800 = 3000
+        List<ArrivalEvent> events = arbiter.advanceTime(1800); // 1200 + 1800 = 3000, well past 1500
 
         assertFalse(events.isEmpty());
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
@@ -136,14 +136,14 @@ public class RealTimeArbiterTest {
         Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
         board.addPiece(rook, new Position(7, 0));
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
-        arbiter.startMotion(rook, new Position(7, 0), new Position(4, 0)); // 3000ms needed
+        arbiter.startMotion(rook, new Position(7, 0), new Position(4, 0)); // 1500ms needed
 
-        for (int i = 0; i < 29; i++) {
+        for (int i = 0; i < 14; i++) {
             assertTrue(arbiter.advanceTime(100).isEmpty());
         }
         assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
 
-        assertFalse(arbiter.advanceTime(100).isEmpty()); // 30th x 100ms = 3000ms total
+        assertFalse(arbiter.advanceTime(100).isEmpty()); // 15th x 100ms = 1500ms total
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
     }
 
@@ -154,14 +154,14 @@ public class RealTimeArbiterTest {
         board.addPiece(rook, new Position(7, 0));
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
 
-        arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0)); // 1000ms
-        arbiter.advanceTime(1000);
+        arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0)); // 500ms
+        arbiter.advanceTime(500);
 
-        arbiter.startMotion(rook, new Position(6, 0), new Position(4, 0)); // 2000ms
-        assertTrue(arbiter.advanceTime(1000).isEmpty()); // only half of the new motion's duration
+        arbiter.startMotion(rook, new Position(6, 0), new Position(4, 0)); // 1000ms
+        assertTrue(arbiter.advanceTime(500).isEmpty()); // only half of the new motion's duration
         assertTrue(board.getPieceAt(new Position(6, 0)).isPresent());
 
-        assertFalse(arbiter.advanceTime(1000).isEmpty());
+        assertFalse(arbiter.advanceTime(500).isEmpty());
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
     }
 
@@ -337,7 +337,7 @@ public class RealTimeArbiterTest {
         assertTrue(arbiter.isMoving(bishop));
         assertTrue(arbiter.isMoving(knight));
 
-        List<ArrivalEvent> events = arbiter.advanceTime(1000);
+        List<ArrivalEvent> events = arbiter.advanceTime(500);
 
         assertEquals(2, events.size());
         assertFalse(arbiter.isMoving(rook));
@@ -355,8 +355,8 @@ public class RealTimeArbiterTest {
         Piece bishop = new Piece("b1", Piece.Color.WHITE, Piece.Kind.BISHOP, new Position(7, 7));
         board.addPiece(bishop, new Position(7, 7));
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
-        arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0)); // 1000ms
-        arbiter.startMotion(bishop, new Position(7, 7), new Position(4, 4)); // 3000ms
+        arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0)); // 500ms
+        arbiter.startMotion(bishop, new Position(7, 7), new Position(4, 4)); // 1500ms
 
         List<ArrivalEvent> events = arbiter.advanceTime(1000);
 
@@ -611,13 +611,13 @@ public class RealTimeArbiterTest {
         Piece bishopB = new Piece("b1", Piece.Color.WHITE, Piece.Kind.BISHOP, new Position(4, 2));
         board.addPiece(bishopB, new Position(4, 2));
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
-        arbiter.startMotion(rookA, new Position(7, 0), new Position(6, 0)); // 1000ms
-        arbiter.startMotion(bishopB, new Position(4, 2), new Position(6, 0)); // diagonal, 2 squares = 2000ms
+        arbiter.startMotion(rookA, new Position(7, 0), new Position(6, 0)); // 500ms
+        arbiter.startMotion(bishopB, new Position(4, 2), new Position(6, 0)); // diagonal, 2 squares = 1000ms
 
-        arbiter.advanceTime(1000); // rookA arrives first, cell (6,0) now occupied by a friendly piece
+        arbiter.advanceTime(500); // rookA arrives first, cell (6,0) now occupied by a friendly piece
         assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r1")).orElse(false));
 
-        List<ArrivalEvent> events = arbiter.advanceTime(1000); // bishopB's motion is now due too
+        List<ArrivalEvent> events = arbiter.advanceTime(500); // bishopB's motion is now due too
 
         assertEquals(1, events.size());
         ArrivalEvent event = events.get(0);
@@ -636,15 +636,15 @@ public class RealTimeArbiterTest {
     public void testEnemyRaceWinnerDeterminedByOvershootCapturesLoser() {
         Board board = new Board(8, 8);
         Piece whiteRook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
-        board.addPiece(whiteRook, new Position(7, 0)); // 1 square to (6,0) = 1000ms
+        board.addPiece(whiteRook, new Position(7, 0)); // 1 square to (6,0) = 500ms
         Piece blackRook = new Piece("r2", Piece.Color.BLACK, Piece.Kind.ROOK, new Position(4, 0));
-        board.addPiece(blackRook, new Position(4, 0)); // 2 squares to (6,0) = 2000ms
+        board.addPiece(blackRook, new Position(4, 0)); // 2 squares to (6,0) = 1000ms
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
         arbiter.startMotion(whiteRook, new Position(7, 0), new Position(6, 0));
         arbiter.startMotion(blackRook, new Position(4, 0), new Position(6, 0));
 
-        // Single tick where both are due: whiteRook overshoots by 1000ms, blackRook by 0ms.
-        // blackRook wins (smaller overshoot = arrived later in continuous time).
+        // Single tick where both are due: whiteRook overshoots by 1500ms, blackRook by 1000ms.
+        // blackRook wins (smaller overshoot = arrived closer to its exact due time).
         List<ArrivalEvent> events = arbiter.advanceTime(2000);
 
         assertEquals(2, events.size());
@@ -658,12 +658,43 @@ public class RealTimeArbiterTest {
     }
 
     @Test
+    public void testRaceLoserNotCapturedWhenWinnerBouncesBackOffThirdPieceAtDestination() {
+        Board board = new Board(8, 8);
+        Piece whiteC = new Piece("c", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(whiteC, new Position(7, 0)); // 1 square to (6,0) = 500ms, settles first
+        Piece whiteA = new Piece("a", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(5, 3));
+        board.addPiece(whiteA, new Position(5, 3)); // 3 squares to (6,0) = 1500ms
+        Piece blackB = new Piece("b", Piece.Color.BLACK, Piece.Kind.ROOK, new Position(3, 0));
+        board.addPiece(blackB, new Position(3, 0)); // 3 squares to (6,0) = 1500ms
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        arbiter.startMotion(whiteC, new Position(7, 0), new Position(6, 0));
+        arbiter.startMotion(whiteA, new Position(5, 3), new Position(6, 0));
+        arbiter.startMotion(blackB, new Position(3, 0), new Position(6, 0));
+
+        // whiteC settles into (6,0) well before whiteA/blackB's race resolves there.
+        List<ArrivalEvent> settling = arbiter.advanceTime(500);
+        assertEquals(1, settling.size());
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("c")).orElse(false));
+
+        // whiteA "wins" the race against blackB, but bounces back because whiteC (friendly) is
+        // already sitting at the destination - blackB should bounce back too, not be captured.
+        List<ArrivalEvent> raceEvents = arbiter.advanceTime(1000);
+
+        assertEquals(2, raceEvents.size());
+        assertEquals(Piece.State.IDLE, whiteA.getState());
+        assertEquals(Piece.State.IDLE, blackB.getState());
+        assertTrue(board.getPieceAt(new Position(5, 3)).map(p -> p.getId().equals("a")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(3, 0)).map(p -> p.getId().equals("b")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("c")).orElse(false));
+    }
+
+    @Test
     public void testFriendlyRaceWinnerDeterminedByOvershootBouncesLoserBack() {
         Board board = new Board(8, 8);
         Piece rookA = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
-        board.addPiece(rookA, new Position(7, 0)); // 1 square to (6,0) = 1000ms
+        board.addPiece(rookA, new Position(7, 0)); // 1 square to (6,0) = 500ms
         Piece rookB = new Piece("r2", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(4, 0));
-        board.addPiece(rookB, new Position(4, 0)); // 2 squares to (6,0) = 2000ms
+        board.addPiece(rookB, new Position(4, 0)); // 2 squares to (6,0) = 1000ms
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
         arbiter.startMotion(rookA, new Position(7, 0), new Position(6, 0));
         arbiter.startMotion(rookB, new Position(4, 0), new Position(6, 0));
