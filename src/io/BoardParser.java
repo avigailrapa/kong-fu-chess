@@ -53,23 +53,23 @@ public class BoardParser {
     }
 
     private Piece.Color parseColor(char c) {
-        switch (c) {
-            case 'w': return Piece.Color.WHITE;
-            case 'b': return Piece.Color.BLACK;
-            default: throw new IllegalArgumentException("Invalid piece color: " + c);
-        }
+        return switch (c) {
+            case 'w' -> Piece.Color.WHITE;
+            case 'b' -> Piece.Color.BLACK;
+            default -> throw new IllegalArgumentException("Invalid piece color: " + c);
+        };
     }
 
     private Piece.Kind parseKind(char c) {
-        switch (c) {
-            case 'K': return Piece.Kind.KING;
-            case 'Q': return Piece.Kind.QUEEN;
-            case 'R': return Piece.Kind.ROOK;
-            case 'B': return Piece.Kind.BISHOP;
-            case 'N': return Piece.Kind.KNIGHT;
-            case 'P': return Piece.Kind.PAWN;
-            default: throw new IllegalArgumentException("Invalid piece kind: " + c);
-        }
+        return switch (c) {
+            case 'K' -> Piece.Kind.KING;
+            case 'Q' -> Piece.Kind.QUEEN;
+            case 'R' -> Piece.Kind.ROOK;
+            case 'B' -> Piece.Kind.BISHOP;
+            case 'N' -> Piece.Kind.KNIGHT;
+            case 'P' -> Piece.Kind.PAWN;
+            default -> throw new IllegalArgumentException("Invalid piece kind: " + c);
+        };
     }
 
     private String[] splitNonBlankLines(String text) {

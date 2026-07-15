@@ -1,6 +1,6 @@
 package src.realtime;
 
-import src.model.Board;
+import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 import src.view.AnimationConfig;
@@ -32,11 +32,11 @@ public class RealTimeArbiter {
     private final Map<Piece, Long> longRestElapsedMs = new LinkedHashMap<>();
     private final Map<Piece, Long> shortRestElapsedMs = new LinkedHashMap<>();
 
-    public RealTimeArbiter(Board board) {
+    public RealTimeArbiter(IBoard board) {
         this(board, "assets/pieces");
     }
 
-    public RealTimeArbiter(Board board, String piecesRoot) {
+    public RealTimeArbiter(IBoard board, String piecesRoot) {
         this.piecesRoot = piecesRoot;
         this.motionResolver = new MotionResolver(board);
         this.jumpResolver = new JumpResolver(board);

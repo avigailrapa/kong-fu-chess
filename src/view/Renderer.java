@@ -289,12 +289,12 @@ public class Renderer {
     }
 
     private String stateFolder(PieceSnapshot.RenderState state) {
-        switch (state) {
-            case MOVING: return "move";
-            case JUMPING: return "jump";
-            case LONG_REST: return "long_rest";
-            case SHORT_REST: return "short_rest";
-            default: return "idle";
-        }
+        return switch (state) {
+            case MOVING -> "move";
+            case JUMPING -> "jump";
+            case LONG_REST -> "long_rest";
+            case SHORT_REST -> "short_rest";
+            default -> "idle";
+        };
     }
 }

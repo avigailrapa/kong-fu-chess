@@ -1,6 +1,6 @@
 package src.realtime;
 
-import src.model.Board;
+import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 
@@ -8,9 +8,9 @@ import java.util.Optional;
 
 public class JumpResolver {
 
-    private final Board board;
+    private final IBoard board;
 
-    public JumpResolver(Board board) {
+    public JumpResolver(IBoard board) {
         this.board = board;
     }
 

@@ -29,9 +29,9 @@ public class GameWindow {
         this.gameFactory = gameFactory;
 
         GameComponents initial = gameFactory.get();
-        this.gameEngine = initial.engine;
-        this.controller = initial.controller;
-        this.renderer = initial.renderer;
+        this.gameEngine = initial.engine();
+        this.controller = initial.controller();
+        this.renderer = initial.renderer();
 
         this.panel = new ImagePanel();
         this.frame = new JFrame("Kung Fu Chess");
@@ -74,9 +74,9 @@ public class GameWindow {
 
     private void restart() {
         GameComponents fresh = gameFactory.get();
-        this.gameEngine = fresh.engine;
-        this.controller = fresh.controller;
-        this.renderer = fresh.renderer;
+        this.gameEngine = fresh.engine();
+        this.controller = fresh.controller();
+        this.renderer = fresh.renderer();
         this.gameOverAnnounced = false;
         this.scale = null;
         frame.setTitle("Kung Fu Chess");
@@ -116,16 +116,7 @@ public class GameWindow {
         return Math.min(1.0, Math.min(widthScale, heightScale));
     }
 
-    public static final class GameComponents {
-        final GameEngine engine;
-        final Controller controller;
-        final Renderer renderer;
-
-        public GameComponents(GameEngine engine, Controller controller, Renderer renderer) {
-            this.engine = engine;
-            this.controller = controller;
-            this.renderer = renderer;
-        }
+    public record GameComponents(GameEngine engine, Controller controller, Renderer renderer) {
     }
 
     private static class ImagePanel extends JPanel {
