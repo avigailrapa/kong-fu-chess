@@ -90,6 +90,10 @@ public class GameEngine {
         return new MoveResult(true, "ok");
     }
 
+    public boolean isOccupied(Position position) {
+        return board.isWithinBorder(position) && board.getPieceAt(position).isPresent();
+    }
+
     public void requestJump(Position cell) {
         if (gameState.isGameOver()) {
             return;

@@ -27,6 +27,11 @@ public class ControllerTest {
         }
 
         @Override
+        public boolean isOccupied(Position position) {
+            return occupiedCells.contains(position);
+        }
+
+        @Override
         public MoveResult requestMove(Position source, Position destination) {
             lastSource = source;
             lastDestination = destination;

@@ -28,7 +28,7 @@ public class Controller {
         Position cell = clicked.get();
 
         if (selectedCell == null) {
-            if (gameEngine.snapshot(selectedCell).isOccupied(cell)) {
+            if (gameEngine.isOccupied(cell)) {
                 selectedCell = cell;
             }
             return;
