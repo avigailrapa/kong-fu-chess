@@ -24,7 +24,6 @@ public class GameWindow {
     private final Timer timer;
     private boolean gameOverAnnounced = false;
     private boolean wasActive = true;
-    private Double scale = null;
 
     public GameWindow(Supplier<GameComponents> gameFactory) {
         this.gameFactory = gameFactory;
@@ -46,8 +45,8 @@ public class GameWindow {
                     restart();
                     return;
                 }
-                int x = (int) Math.round(e.getX() / scale) - renderer.boardOffsetX();
-                int y = (int) Math.round(e.getY() / scale) - renderer.boardOffsetY();
+                int x = e.getX() - renderer.boardOffsetX();
+                int y = e.getY() - renderer.boardOffsetY();
                 if (SwingUtilities.isRightMouseButton(e)) {
                     controller.jump(x, y);
                 } else {
@@ -63,9 +62,18 @@ public class GameWindow {
     public void open() {
         repaint();
         frame.pack();
+        capFrameToScreen();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         timer.start();
+    }
+
+    private void capFrameToScreen() {
+        Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        Dimension packedSize = frame.getSize();
+        int width = Math.min(packedSize.width, screenBounds.width - SCREEN_CHROME_ALLOWANCE_PX);
+        int height = Math.min(packedSize.height, screenBounds.height - SCREEN_CHROME_ALLOWANCE_PX);
+        frame.setSize(width, height);
     }
 
     public void tick(long ms) {
@@ -84,7 +92,6 @@ public class GameWindow {
         this.renderer = fresh.renderer();
         this.gameOverAnnounced = false;
         this.wasActive = true;
-        this.scale = null;
         frame.setTitle("♟ Kung Fu Chess ♟");
         if (!timer.isRunning()) {
             timer.start();
@@ -96,16 +103,6 @@ public class GameWindow {
         Position selected = controller.getSelectedCell().orElse(null);
         GameSnapshot snapshot = gameEngine.snapshot(selected);
         BufferedImage image = renderer.render(snapshot);
-
-        if (scale == null) {
-            scale = computeScale(image.getWidth(), image.getHeight());
-        }
-        if (scale < 1.0) {
-            Dimension target = new Dimension(
-                    (int) Math.round(image.getWidth() * scale),
-                    (int) Math.round(image.getHeight() * scale));
-            image = new Img(image).resize(target, false).get();
-        }
         panel.setImage(image);
 
         if (snapshot.isGameOver() && !gameOverAnnounced) {
@@ -113,13 +110,6 @@ public class GameWindow {
             timer.stop();
             frame.setTitle("♟ Kung Fu Chess - " + snapshot.winner() + " wins! (click to restart)");
         }
-    }
-
-    private double computeScale(int imageWidth, int imageHeight) {
-        Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
-        double widthScale = (screenBounds.width - SCREEN_CHROME_ALLOWANCE_PX) / (double) imageWidth;
-        double heightScale = (screenBounds.height - SCREEN_CHROME_ALLOWANCE_PX) / (double) imageHeight;
-        return Math.min(1.0, Math.min(widthScale, heightScale));
     }
 
     public record GameComponents(GameEngine engine, Controller controller, Renderer renderer) {

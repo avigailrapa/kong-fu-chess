@@ -40,18 +40,16 @@ public class Renderer {
     private static final Color LEGAL_CAPTURE_MARKER_COLOR = new Color(220, 40, 40, 160);
     private static final Color REST_COOLDOWN_COLOR = new Color(255, 215, 0);
     private static final int REST_COOLDOWN_MAX_ALPHA = 180;
-    private static final Color WHITE_PIECE_TOP = new Color(255, 255, 255);
-    private static final Color WHITE_PIECE_BOTTOM = new Color(205, 199, 188);
-    private static final Color BLACK_PIECE_TOP = new Color(72, 72, 78);
-    private static final Color BLACK_PIECE_BOTTOM = new Color(8, 8, 10);
+    private static final String BOARD_IMAGE_FILENAME = "board.png";
 
     private final String piecesRoot;
     private final MoveLogger moveLogger;
     private final Map<String, BufferedImage> imageCache = new HashMap<>();
-    private final Map<String, BufferedImage> recoloredImageCache = new HashMap<>();
     private final Map<String, Integer> frameCountCache = new HashMap<>();
     private final Map<String, AnimationConfig> configCache = new HashMap<>();
     private final Set<String> missingSpriteWarnings = new HashSet<>();
+    private BufferedImage boardBackgroundImage;
+    private boolean boardBackgroundImageLoaded = false;
 
     public Renderer() {
         this("assets/pieces", null);
@@ -87,7 +85,7 @@ public class Renderer {
         canvas.fillRect(0, 0, fullWidth, fullHeight, new Color(18, 18, 22));
 
         drawTitle(canvas, boardOffsetX, boardWidth);
-        drawBoardSquares(canvas, snapshot, boardOffsetX, boardOffsetY);
+        drawBoardSquares(canvas, snapshot, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
         canvas.drawRect(boardOffsetX - 4, boardOffsetY - 4, boardWidth + 8, boardHeight + 8, BOARD_BORDER_COLOR, 4);
         drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
 
@@ -133,7 +131,14 @@ public class Renderer {
         canvas.putText(TITLE_TEXT, textX, textY, TITLE_FONT_SIZE, TITLE_COLOR, 0);
     }
 
-    private void drawBoardSquares(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
+    private void drawBoardSquares(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY,
+                                   int boardWidth, int boardHeight) {
+        BufferedImage background = boardBackgroundImage(boardWidth, boardHeight);
+        if (background != null) {
+            new Img(background).drawOn(canvas, boardOffsetX, boardOffsetY);
+            return;
+        }
+
         int cellWidth = (int) Math.round(GameSnapshot.CELL_WIDTH);
         int cellHeight = (int) Math.round(GameSnapshot.CELL_HEIGHT);
 
@@ -145,6 +150,18 @@ public class Renderer {
                 canvas.fillRect(x, y, cellWidth, cellHeight, isLightSquare ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
             }
         }
+    }
+
+    private BufferedImage boardBackgroundImage(int boardWidth, int boardHeight) {
+        if (!boardBackgroundImageLoaded) {
+            File file = new File(piecesRoot).getParentFile();
+            String path = new File(file, BOARD_IMAGE_FILENAME).getPath();
+            boardBackgroundImage = new File(path).isFile()
+                    ? new Img().read(path, new Dimension(boardWidth, boardHeight), false, null).get()
+                    : null;
+            boardBackgroundImageLoaded = true;
+        }
+        return boardBackgroundImage;
     }
 
     private void drawSidePanel(Img canvas, int panelX, int fullHeight, String label, int score, List<MoveEvent> moves) {
@@ -240,47 +257,13 @@ public class Renderer {
 
         Dimension cellSize = new Dimension(
                 (int) Math.round(GameSnapshot.CELL_WIDTH), (int) Math.round(GameSnapshot.CELL_HEIGHT));
-        BufferedImage sprite = cachedRecoloredImage(path, cellSize, piece.color());
+        BufferedImage sprite = cachedImage(path, cellSize);
         new Img(sprite).drawOn(canvas, boardOffsetX + piece.pixelX(), boardOffsetY + piece.pixelY());
     }
 
     private BufferedImage cachedImage(String path, Dimension size) {
         String key = size == null ? path : path + "@" + size.width + "x" + size.height;
         return imageCache.computeIfAbsent(key, unused -> new Img().read(path, size, true, null).get());
-    }
-
-    
-    private BufferedImage cachedRecoloredImage(String path, Dimension size, Piece.Color color) {
-        String baseKey = size == null ? path : path + "@" + size.width + "x" + size.height;
-        String key = baseKey + "#" + color;
-        return recoloredImageCache.computeIfAbsent(key, unused -> recolor(cachedImage(path, size), color));
-    }
-
-    private BufferedImage recolor(BufferedImage source, Piece.Color color) {
-        Color topColor = color == Piece.Color.WHITE ? WHITE_PIECE_TOP : BLACK_PIECE_TOP;
-        Color bottomColor = color == Piece.Color.WHITE ? WHITE_PIECE_BOTTOM : BLACK_PIECE_BOTTOM;
-        int width = source.getWidth();
-        int height = source.getHeight();
-        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-
-        for (int y = 0; y < height; y++) {
-            double t = height <= 1 ? 0.0 : (double) y / (height - 1);
-            int r = lerp(topColor.getRed(), bottomColor.getRed(), t);
-            int g = lerp(topColor.getGreen(), bottomColor.getGreen(), t);
-            int b = lerp(topColor.getBlue(), bottomColor.getBlue(), t);
-            int rgb = (r << 16) | (g << 8) | b;
-
-            for (int x = 0; x < width; x++) {
-                int argb = source.getRGB(x, y);
-                int alpha = (argb >>> 24) & 0xFF;
-                result.setRGB(x, y, alpha == 0 ? 0 : (alpha << 24) | rgb);
-            }
-        }
-        return result;
-    }
-
-    private int lerp(int from, int to, double t) {
-        return (int) Math.round(from + (to - from) * t);
     }
 
     private String spritePath(PieceSnapshot piece) {
