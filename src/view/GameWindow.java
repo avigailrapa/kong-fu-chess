@@ -9,24 +9,30 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.function.Supplier;
 
 public class GameWindow {
 
     private static final int SCREEN_CHROME_ALLOWANCE_PX = 80;
 
-    private final GameEngine gameEngine;
-    private final Controller controller;
-    private final Renderer renderer;
+    private final Supplier<GameComponents> gameFactory;
+    private GameEngine gameEngine;
+    private Controller controller;
+    private Renderer renderer;
     private final JFrame frame;
     private final ImagePanel panel;
     private final Timer timer;
     private boolean gameOverAnnounced = false;
     private Double scale = null;
 
-    public GameWindow(GameEngine gameEngine, Controller controller, Renderer renderer) {
-        this.gameEngine = gameEngine;
-        this.controller = controller;
-        this.renderer = renderer;
+    public GameWindow(Supplier<GameComponents> gameFactory) {
+        this.gameFactory = gameFactory;
+
+        GameComponents initial = gameFactory.get();
+        this.gameEngine = initial.engine;
+        this.controller = initial.controller;
+        this.renderer = initial.renderer;
+
         this.panel = new ImagePanel();
         this.frame = new JFrame("Kung Fu Chess");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -35,6 +41,10 @@ public class GameWindow {
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
+                if (gameOverAnnounced) {
+                    restart();
+                    return;
+                }
                 int x = (int) Math.round(e.getX() / scale) - renderer.boardOffsetX();
                 int y = (int) Math.round(e.getY() / scale) - renderer.boardOffsetY();
                 if (SwingUtilities.isRightMouseButton(e)) {
@@ -46,7 +56,7 @@ public class GameWindow {
             }
         });
 
-        this.timer = new Timer(50, e -> tick(50));
+        this.timer = new Timer(16, e -> tick(16));
     }
 
     public void open() {
@@ -59,6 +69,20 @@ public class GameWindow {
 
     public void tick(long ms) {
         gameEngine.waitMs(ms);
+        repaint();
+    }
+
+    private void restart() {
+        GameComponents fresh = gameFactory.get();
+        this.gameEngine = fresh.engine;
+        this.controller = fresh.controller;
+        this.renderer = fresh.renderer;
+        this.gameOverAnnounced = false;
+        this.scale = null;
+        frame.setTitle("Kung Fu Chess");
+        if (!timer.isRunning()) {
+            timer.start();
+        }
         repaint();
     }
 
@@ -81,7 +105,7 @@ public class GameWindow {
         if (snapshot.isGameOver() && !gameOverAnnounced) {
             gameOverAnnounced = true;
             timer.stop();
-            frame.setTitle("Kung Fu Chess - " + snapshot.winner() + " wins!");
+            frame.setTitle("Kung Fu Chess - " + snapshot.winner() + " wins! (click to restart)");
         }
     }
 
@@ -90,6 +114,18 @@ public class GameWindow {
         double widthScale = (screenBounds.width - SCREEN_CHROME_ALLOWANCE_PX) / (double) imageWidth;
         double heightScale = (screenBounds.height - SCREEN_CHROME_ALLOWANCE_PX) / (double) imageHeight;
         return Math.min(1.0, Math.min(widthScale, heightScale));
+    }
+
+    public static final class GameComponents {
+        final GameEngine engine;
+        final Controller controller;
+        final Renderer renderer;
+
+        public GameComponents(GameEngine engine, Controller controller, Renderer renderer) {
+            this.engine = engine;
+            this.controller = controller;
+            this.renderer = renderer;
+        }
     }
 
     private static class ImagePanel extends JPanel {

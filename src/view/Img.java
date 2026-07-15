@@ -95,6 +95,16 @@ public class Img {
         g.dispose();
     }
 
+    public void fillOval(int x, int y, int width, int height, Color color) {
+        if (img == null) throw new IllegalStateException("Image not loaded.");
+
+        Graphics2D g = img.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(color);
+        g.fillOval(x, y, width, height);
+        g.dispose();
+    }
+
     public void drawRect(int x, int y, int width, int height, Color color, int thickness) {
         if (img == null) throw new IllegalStateException("Image not loaded.");
 

@@ -25,7 +25,7 @@ public class CommandRunner {
             case CommandParser.ClickCommand click -> controller.click(click.x(), click.y());
             case CommandParser.WaitCommand wait -> engine.waitMs(wait.milliseconds());
             case CommandParser.JumpCommand jump -> controller.jump(jump.x(), jump.y());
-            case CommandParser.PrintBoardCommand ignored -> System.out.println(boardPrinter.print(engine.settledBoard()));
+            case CommandParser.PrintBoardCommand _ -> System.out.println(boardPrinter.print(engine.settledBoard()));
             default -> throw new IllegalArgumentException("Unknown command: " + command);
         }
     }

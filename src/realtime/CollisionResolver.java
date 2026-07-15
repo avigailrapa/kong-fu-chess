@@ -31,8 +31,7 @@ public class CollisionResolver {
         return Optional.empty();
     }
 
-    // Smallest overshoot (elapsedMs - durationMs) wins: whoever crossed its own finish line most
-    // recently arrived later and captures. Ties keep the first competitor (motion-start order).
+   
     public Piece pickRaceWinner(List<Piece> competitors, Map<Piece, Motion> activeMotions, Map<Piece, Long> motionElapsedMs) {
         Piece winner = null;
         long bestOvershoot = Long.MAX_VALUE;

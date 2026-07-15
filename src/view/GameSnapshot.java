@@ -3,7 +3,10 @@ package src.view;
 import src.model.Piece;
 import src.model.Position;
 
+import java.util.Set;
+
 public record GameSnapshot(int width, int height, PieceSnapshot[][] board, Position selectedPosition,
+                            Set<Position> legalDestinations,
                             boolean gameOver, Piece.Color winner, int whiteScore, int blackScore) {
 
     public static final double CELL_WIDTH = 822.0 / 8;
@@ -15,6 +18,10 @@ public record GameSnapshot(int width, int height, PieceSnapshot[][] board, Posit
 
     public boolean isOccupied(Position position) {
         return pieceAt(position) != null;
+    }
+
+    public boolean isLegalDestination(Position position) {
+        return legalDestinations.contains(position);
     }
 
     public boolean isGameOver() {
