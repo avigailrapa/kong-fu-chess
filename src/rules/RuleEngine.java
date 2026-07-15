@@ -15,6 +15,23 @@ public class RuleEngine {
         this.rulesByKind = rulesByKind;
     }
 
+    public Set<Position> legalDestinations(IBoard board, Position source) {
+        if (!board.isWithinBorder(source)) {
+            return Set.of();
+        }
+
+        Piece movingPiece = board.getPieceAt(source).orElse(null);
+        if (movingPiece == null) {
+            return Set.of();
+        }
+
+        PieceRules pieceRules = rulesByKind.get(movingPiece.getKind());
+        if (pieceRules == null) {
+            throw new IllegalStateException("No movement rule configured for " + movingPiece.getKind());
+        }
+        return pieceRules.legalDestinations(board, movingPiece);
+    }
+
     public MoveValidation validateMove(IBoard board, Position source, Position destination) {
         if (!board.isWithinBorder(source) || !board.isWithinBorder(destination)) {
             return MoveValidation.invalid("outside_board");

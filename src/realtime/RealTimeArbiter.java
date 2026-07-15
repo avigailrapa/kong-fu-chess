@@ -15,8 +15,8 @@ public class RealTimeArbiter {
 
     private static final double CELL_LENGTH_METERS = 1.5;
     private static final long JUMP_DURATION_MS = 1000;
-    private static final long LONG_REST_MS = 2000;
-    private static final long SHORT_REST_MS = 500;
+    public static final long LONG_REST_MS = 2000;
+    public static final long SHORT_REST_MS = 500;
 
     private final String piecesRoot;
     private final MotionResolver motionResolver;

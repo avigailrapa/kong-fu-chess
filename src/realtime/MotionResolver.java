@@ -16,10 +16,6 @@ public class MotionResolver {
         Piece capturedPiece = board.getPieceAt(motion.destination()).orElse(null);
 
         if (capturedPiece != null && capturedPiece.getColor() == motion.piece().getColor()) {
-            // The destination became friendly-occupied after this motion started (the board
-            // only changes on arrival, so RuleEngine could not have foreseen this at request
-            // time). This is not a capture: the motion is cancelled and the piece bounces back
-            // to idle at its own source without ever actually moving.
             return resolveBounceBack(motion);
         }
 

@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class GameEngine {
 
@@ -144,8 +145,11 @@ public GameSnapshot snapshot(Position selectedPosition) {
         Piece piece = board.getPieceAt(position).orElseThrow();
         grid[position.getRow()][position.getCol()] = pieceSnapshotOf(piece, position);
     }
-    return new GameSnapshot(width, height, grid, selectedPosition, gameState.isGameOver(), 
-                           gameState.winner(), gameState.getScore(Piece.Color.WHITE), 
+    Set<Position> legalDestinations = selectedPosition == null
+            ? Set.of()
+            : ruleEngine.legalDestinations(board, selectedPosition);
+    return new GameSnapshot(width, height, grid, selectedPosition, legalDestinations, gameState.isGameOver(),
+                           gameState.winner(), gameState.getScore(Piece.Color.WHITE),
                            gameState.getScore(Piece.Color.BLACK));
 }
 
@@ -153,6 +157,7 @@ public GameSnapshot snapshot(Position selectedPosition) {
         int pixelX = (int) Math.round(position.getCol() * GameSnapshot.CELL_WIDTH);
         int pixelY = (int) Math.round(position.getRow() * GameSnapshot.CELL_HEIGHT);
         long elapsedMillis;
+        long restDurationMs = 0;
         PieceSnapshot.RenderState renderState;
 
         Optional<Motion> motion = arbiter.activeMotion(piece);
@@ -169,9 +174,11 @@ public GameSnapshot snapshot(Position selectedPosition) {
             renderState = PieceSnapshot.RenderState.JUMPING;
         } else if (arbiter.isLongResting(piece)) {
             elapsedMillis = arbiter.longRestElapsedMs(piece);
+            restDurationMs = RealTimeArbiter.LONG_REST_MS;
             renderState = PieceSnapshot.RenderState.LONG_REST;
         } else if (arbiter.isShortResting(piece)) {
             elapsedMillis = arbiter.shortRestElapsedMs(piece);
+            restDurationMs = RealTimeArbiter.SHORT_REST_MS;
             renderState = PieceSnapshot.RenderState.SHORT_REST;
         } else {
             elapsedMillis = gameClockMs;
@@ -179,7 +186,7 @@ public GameSnapshot snapshot(Position selectedPosition) {
         }
 
         return new PieceSnapshot(piece.getId(), piece.getColor(), piece.getKind(), renderState,
-                pixelX, pixelY, elapsedMillis);
+                pixelX, pixelY, elapsedMillis, restDurationMs);
     }
 
     private static int interpolate(int from, int to, double progress) {
