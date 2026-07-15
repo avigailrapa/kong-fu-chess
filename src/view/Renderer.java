@@ -17,16 +17,23 @@ import java.util.Set;
 
 public class Renderer {
 
-    private static final int PANEL_WIDTH = 260;
+    private static final int PANEL_WIDTH = 320;
     private static final int PANEL_PADDING = 16;
-    private static final int LOG_LINE_HEIGHT = 26;
+    private static final int LOG_LINE_HEIGHT = 34;
+    private static final float LOG_FONT_SIZE = 1.8f;
+    private static final float SCORE_FONT_SIZE = 1.8f;
     private static final int ROW_LABEL_WIDTH = 32;
     private static final int COL_LABEL_HEIGHT = 28;
-    private static final float COORD_FONT_SIZE = 1.0f;
+    private static final int TITLE_HEIGHT = 50;
+    private static final String TITLE_TEXT = "♟ KUNG FU CHESS ♟";
+    private static final float TITLE_FONT_SIZE = 2.2f;
+    private static final Color TITLE_COLOR = new Color(255, 255, 255);
+    private static final float COORD_FONT_SIZE = 1.6f;
     private static final Color LIGHT_SQUARE_COLOR = new Color(240, 217, 181);
     private static final Color DARK_SQUARE_COLOR = new Color(139, 90, 43);
     private static final Color BOARD_BORDER_COLOR = new Color(94, 61, 28);
     private static final Color LEGAL_MOVE_MARKER_COLOR = new Color(128, 128, 128, 150);
+    private static final Color LEGAL_CAPTURE_MARKER_COLOR = new Color(220, 40, 40, 160);
     private static final Color REST_COOLDOWN_COLOR = new Color(255, 215, 0);
     private static final int REST_COOLDOWN_MAX_ALPHA = 180;
     private static final Color WHITE_PIECE_TOP = new Color(255, 255, 255);
@@ -60,7 +67,7 @@ public class Renderer {
     }
 
     public int boardOffsetY() {
-        return COL_LABEL_HEIGHT;
+        return TITLE_HEIGHT + COL_LABEL_HEIGHT;
     }
 
     public BufferedImage render(GameSnapshot snapshot) {
@@ -75,6 +82,7 @@ public class Renderer {
         Img canvas = new Img(fullCanvas);
         canvas.fillRect(0, 0, fullWidth, fullHeight, new Color(18, 18, 22));
 
+        drawTitle(canvas, boardOffsetX, boardWidth);
         drawBoardSquares(canvas, snapshot, boardOffsetX, boardOffsetY);
         canvas.drawRect(boardOffsetX - 4, boardOffsetY - 4, boardWidth + 8, boardHeight + 8, BOARD_BORDER_COLOR, 4);
         drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
@@ -106,6 +114,12 @@ public class Renderer {
         return canvas.get();
     }
 
+    private void drawTitle(Img canvas, int boardOffsetX, int boardWidth) {
+        int textX = boardOffsetX + boardWidth / 2 - (TITLE_TEXT.length() * 8);
+        int textY = TITLE_HEIGHT - 12;
+        canvas.putText(TITLE_TEXT, textX, textY, TITLE_FONT_SIZE, TITLE_COLOR, 0);
+    }
+
     private void drawBoardSquares(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
         int cellWidth = (int) Math.round(GameSnapshot.CELL_WIDTH);
         int cellHeight = (int) Math.round(GameSnapshot.CELL_HEIGHT);
@@ -125,13 +139,13 @@ public class Renderer {
 
         int textX = panelX + PANEL_PADDING;
         int y = PANEL_PADDING + 18;
-        canvas.putText(label + ": " + score, textX, y, 1.6f, new Color(240, 240, 240), 0);
+        canvas.putText(label + ": " + score, textX, y, SCORE_FONT_SIZE, new Color(240, 240, 240), 0);
         y += 40;
 
         int maxVisibleRows = Math.max(0, (fullHeight - y - PANEL_PADDING) / LOG_LINE_HEIGHT);
         int firstVisible = Math.max(0, moves.size() - maxVisibleRows);
         for (int i = firstVisible; i < moves.size(); i++) {
-            canvas.putText(formatMoveText(moves.get(i)), textX, y, 1.2f, new Color(220, 220, 220), 0);
+            canvas.putText(formatMoveText(moves.get(i)), textX, y, LOG_FONT_SIZE, new Color(220, 220, 220), 0);
             y += LOG_LINE_HEIGHT;
         }
     }
@@ -155,17 +169,15 @@ public class Renderer {
     }
 
     private void drawSelection(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
-        Position selected = snapshot.selectedPosition();
-        if (selected == null) {
-            return;
+        for (SelectionSnapshot selection : snapshot.selections()) {
+            Position selected = selection.position();
+            int x = boardOffsetX + (int) Math.round(selected.getCol() * GameSnapshot.CELL_WIDTH);
+            int y = boardOffsetY + (int) Math.round(selected.getRow() * GameSnapshot.CELL_HEIGHT);
+            int width = (int) Math.round(GameSnapshot.CELL_WIDTH);
+            int height = (int) Math.round(GameSnapshot.CELL_HEIGHT);
+
+            canvas.drawRect(x, y, width, height, new Color(255, 215, 0), 4);
         }
-
-        int x = boardOffsetX + (int) Math.round(selected.getCol() * GameSnapshot.CELL_WIDTH);
-        int y = boardOffsetY + (int) Math.round(selected.getRow() * GameSnapshot.CELL_HEIGHT);
-        int width = (int) Math.round(GameSnapshot.CELL_WIDTH);
-        int height = (int) Math.round(GameSnapshot.CELL_HEIGHT);
-
-        canvas.drawRect(x, y, width, height, new Color(255, 215, 0), 4);
     }
 
     private void drawLegalMoves(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
@@ -175,7 +187,8 @@ public class Renderer {
         for (Position destination : snapshot.legalDestinations()) {
             int cellX = boardOffsetX + (int) Math.round(destination.getCol() * GameSnapshot.CELL_WIDTH);
             int cellY = boardOffsetY + (int) Math.round(destination.getRow() * GameSnapshot.CELL_HEIGHT);
-            canvas.fillRect(cellX, cellY, cellWidth, cellHeight, LEGAL_MOVE_MARKER_COLOR);
+            Color markerColor = snapshot.isOccupied(destination) ? LEGAL_CAPTURE_MARKER_COLOR : LEGAL_MOVE_MARKER_COLOR;
+            canvas.fillRect(cellX, cellY, cellWidth, cellHeight, markerColor);
         }
     }
 

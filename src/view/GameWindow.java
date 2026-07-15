@@ -34,7 +34,7 @@ public class GameWindow {
         this.renderer = initial.renderer();
 
         this.panel = new ImagePanel();
-        this.frame = new JFrame("Kung Fu Chess");
+        this.frame = new JFrame("♟ Kung Fu Chess ♟");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.add(new JScrollPane(panel));
 
@@ -79,7 +79,7 @@ public class GameWindow {
         this.renderer = fresh.renderer();
         this.gameOverAnnounced = false;
         this.scale = null;
-        frame.setTitle("Kung Fu Chess");
+        frame.setTitle("♟ Kung Fu Chess ♟");
         if (!timer.isRunning()) {
             timer.start();
         }
@@ -105,7 +105,7 @@ public class GameWindow {
         if (snapshot.isGameOver() && !gameOverAnnounced) {
             gameOverAnnounced = true;
             timer.stop();
-            frame.setTitle("Kung Fu Chess - " + snapshot.winner() + " wins! (click to restart)");
+            frame.setTitle("♟ Kung Fu Chess - " + snapshot.winner() + " wins! (click to restart)");
         }
     }
 
