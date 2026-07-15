@@ -3,9 +3,10 @@ package src.view;
 import src.model.Piece;
 import src.model.Position;
 
+import java.util.List;
 import java.util.Set;
 
-public record GameSnapshot(int width, int height, PieceSnapshot[][] board, Position selectedPosition,
+public record GameSnapshot(int width, int height, PieceSnapshot[][] board, List<SelectionSnapshot> selections,
                             Set<Position> legalDestinations,
                             boolean gameOver, Piece.Color winner, int whiteScore, int blackScore) {
 
@@ -22,6 +23,10 @@ public record GameSnapshot(int width, int height, PieceSnapshot[][] board, Posit
 
     public boolean isLegalDestination(Position position) {
         return legalDestinations.contains(position);
+    }
+
+    public boolean isSelected(Position position) {
+        return selections.stream().anyMatch(selection -> selection.position().equals(position));
     }
 
     public boolean isGameOver() {

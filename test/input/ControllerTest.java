@@ -7,6 +7,7 @@ import src.realtime.*;
 import src.view.*;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,7 +41,7 @@ public class ControllerTest {
                 grid[position.getRow()][position.getCol()] =
                         new PieceSnapshot("p", Piece.Color.WHITE, Piece.Kind.PAWN, PieceSnapshot.RenderState.IDLE, 0, 0, 0, 0);
             }
-            return new GameSnapshot(8, 8, grid, selectedPosition, Set.of(), false, null, 0, 0);
+            return new GameSnapshot(8, 8, grid, List.of(), Set.of(), false, null, 0, 0);
         }
     }
 

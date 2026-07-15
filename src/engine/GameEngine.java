@@ -4,6 +4,7 @@ import src.realtime.*;
 import src.rules.*;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
+import src.view.SelectionSnapshot;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -144,7 +145,13 @@ public class GameEngine {
         Set<Position> legalDestinations = selectedPosition == null
                 ? Set.of()
                 : ruleEngine.legalDestinations(board, selectedPosition);
-        return new GameSnapshot(width, height, grid, selectedPosition, legalDestinations, gameState.isGameOver(),
+        List<SelectionSnapshot> selections = selectedPosition == null
+                ? List.of()
+                : board.getPieceAt(selectedPosition)
+                        .map(piece -> new SelectionSnapshot(piece.getColor(), selectedPosition))
+                        .map(List::of)
+                        .orElse(List.of());
+        return new GameSnapshot(width, height, grid, selections, legalDestinations, gameState.isGameOver(),
                                gameState.winner(), gameState.getScore(Piece.Color.WHITE),
                                gameState.getScore(Piece.Color.BLACK));
     }
