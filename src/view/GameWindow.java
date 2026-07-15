@@ -23,6 +23,7 @@ public class GameWindow {
     private final ImagePanel panel;
     private final Timer timer;
     private boolean gameOverAnnounced = false;
+    private boolean wasActive = true;
     private Double scale = null;
 
     public GameWindow(Supplier<GameComponents> gameFactory) {
@@ -69,7 +70,11 @@ public class GameWindow {
 
     public void tick(long ms) {
         gameEngine.waitMs(ms);
-        repaint();
+        boolean active = gameEngine.hasActivity();
+        if (active || wasActive) {
+            repaint();
+        }
+        wasActive = active;
     }
 
     private void restart() {
@@ -78,6 +83,7 @@ public class GameWindow {
         this.controller = fresh.controller();
         this.renderer = fresh.renderer();
         this.gameOverAnnounced = false;
+        this.wasActive = true;
         this.scale = null;
         frame.setTitle("♟ Kung Fu Chess ♟");
         if (!timer.isRunning()) {
