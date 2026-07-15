@@ -33,6 +33,10 @@ public class Renderer {
     private static final Color DARK_SQUARE_COLOR = new Color(139, 90, 43);
     private static final Color BOARD_BORDER_COLOR = new Color(94, 61, 28);
     private static final Color LEGAL_MOVE_MARKER_COLOR = new Color(128, 128, 128, 150);
+    private static final float GAME_OVER_FONT_SIZE = 3.0f;
+    private static final Color GAME_OVER_TEXT_COLOR = new Color(255, 255, 255);
+    private static final Color GAME_OVER_BACKGROUND_COLOR = new Color(0, 0, 0, 140);
+    private static final int GAME_OVER_BAND_HEIGHT = 100;
     private static final Color LEGAL_CAPTURE_MARKER_COLOR = new Color(220, 40, 40, 160);
     private static final Color REST_COOLDOWN_COLOR = new Color(255, 215, 0);
     private static final int REST_COOLDOWN_MAX_ALPHA = 180;
@@ -107,11 +111,20 @@ public class Renderer {
         }
 
         if (snapshot.isGameOver()) {
-            int textX = boardOffsetX + boardWidth / 2 - 70;
-            canvas.putText(snapshot.winner() + " WINS!", textX, boardOffsetY + boardHeight / 2, 1.8f, new Color(220, 20, 20), 0);
+            drawGameOver(canvas, snapshot, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
         }
 
         return canvas.get();
+    }
+
+    private void drawGameOver(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY, int boardWidth, int boardHeight) {
+        String caption = snapshot.winner() + " WINS!";
+        int bandY = boardOffsetY + boardHeight / 2 - GAME_OVER_BAND_HEIGHT / 2;
+        canvas.fillRect(boardOffsetX, bandY, boardWidth, GAME_OVER_BAND_HEIGHT, GAME_OVER_BACKGROUND_COLOR);
+
+        int textX = boardOffsetX + boardWidth / 2 - (caption.length() * 11);
+        int textY = bandY + GAME_OVER_BAND_HEIGHT / 2 + 14;
+        canvas.putText(caption, textX, textY, GAME_OVER_FONT_SIZE, GAME_OVER_TEXT_COLOR, 0);
     }
 
     private void drawTitle(Img canvas, int boardOffsetX, int boardWidth) {

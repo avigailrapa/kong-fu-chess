@@ -63,6 +63,9 @@ public class GameEngine {
     }
 
     private void fireMoveEvent(Piece piece, Position source, Position destination, boolean capture, boolean kingCapture, long requestTimestampMs) {
+        if (moveObservers.isEmpty()) {
+            return;
+        }
         MoveEvent event = new MoveEvent(piece.getColor(), piece.getKind(), source, destination, capture, kingCapture, requestTimestampMs);
         notifyMoveObservers(event);
     }
@@ -92,6 +95,10 @@ public class GameEngine {
 
     public boolean isOccupied(Position position) {
         return board.isWithinBorder(position) && board.getPieceAt(position).isPresent();
+    }
+
+    public boolean hasActivity() {
+        return !arbiter.isIdle();
     }
 
     public void requestJump(Position cell) {

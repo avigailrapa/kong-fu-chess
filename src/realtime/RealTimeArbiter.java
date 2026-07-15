@@ -47,6 +47,11 @@ public class RealTimeArbiter {
         return !activeMotions.isEmpty();
     }
 
+    public boolean isIdle() {
+        return activeMotions.isEmpty() && activeJumps.isEmpty()
+                && longRestElapsedMs.isEmpty() && shortRestElapsedMs.isEmpty();
+    }
+
     public boolean isMoving(Piece piece) {
         return activeMotions.containsKey(piece);
     }
