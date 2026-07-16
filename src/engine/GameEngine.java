@@ -75,7 +75,7 @@ public class GameEngine {
             return new MoveResult(false, "game_over");
         }
         Piece pieceAtSource = board.isWithinBorder(source) ? board.getPieceAt(source).orElse(null) : null;
-        if (pieceAtSource != null && arbiter.isMoving(pieceAtSource)) {
+        if (pieceAtSource != null && (arbiter.isMoving(pieceAtSource) || arbiter.isJumping(pieceAtSource))) {
             return new MoveResult(false, "motion_in_progress");
         }
         if (pieceAtSource != null && arbiter.isResting(pieceAtSource)) {
@@ -188,7 +188,7 @@ public class GameEngine {
         int pixelY = (int) Math.round(position.getRow() * GameSnapshot.CELL_HEIGHT);
         long elapsedMillis;
         long restDurationMs = 0;
-        PieceSnapshot.RenderState renderState;
+        Piece.State state = piece.getState();
 
         Optional<Motion> motion = arbiter.activeMotion(piece);
         if (motion.isPresent()) {
@@ -198,24 +198,19 @@ public class GameEngine {
             double progress = Math.min(1.0, (double) elapsedMillis / m.durationMs());
             pixelX = (int) Math.round(interpolate(m.source().getCol(), m.destination().getCol(), progress) * GameSnapshot.CELL_WIDTH);
             pixelY = (int) Math.round(interpolate(m.source().getRow(), m.destination().getRow(), progress) * GameSnapshot.CELL_HEIGHT);
-            renderState = PieceSnapshot.RenderState.MOVING;
-        } else if (arbiter.isJumping(piece)) {
+        } else if (state == Piece.State.JUMPING) {
             elapsedMillis = arbiter.jumpElapsedMs(piece);
-            renderState = PieceSnapshot.RenderState.JUMPING;
-        } else if (arbiter.isLongResting(piece)) {
+        } else if (state == Piece.State.LONG_REST) {
             elapsedMillis = arbiter.longRestElapsedMs(piece);
             restDurationMs = RealTimeArbiter.LONG_REST_MS;
-            renderState = PieceSnapshot.RenderState.LONG_REST;
-        } else if (arbiter.isShortResting(piece)) {
+        } else if (state == Piece.State.SHORT_REST) {
             elapsedMillis = arbiter.shortRestElapsedMs(piece);
             restDurationMs = RealTimeArbiter.SHORT_REST_MS;
-            renderState = PieceSnapshot.RenderState.SHORT_REST;
         } else {
             elapsedMillis = gameClockMs;
-            renderState = PieceSnapshot.RenderState.IDLE;
         }
 
-        return new PieceSnapshot(piece.getId(), piece.getColor(), piece.getKind(), renderState,
+        return new PieceSnapshot(piece.getId(), piece.getColor(), piece.getKind(), state,
                 pixelX, pixelY, elapsedMillis, restDurationMs);
     }
 

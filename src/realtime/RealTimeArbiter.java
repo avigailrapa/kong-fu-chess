@@ -22,6 +22,7 @@ public class RealTimeArbiter {
     private final MotionResolver motionResolver;
     private final JumpResolver jumpResolver;
     private final CollisionResolver collisionResolver;
+    private final PathCrossingResolver pathCrossingResolver = new PathCrossingResolver();
 
     private final Map<Piece, Motion> activeMotions = new LinkedHashMap<>();
     private final Map<Piece, Long> motionElapsedMs = new LinkedHashMap<>();
@@ -124,12 +125,6 @@ public class RealTimeArbiter {
         jumpElapsedMs.put(piece, 0L);
     }
 
-    public void endJump(Piece piece) {
-        activeJumps.remove(piece);
-        jumpElapsedMs.remove(piece);
-        piece.setState(Piece.State.IDLE);
-    }
-
     public List<ArrivalEvent> advanceTime(long ms) {
         for (Piece piece : activeMotions.keySet()) {
             motionElapsedMs.merge(piece, ms, Long::sum);
@@ -143,6 +138,8 @@ public class RealTimeArbiter {
         for (Piece piece : shortRestElapsedMs.keySet()) {
             shortRestElapsedMs.merge(piece, ms, Long::sum);
         }
+
+        activeMotions.putAll(pathCrossingResolver.truncateLaterArrivals(activeMotions, motionElapsedMs));
 
         List<Piece> duePieces = dueMotionPieces();
         List<Piece> dueJumpers = dueJumpPieces();
@@ -168,7 +165,12 @@ public class RealTimeArbiter {
                 duePieces.add(entry.getKey());
             }
         }
-        duePieces.forEach(elapsedByPiece::remove);
+        for (Piece piece : duePieces) {
+            elapsedByPiece.remove(piece);
+            if (piece.getState() != Piece.State.CAPTURED) {
+                piece.setState(Piece.State.IDLE);
+            }
+        }
     }
 
     private List<Piece> dueMotionPieces() {
@@ -302,8 +304,10 @@ public class RealTimeArbiter {
     private void startConfiguredRest(Piece piece, String nextState) {
         if ("long_rest".equals(nextState)) {
             longRestElapsedMs.put(piece, 0L);
+            piece.setState(Piece.State.LONG_REST);
         } else if ("short_rest".equals(nextState)) {
             shortRestElapsedMs.put(piece, 0L);
+            piece.setState(Piece.State.SHORT_REST);
         }
         // "idle" (or anything else): the piece is already idle once its move/jump resolver
         // ran, so no rest map entry is needed.
