@@ -18,7 +18,7 @@ abstract class FixedOffsetRule implements PieceRules {
         Position current = piece.getCell();
 
         for (int[] offset : offsets()) {
-            Position candidate = new Position(current.getRow() + offset[0], current.getCol() + offset[1]);
+            Position candidate = new Position(current.row() + offset[0], current.col() + offset[1]);
             if (!board.isWithinBorder(candidate)) {
                 continue;
             }

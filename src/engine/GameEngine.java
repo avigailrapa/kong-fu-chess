@@ -52,10 +52,6 @@ public class GameEngine {
         moveObservers.add(observer);
     }
 
-    public void removeMoveObserver(MoveObserver observer) {
-        moveObservers.remove(observer);
-    }
-
     private void notifyMoveObservers(MoveEvent event) {
         for (MoveObserver observer : moveObservers) {
             observer.onMove(event);
@@ -155,7 +151,7 @@ public class GameEngine {
         PieceSnapshot[][] grid = new PieceSnapshot[height][width];
         for (Position position : board.occupiedPositions()) {
             Piece piece = board.getPieceAt(position).orElseThrow();
-            grid[position.getRow()][position.getCol()] = pieceSnapshotOf(piece, position);
+            grid[position.row()][position.col()] = pieceSnapshotOf(piece, position);
         }
         Set<Position> legalDestinations = legalDestinationsFor(selectedPosition);
         List<SelectionSnapshot> selections = selectedPosition == null
@@ -184,8 +180,8 @@ public class GameEngine {
     }
 
     private PieceSnapshot pieceSnapshotOf(Piece piece, Position position) {
-        int pixelX = (int) Math.round(position.getCol() * GameSnapshot.CELL_WIDTH);
-        int pixelY = (int) Math.round(position.getRow() * GameSnapshot.CELL_HEIGHT);
+        int pixelX = (int) Math.round(position.col() * GameSnapshot.CELL_WIDTH);
+        int pixelY = (int) Math.round(position.row() * GameSnapshot.CELL_HEIGHT);
         long elapsedMillis;
         long restDurationMs = 0;
         Piece.State state = piece.getState();
@@ -196,8 +192,8 @@ public class GameEngine {
             elapsedMillis = arbiter.motionElapsedMs(piece);
 
             double progress = Math.min(1.0, (double) elapsedMillis / m.durationMs());
-            pixelX = (int) Math.round(interpolate(m.source().getCol(), m.destination().getCol(), progress) * GameSnapshot.CELL_WIDTH);
-            pixelY = (int) Math.round(interpolate(m.source().getRow(), m.destination().getRow(), progress) * GameSnapshot.CELL_HEIGHT);
+            pixelX = (int) Math.round(interpolate(m.source().col(), m.destination().col(), progress) * GameSnapshot.CELL_WIDTH);
+            pixelY = (int) Math.round(interpolate(m.source().row(), m.destination().row(), progress) * GameSnapshot.CELL_HEIGHT);
         } else if (state == Piece.State.JUMPING) {
             elapsedMillis = arbiter.jumpElapsedMs(piece);
         } else if (state == Piece.State.LONG_REST) {

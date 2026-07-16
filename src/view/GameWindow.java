@@ -104,7 +104,7 @@ public class GameWindow {
         BufferedImage image = renderer.render(snapshot);
         panel.setImage(image);
 
-        if (snapshot.isGameOver() && !gameOverAnnounced) {
+        if (snapshot.gameOver() && !gameOverAnnounced) {
             gameOverAnnounced = true;
             timer.stop();
             frame.setTitle("♟ Kung Fu Chess - " + snapshot.winner() + " wins! (click to restart)");

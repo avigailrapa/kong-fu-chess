@@ -27,8 +27,6 @@ public class Renderer {
     private static final float TITLE_FONT_SIZE = 2.2f;
     private static final Color TITLE_COLOR = new Color(255, 255, 255);
     private static final float COORD_FONT_SIZE = 1.6f;
-    private static final Color LIGHT_SQUARE_COLOR = new Color(240, 217, 181);
-    private static final Color DARK_SQUARE_COLOR = new Color(139, 90, 43);
     private static final Color BOARD_BORDER_COLOR = new Color(94, 61, 28);
     private static final Color LEGAL_MOVE_MARKER_COLOR = new Color(128, 128, 128, 150);
     private static final float GAME_OVER_FONT_SIZE = 3.0f;
@@ -47,10 +45,6 @@ public class Renderer {
     private final Set<String> missingSpriteWarnings = new HashSet<>();
     private BufferedImage boardBackgroundImage;
     private boolean boardBackgroundImageLoaded = false;
-
-    public Renderer() {
-        this("assets/pieces");
-    }
 
     public Renderer(String piecesRoot) {
         this.piecesRoot = piecesRoot;
@@ -77,12 +71,12 @@ public class Renderer {
         canvas.fillRect(0, 0, fullWidth, fullHeight, new Color(18, 18, 22));
 
         drawTitle(canvas, boardOffsetX, boardWidth);
-        drawBoardSquares(canvas, snapshot, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
+        drawBoardBackground(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
         canvas.drawRect(boardOffsetX - 4, boardOffsetY - 4, boardWidth + 8, boardHeight + 8, BOARD_BORDER_COLOR, 4);
         drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
 
-        drawSidePanel(canvas, 0, fullHeight, "Black", snapshot.getBlackScore(), snapshot.blackMoveLog());
-        drawSidePanel(canvas, boardOffsetX + boardWidth, fullHeight, "White", snapshot.getWhiteScore(), snapshot.whiteMoveLog());
+        drawSidePanel(canvas, 0, fullHeight, "Black", snapshot.blackScore(), snapshot.blackMoveLog());
+        drawSidePanel(canvas, boardOffsetX + boardWidth, fullHeight, "White", snapshot.whiteScore(), snapshot.whiteMoveLog());
 
         drawSelection(canvas, snapshot, boardOffsetX, boardOffsetY);
         drawLegalMoves(canvas, snapshot, boardOffsetX, boardOffsetY);
@@ -98,7 +92,7 @@ public class Renderer {
             }
         }
 
-        if (snapshot.isGameOver()) {
+        if (snapshot.gameOver()) {
             drawGameOver(canvas, snapshot, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
         }
 
@@ -121,34 +115,16 @@ public class Renderer {
         canvas.putText(TITLE_TEXT, textX, textY, TITLE_FONT_SIZE, TITLE_COLOR, 0);
     }
 
-    private void drawBoardSquares(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY,
-                                   int boardWidth, int boardHeight) {
+    private void drawBoardBackground(Img canvas, int boardOffsetX, int boardOffsetY, int boardWidth, int boardHeight) {
         BufferedImage background = boardBackgroundImage(boardWidth, boardHeight);
-        if (background != null) {
-            new Img(background).drawOn(canvas, boardOffsetX, boardOffsetY);
-            return;
-        }
-
-        int cellWidth = (int) Math.round(GameSnapshot.CELL_WIDTH);
-        int cellHeight = (int) Math.round(GameSnapshot.CELL_HEIGHT);
-
-        for (int row = 0; row < snapshot.height(); row++) {
-            for (int col = 0; col < snapshot.width(); col++) {
-                int x = boardOffsetX + (int) Math.round(col * GameSnapshot.CELL_WIDTH);
-                int y = boardOffsetY + (int) Math.round(row * GameSnapshot.CELL_HEIGHT);
-                boolean isLightSquare = (row + col) % 2 == 0;
-                canvas.fillRect(x, y, cellWidth, cellHeight, isLightSquare ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
-            }
-        }
+        new Img(background).drawOn(canvas, boardOffsetX, boardOffsetY);
     }
 
     private BufferedImage boardBackgroundImage(int boardWidth, int boardHeight) {
         if (!boardBackgroundImageLoaded) {
             File file = new File(piecesRoot).getParentFile();
             String path = new File(file, BOARD_IMAGE_FILENAME).getPath();
-            boardBackgroundImage = new File(path).isFile()
-                    ? new Img().read(path, new Dimension(boardWidth, boardHeight), false, null).get()
-                    : null;
+            boardBackgroundImage = new Img().read(path, new Dimension(boardWidth, boardHeight), false, null).get();
             boardBackgroundImageLoaded = true;
         }
         return boardBackgroundImage;
@@ -187,8 +163,8 @@ public class Renderer {
     private void drawSelection(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
         for (SelectionSnapshot selection : snapshot.selections()) {
             Position selected = selection.position();
-            int x = boardOffsetX + (int) Math.round(selected.getCol() * GameSnapshot.CELL_WIDTH);
-            int y = boardOffsetY + (int) Math.round(selected.getRow() * GameSnapshot.CELL_HEIGHT);
+            int x = boardOffsetX + (int) Math.round(selected.col() * GameSnapshot.CELL_WIDTH);
+            int y = boardOffsetY + (int) Math.round(selected.row() * GameSnapshot.CELL_HEIGHT);
             int width = (int) Math.round(GameSnapshot.CELL_WIDTH);
             int height = (int) Math.round(GameSnapshot.CELL_HEIGHT);
 
@@ -201,8 +177,8 @@ public class Renderer {
         int cellHeight = (int) Math.round(GameSnapshot.CELL_HEIGHT);
 
         for (Position destination : snapshot.legalDestinations()) {
-            int x = boardOffsetX + (int) Math.round(destination.getCol() * GameSnapshot.CELL_WIDTH);
-            int y = boardOffsetY + (int) Math.round(destination.getRow() * GameSnapshot.CELL_HEIGHT);
+            int x = boardOffsetX + (int) Math.round(destination.col() * GameSnapshot.CELL_WIDTH);
+            int y = boardOffsetY + (int) Math.round(destination.row() * GameSnapshot.CELL_HEIGHT);
             Color markerColor = snapshot.isOccupied(destination) ? LEGAL_CAPTURE_MARKER_COLOR : LEGAL_MOVE_MARKER_COLOR;
             canvas.fillRect(x, y, cellWidth, cellHeight, markerColor);
         }
@@ -266,7 +242,7 @@ public class Renderer {
         long frameDurationMs = 1000 / config.framesPerSecond();
         int frame;
         
-        if (config.isLoop()) {
+        if (config.loop()) {
             frame = (int) ((piece.elapsedMillis() / frameDurationMs) % frameCount) + 1;
         } else {
             frame = Math.min((int) (piece.elapsedMillis() / frameDurationMs) + 1, frameCount);

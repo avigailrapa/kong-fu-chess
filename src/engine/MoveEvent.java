@@ -6,14 +6,6 @@ import src.model.Position;
 public record MoveEvent(Piece.Color color, Piece.Kind kind, Position from, Position to,
                          boolean capture, boolean kingCapture, long requestTimestampMs) {
 
-    public boolean isCapture() {
-        return capture;
-    }
-
-    public boolean isKingCapture() {
-        return kingCapture;
-    }
-
     public String formattedRequestTime() {
         long totalMs = requestTimestampMs;
         long minutes = totalMs / 60000;
@@ -30,8 +22,8 @@ public record MoveEvent(Piece.Color color, Piece.Kind kind, Position from, Posit
     }
 
     private String toFileRank(Position position) {
-        char file = (char) ('a' + position.getCol());
-        int rank = 8 - position.getRow();
+        char file = (char) ('a' + position.col());
+        int rank = 8 - position.row();
         return "" + file + rank;
     }
 

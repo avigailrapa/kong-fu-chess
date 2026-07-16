@@ -25,8 +25,8 @@ abstract class SlidingRule implements PieceRules {
 
     private void slide(IBoard board, Piece piece, int rowStep, int colStep, Set<Position> destinations) {
         Position current = piece.getCell();
-        int row = current.getRow() + rowStep;
-        int col = current.getCol() + colStep;
+        int row = current.row() + rowStep;
+        int col = current.col() + colStep;
 
         while (true) {
             Position candidate = new Position(row, col);
