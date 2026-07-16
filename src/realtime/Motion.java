@@ -11,8 +11,8 @@ public record Motion(Piece piece, Position source, Position destination, long du
      * line (e.g. a knight) or is only one square long, since there is no cell in between.
      */
     public Position cellBeforeDestination() {
-        int deltaRow = destination.getRow() - source.getRow();
-        int deltaCol = destination.getCol() - source.getCol();
+        int deltaRow = destination.row() - source.row();
+        int deltaCol = destination.col() - source.col();
         boolean isStraightLine = deltaRow == 0 || deltaCol == 0 || Math.abs(deltaRow) == Math.abs(deltaCol);
         if (!isStraightLine) {
             return source;
@@ -20,6 +20,6 @@ public record Motion(Piece piece, Position source, Position destination, long du
 
         int rowStep = Integer.signum(deltaRow);
         int colStep = Integer.signum(deltaCol);
-        return new Position(destination.getRow() - rowStep, destination.getCol() - colStep);
+        return new Position(destination.row() - rowStep, destination.col() - colStep);
     }
 }

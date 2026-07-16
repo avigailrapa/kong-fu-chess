@@ -17,13 +17,13 @@ public class PawnRule implements PieceRules {
         int forward = piece.getColor() == Piece.Color.WHITE ? -1 : 1;
         int startingRow = piece.getColor() == Piece.Color.WHITE ? board.getHeight() - 2 : 1;
 
-        Position forwardCell = new Position(current.getRow() + forward, current.getCol());
+        Position forwardCell = new Position(current.row() + forward, current.col());
         boolean forwardOpen = board.isWithinBorder(forwardCell) && board.getPieceAt(forwardCell).isEmpty();
         if (forwardOpen) {
             destinations.add(forwardCell);
 
-            if (current.getRow() == startingRow) {
-                Position twoStepCell = new Position(current.getRow() + forward * 2, current.getCol());
+            if (current.row() == startingRow) {
+                Position twoStepCell = new Position(current.row() + forward * 2, current.col());
                 if (board.isWithinBorder(twoStepCell) && board.getPieceAt(twoStepCell).isEmpty()) {
                     destinations.add(twoStepCell);
                 }
@@ -31,7 +31,7 @@ public class PawnRule implements PieceRules {
         }
 
         for (int colOffset : new int[]{-1, 1}) {
-            Position diagonalCell = new Position(current.getRow() + forward, current.getCol() + colOffset);
+            Position diagonalCell = new Position(current.row() + forward, current.col() + colOffset);
             if (!board.isWithinBorder(diagonalCell)) {
                 continue;
             }

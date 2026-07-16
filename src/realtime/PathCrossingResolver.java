@@ -106,8 +106,8 @@ public class PathCrossingResolver {
      */
     private List<Position> intermediateCells(Motion motion) {
         List<Position> cells = new ArrayList<>();
-        int deltaRow = motion.destination().getRow() - motion.source().getRow();
-        int deltaCol = motion.destination().getCol() - motion.source().getCol();
+        int deltaRow = motion.destination().row() - motion.source().row();
+        int deltaCol = motion.destination().col() - motion.source().col();
         boolean isStraightLine = deltaRow == 0 || deltaCol == 0 || Math.abs(deltaRow) == Math.abs(deltaCol);
         if (!isStraightLine) {
             return cells;
@@ -118,7 +118,7 @@ public class PathCrossingResolver {
         Position current = motion.source();
 
         while (!current.equals(motion.destination())) {
-            current = new Position(current.getRow() + rowStep, current.getCol() + colStep);
+            current = new Position(current.row() + rowStep, current.col() + colStep);
             if (current.equals(motion.destination())) {
                 break;
             }
@@ -128,9 +128,9 @@ public class PathCrossingResolver {
     }
 
     private Position cellAtDistance(Motion motion, int distance) {
-        int rowStep = Integer.signum(motion.destination().getRow() - motion.source().getRow());
-        int colStep = Integer.signum(motion.destination().getCol() - motion.source().getCol());
-        return new Position(motion.source().getRow() + rowStep * distance, motion.source().getCol() + colStep * distance);
+        int rowStep = Integer.signum(motion.destination().row() - motion.source().row());
+        int colStep = Integer.signum(motion.destination().col() - motion.source().col());
+        return new Position(motion.source().row() + rowStep * distance, motion.source().col() + colStep * distance);
     }
 
     private boolean isSliding(Piece.Kind kind) {

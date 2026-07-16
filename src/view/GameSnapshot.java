@@ -16,30 +16,10 @@ public record GameSnapshot(int width, int height, PieceSnapshot[][] board, List<
     public static final double CELL_HEIGHT = 828.0 * BOARD_SCALE / 8;
 
     public PieceSnapshot pieceAt(Position position) {
-        return board[position.getRow()][position.getCol()];
+        return board[position.row()][position.col()];
     }
 
     public boolean isOccupied(Position position) {
         return pieceAt(position) != null;
-    }
-
-    public boolean isLegalDestination(Position position) {
-        return legalDestinations.contains(position);
-    }
-
-    public boolean isSelected(Position position) {
-        return selections.stream().anyMatch(selection -> selection.position().equals(position));
-    }
-
-    public boolean isGameOver() {
-        return gameOver;
-    }
-
-    public int getWhiteScore() {
-        return whiteScore;
-    }
-
-    public int getBlackScore() {
-        return blackScore;
     }
 }

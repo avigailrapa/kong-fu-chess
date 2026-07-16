@@ -33,8 +33,8 @@ public class Board implements IBoard {
 
     @Override
     public boolean isWithinBorder(Position position) {
-        return position.getRow() >= 0 && position.getRow() < height
-                && position.getCol() >= 0 && position.getCol() < width;
+        return position.row() >= 0 && position.row() < height
+                && position.col() >= 0 && position.col() < width;
     }
 
     @Override

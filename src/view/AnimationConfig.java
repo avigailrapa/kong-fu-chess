@@ -14,10 +14,6 @@ public record AnimationConfig(double speedMetersPerSecond, String nextStateWhenF
     private static final Pattern FRAMES_PER_SEC = Pattern.compile("\"frames_per_sec\"\\s*:\\s*([-\\d.]+)");
     private static final Pattern IS_LOOP = Pattern.compile("\"is_loop\"\\s*:\\s*(true|false)");
 
-    public boolean isLoop() {
-        return loop;
-    }
-
     public static AnimationConfig load(String path) {
         String json;
         try {

@@ -65,7 +65,7 @@ public class MotionResolver {
             return false;
         }
         int promotionRow = piece.getColor() == Piece.Color.WHITE ? 0 : board.getHeight() - 1;
-        return piece.getCell().getRow() == promotionRow;
+        return piece.getCell().row() == promotionRow;
     }
 
     private Piece promoteToQueen(Piece pawn) {

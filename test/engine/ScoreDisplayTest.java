@@ -33,6 +33,6 @@ public class ScoreDisplayTest {
 
         assertEquals(9, gameState.getScore(Piece.Color.WHITE));
         assertEquals(0, gameState.getScore(Piece.Color.BLACK));
-        assertEquals(9, engine.snapshot(null).getWhiteScore());
+        assertEquals(9, engine.snapshot(null).whiteScore());
     }
 }

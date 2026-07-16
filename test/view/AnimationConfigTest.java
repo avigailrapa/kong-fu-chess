@@ -39,7 +39,7 @@ public class AnimationConfigTest {
         assertEquals(1.5, config.speedMetersPerSecond());
         assertEquals("long_rest", config.nextStateWhenFinished());
         assertEquals(12, config.framesPerSecond());
-        assertTrue(config.isLoop());
+        assertTrue(config.loop());
     }
 
     @Test

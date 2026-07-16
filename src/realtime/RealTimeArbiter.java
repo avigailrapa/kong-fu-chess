@@ -103,8 +103,8 @@ public class RealTimeArbiter {
         }
 
         long distance = Math.max(
-                Math.abs(source.getRow() - destination.getRow()),
-                Math.abs(source.getCol() - destination.getCol()));
+                Math.abs(source.row() - destination.row()),
+                Math.abs(source.col() - destination.col()));
 
         double speedMetersPerSecond = moveConfigFor(piece).speedMetersPerSecond();
         long durationMs = speedMetersPerSecond > 0

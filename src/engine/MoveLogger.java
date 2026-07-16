@@ -26,9 +26,4 @@ public class MoveLogger implements MoveObserver {
     public List<MoveEvent> getBlackMoves() {
         return Collections.unmodifiableList(blackMoves);
     }
-
-    public void clear() {
-        whiteMoves.clear();
-        blackMoves.clear();
-    }
 }
