@@ -14,6 +14,7 @@ import java.util.function.Supplier;
 public class GameWindow {
 
     private static final int SCREEN_CHROME_ALLOWANCE_PX = 80;
+    private static final Color BACKGROUND_COLOR = new Color(18, 18, 22);
 
     private final Supplier<GameComponents> gameFactory;
     private GameEngine gameEngine;
@@ -36,7 +37,11 @@ public class GameWindow {
         this.panel = new ImagePanel();
         this.frame = new JFrame("♟ Kung Fu Chess ♟");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.add(new JScrollPane(panel));
+        JScrollPane scrollPane = new JScrollPane(panel);
+        scrollPane.setBackground(BACKGROUND_COLOR);
+        scrollPane.getViewport().setBackground(BACKGROUND_COLOR);
+        frame.getContentPane().setBackground(BACKGROUND_COLOR);
+        frame.add(scrollPane);
 
         panel.addMouseListener(new MouseAdapter() {
             @Override
@@ -117,6 +122,10 @@ public class GameWindow {
 
     private static class ImagePanel extends JPanel {
         private BufferedImage image;
+
+        ImagePanel() {
+            setBackground(BACKGROUND_COLOR);
+        }
 
         void setImage(BufferedImage image) {
             this.image = image;

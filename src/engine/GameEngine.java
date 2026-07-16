@@ -153,9 +153,7 @@ public class GameEngine {
             Piece piece = board.getPieceAt(position).orElseThrow();
             grid[position.getRow()][position.getCol()] = pieceSnapshotOf(piece, position);
         }
-        Set<Position> legalDestinations = selectedPosition == null
-                ? Set.of()
-                : ruleEngine.legalDestinations(board, selectedPosition);
+        Set<Position> legalDestinations = legalDestinationsFor(selectedPosition);
         List<SelectionSnapshot> selections = selectedPosition == null
                 ? List.of()
                 : board.getPieceAt(selectedPosition)
@@ -165,6 +163,20 @@ public class GameEngine {
         return new GameSnapshot(width, height, grid, selections, legalDestinations, gameState.isGameOver(),
                                gameState.winner(), gameState.getScore(Piece.Color.WHITE),
                                gameState.getScore(Piece.Color.BLACK));
+    }
+
+    private Set<Position> legalDestinationsFor(Position selectedPosition) {
+        if (selectedPosition == null) {
+            return Set.of();
+        }
+        Piece selectedPiece = board.getPieceAt(selectedPosition).orElse(null);
+        if (selectedPiece == null) {
+            return Set.of();
+        }
+        if (arbiter.isMoving(selectedPiece) || arbiter.isResting(selectedPiece) || arbiter.isJumping(selectedPiece)) {
+            return Set.of();
+        }
+        return ruleEngine.legalDestinations(board, selectedPosition);
     }
 
     private PieceSnapshot pieceSnapshotOf(Piece piece, Position position) {
