@@ -146,6 +146,10 @@ public class GameEngine {
     }
 
     public GameSnapshot snapshot(Position selectedPosition) {
+        return snapshot(selectedPosition, List.of(), List.of());
+    }
+
+    public GameSnapshot snapshot(Position selectedPosition, List<String> whiteMoveLog, List<String> blackMoveLog) {
         int width = board.getWidth();
         int height = board.getHeight();
         PieceSnapshot[][] grid = new PieceSnapshot[height][width];
@@ -162,7 +166,7 @@ public class GameEngine {
                         .orElse(List.of());
         return new GameSnapshot(width, height, grid, selections, legalDestinations, gameState.isGameOver(),
                                gameState.winner(), gameState.getScore(Piece.Color.WHITE),
-                               gameState.getScore(Piece.Color.BLACK));
+                               gameState.getScore(Piece.Color.BLACK), whiteMoveLog, blackMoveLog);
     }
 
     private Set<Position> legalDestinationsFor(Position selectedPosition) {
@@ -217,9 +221,5 @@ public class GameEngine {
 
     private static int interpolate(int from, int to, double progress) {
         return (int) Math.round(from + (to - from) * progress);
-    }
-
-    public Board settledBoard() {
-        return board;
     }
 }

@@ -8,7 +8,8 @@ import java.util.Set;
 
 public record GameSnapshot(int width, int height, PieceSnapshot[][] board, List<SelectionSnapshot> selections,
                             Set<Position> legalDestinations,
-                            boolean gameOver, Piece.Color winner, int whiteScore, int blackScore) {
+                            boolean gameOver, Piece.Color winner, int whiteScore, int blackScore,
+                            List<String> whiteMoveLog, List<String> blackMoveLog) {
 
     private static final double BOARD_SCALE = 0.9;
     public static final double CELL_WIDTH = 822.0 * BOARD_SCALE / 8;
