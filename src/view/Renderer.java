@@ -193,7 +193,7 @@ public class Renderer {
 
         for (int row = 0; row < 8; row++) {
             int x = boardOffsetX - ROW_LABEL_WIDTH + 10;
-            int y = boardOffsetY + (int) Math.round(row * GameSnapshot.CELL_HEIGHT + GameSnapshot.CELL_HEIGHT / 2.0 + 6);
+            int y = boardOffsetY + (int) Math.round(row * GameSnapshot.CELL_HEIGHT + GameSnapshot.CELL_HEIGHT / 2.0) + 6;
             canvas.putText(String.valueOf(8 - row), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
         }
     }
@@ -215,10 +215,10 @@ public class Renderer {
         int cellHeight = (int) Math.round(GameSnapshot.CELL_HEIGHT);
 
         for (Position destination : snapshot.legalDestinations()) {
-            int cellX = boardOffsetX + (int) Math.round(destination.getCol() * GameSnapshot.CELL_WIDTH);
-            int cellY = boardOffsetY + (int) Math.round(destination.getRow() * GameSnapshot.CELL_HEIGHT);
+            int x = boardOffsetX + (int) Math.round(destination.getCol() * GameSnapshot.CELL_WIDTH);
+            int y = boardOffsetY + (int) Math.round(destination.getRow() * GameSnapshot.CELL_HEIGHT);
             Color markerColor = snapshot.isOccupied(destination) ? LEGAL_CAPTURE_MARKER_COLOR : LEGAL_MOVE_MARKER_COLOR;
-            canvas.fillRect(cellX, cellY, cellWidth, cellHeight, markerColor);
+            canvas.fillRect(x, y, cellWidth, cellHeight, markerColor);
         }
     }
 

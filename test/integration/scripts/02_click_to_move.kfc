@@ -5,7 +5,7 @@ Board:
 Commands:
 click 150 50
 click 150 250
-wait 1000
+wait 500
 print board
-wait 1000
+wait 500
 print board

@@ -24,6 +24,9 @@ public class GuiMain {
             """;
 
     public static void main(String[] args) {
+        System.setProperty("sun.java2d.uiScale", "1");
+        System.setProperty("sun.java2d.dpiaware", "true");
+
         Supplier<GameWindow.GameComponents> gameFactory = GuiMain::createGame;
         GameWindow window = new GameWindow(gameFactory);
 
