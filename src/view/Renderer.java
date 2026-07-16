@@ -1,5 +1,6 @@
 package src.view;
 
+import src.model.Piece;
 import src.model.Position;
 
 import java.awt.Color;
@@ -208,8 +209,8 @@ public class Renderer {
     }
 
     private void drawRestCooldown(PieceSnapshot piece, int row, int col, Img canvas, int boardOffsetX, int boardOffsetY) {
-        boolean isResting = piece.state() == PieceSnapshot.RenderState.LONG_REST
-                || piece.state() == PieceSnapshot.RenderState.SHORT_REST;
+        boolean isResting = piece.state() == Piece.State.LONG_REST
+                || piece.state() == Piece.State.SHORT_REST;
         if (!isResting || piece.restDurationMs() <= 0) {
             return;
         }
@@ -282,7 +283,7 @@ public class Renderer {
         });
     }
 
-    private String stateFolder(PieceSnapshot.RenderState state) {
+    private String stateFolder(Piece.State state) {
         return switch (state) {
             case MOVING -> "move";
             case JUMPING -> "jump";

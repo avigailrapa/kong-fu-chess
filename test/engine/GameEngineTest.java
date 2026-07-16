@@ -117,7 +117,7 @@ public class GameEngineTest {
 
         assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
-        assertEquals(Piece.State.IDLE, rook.getState());
+        assertEquals(Piece.State.LONG_REST, rook.getState());
     }
 
     @Test
@@ -150,6 +150,23 @@ public class GameEngineTest {
 
         assertFalse(result.isAccepted());
         assertEquals("resting", result.reason());
+    }
+
+    @Test
+    public void testMoveRejectedWhilePieceIsMidJump() {
+        Board board = new Board(8, 8);
+        Piece rook = new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0));
+        board.addPiece(rook, new Position(7, 0));
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), arbiter);
+
+        engine.requestJump(new Position(7, 0));
+        MoveResult result = engine.requestMove(new Position(7, 0), new Position(4, 0));
+
+        assertFalse(result.isAccepted());
+        assertEquals("motion_in_progress", result.reason());
+        assertTrue(arbiter.isJumping(rook));
+        assertFalse(arbiter.isMoving(rook));
     }
 
     @Test
