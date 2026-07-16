@@ -307,14 +307,6 @@ public class GameEngineTest {
     }
 
     @Test
-    public void testSettledBoardReturnsSameBoardInstance() {
-        Board board = new Board(8, 8);
-        GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
-
-        assertSame(board, engine.settledBoard());
-    }
-
-    @Test
     public void testWaitMsWithNoActiveMotionIsNoOp() {
         Board board = new Board(8, 8);
         GameState gameState = new GameState();

@@ -1,13 +1,17 @@
+import src.engine.MoveEvent;
 import src.engine.MoveLogger;
 import src.engine.GameEngine;
 import src.input.BoardMapper;
 import src.input.Controller;
 import src.io.BoardParser;
 import src.model.Board;
+import src.view.GameLoop;
+import src.view.GameSnapshot;
 import src.view.GameWindow;
 import src.view.Renderer;
 
 import javax.swing.*;
+import java.util.List;
 import java.util.function.Supplier;
 
 public class GuiMain {
@@ -39,7 +43,18 @@ public class GuiMain {
         MoveLogger moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
         Controller controller = new Controller(new BoardMapper(board.getWidth(), board.getHeight()), engine);
-        Renderer renderer = new Renderer("assets/pieces", moveLogger);
-        return new GameWindow.GameComponents(engine, controller, renderer);
+        Renderer renderer = new Renderer("assets/pieces");
+        GameLoop gameLoop = new GameLoop(engine);
+        Supplier<GameSnapshot> snapshotSupplier = () -> engine.snapshot(
+                controller.getSelectedCell().orElse(null),
+                formatMoveLog(moveLogger.getWhiteMoves()),
+                formatMoveLog(moveLogger.getBlackMoves()));
+        return new GameWindow.GameComponents(gameLoop, snapshotSupplier, controller, renderer);
+    }
+
+    private static List<String> formatMoveLog(List<MoveEvent> moves) {
+        return moves.stream()
+                .map(move -> move.formattedRequestTime() + " " + move.algebraicMove())
+                .toList();
     }
 }

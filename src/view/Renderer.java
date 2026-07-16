@@ -1,8 +1,5 @@
 package src.view;
 
-import src.engine.MoveEvent;
-import src.engine.MoveLogger;
-import src.model.Piece;
 import src.model.Position;
 
 import java.awt.Color;
@@ -43,7 +40,6 @@ public class Renderer {
     private static final String BOARD_IMAGE_FILENAME = "board.png";
 
     private final String piecesRoot;
-    private final MoveLogger moveLogger;
     private final Map<String, BufferedImage> imageCache = new HashMap<>();
     private final Map<String, Integer> frameCountCache = new HashMap<>();
     private final Map<String, AnimationConfig> configCache = new HashMap<>();
@@ -52,16 +48,11 @@ public class Renderer {
     private boolean boardBackgroundImageLoaded = false;
 
     public Renderer() {
-        this("assets/pieces", null);
+        this("assets/pieces");
     }
 
     public Renderer(String piecesRoot) {
-        this(piecesRoot, null);
-    }
-
-    public Renderer(String piecesRoot, MoveLogger moveLogger) {
         this.piecesRoot = piecesRoot;
-        this.moveLogger = moveLogger;
     }
 
     public int boardOffsetX() {
@@ -89,10 +80,8 @@ public class Renderer {
         canvas.drawRect(boardOffsetX - 4, boardOffsetY - 4, boardWidth + 8, boardHeight + 8, BOARD_BORDER_COLOR, 4);
         drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
 
-        List<MoveEvent> blackMoves = moveLogger == null ? List.of() : moveLogger.getBlackMoves();
-        List<MoveEvent> whiteMoves = moveLogger == null ? List.of() : moveLogger.getWhiteMoves();
-        drawSidePanel(canvas, 0, fullHeight, "Black", snapshot.getBlackScore(), blackMoves);
-        drawSidePanel(canvas, boardOffsetX + boardWidth, fullHeight, "White", snapshot.getWhiteScore(), whiteMoves);
+        drawSidePanel(canvas, 0, fullHeight, "Black", snapshot.getBlackScore(), snapshot.blackMoveLog());
+        drawSidePanel(canvas, boardOffsetX + boardWidth, fullHeight, "White", snapshot.getWhiteScore(), snapshot.whiteMoveLog());
 
         drawSelection(canvas, snapshot, boardOffsetX, boardOffsetY);
         drawLegalMoves(canvas, snapshot, boardOffsetX, boardOffsetY);
@@ -164,7 +153,7 @@ public class Renderer {
         return boardBackgroundImage;
     }
 
-    private void drawSidePanel(Img canvas, int panelX, int fullHeight, String label, int score, List<MoveEvent> moves) {
+    private void drawSidePanel(Img canvas, int panelX, int fullHeight, String label, int score, List<String> moves) {
         canvas.fillRect(panelX, 0, PANEL_WIDTH, fullHeight, new Color(28, 28, 34));
 
         int textX = panelX + PANEL_PADDING;
@@ -175,13 +164,9 @@ public class Renderer {
         int maxVisibleRows = Math.max(0, (fullHeight - y - PANEL_PADDING) / LOG_LINE_HEIGHT);
         int firstVisible = Math.max(0, moves.size() - maxVisibleRows);
         for (int i = firstVisible; i < moves.size(); i++) {
-            canvas.putText(formatMoveText(moves.get(i)), textX, y, LOG_FONT_SIZE, new Color(220, 220, 220), 0);
+            canvas.putText(moves.get(i), textX, y, LOG_FONT_SIZE, new Color(220, 220, 220), 0);
             y += LOG_LINE_HEIGHT;
         }
-    }
-
-    private String formatMoveText(MoveEvent moveEvent) {
-        return moveEvent.formattedRequestTime() + " " + moveEvent.algebraicMove();
     }
 
     private void drawBoardCoordinates(Img canvas, int boardOffsetX, int boardOffsetY, int boardWidth, int boardHeight) {
