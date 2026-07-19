@@ -44,7 +44,8 @@ public class Renderer {
     private final Map<String, AnimationConfig> configCache = new HashMap<>();
     private final Set<String> missingSpriteWarnings = new HashSet<>();
     private BufferedImage boardBackgroundImage;
-    private boolean boardBackgroundImageLoaded = false;
+    private int boardBackgroundImageWidth = -1;
+    private int boardBackgroundImageHeight = -1;
 
     public Renderer(String piecesRoot) {
         this.piecesRoot = piecesRoot;
@@ -59,8 +60,10 @@ public class Renderer {
     }
 
     public BufferedImage render(GameSnapshot snapshot) {
-        int boardWidth = (int) Math.round(snapshot.width() * GameSnapshot.CELL_WIDTH);
-        int boardHeight = (int) Math.round(snapshot.height() * GameSnapshot.CELL_HEIGHT);
+        double cellWidth = snapshot.cellWidth();
+        double cellHeight = snapshot.cellHeight();
+        int boardWidth = (int) Math.round(snapshot.width() * cellWidth);
+        int boardHeight = (int) Math.round(snapshot.height() * cellHeight);
         int boardOffsetX = boardOffsetX();
         int boardOffsetY = boardOffsetY();
         int fullWidth = boardOffsetX + boardWidth + PANEL_WIDTH;
@@ -73,13 +76,13 @@ public class Renderer {
         drawTitle(canvas, boardOffsetX, boardWidth);
         drawBoardBackground(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
         canvas.drawRect(boardOffsetX - 4, boardOffsetY - 4, boardWidth + 8, boardHeight + 8, BOARD_BORDER_COLOR, 4);
-        drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
+        drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, cellWidth, cellHeight);
 
         drawSidePanel(canvas, 0, fullHeight, "Black", snapshot.blackScore(), snapshot.blackMoveLog());
         drawSidePanel(canvas, boardOffsetX + boardWidth, fullHeight, "White", snapshot.whiteScore(), snapshot.whiteMoveLog());
 
-        drawSelection(canvas, snapshot, boardOffsetX, boardOffsetY);
-        drawLegalMoves(canvas, snapshot, boardOffsetX, boardOffsetY);
+        drawSelection(canvas, snapshot, boardOffsetX, boardOffsetY, cellWidth, cellHeight);
+        drawLegalMoves(canvas, snapshot, boardOffsetX, boardOffsetY, cellWidth, cellHeight);
 
         for (int row = 0; row < snapshot.height(); row++) {
             for (int col = 0; col < snapshot.width(); col++) {
@@ -87,8 +90,8 @@ public class Renderer {
                 if (piece == null) {
                     continue;
                 }
-                drawRestCooldown(piece, row, col, canvas, boardOffsetX, boardOffsetY);
-                drawPiece(piece, canvas, boardOffsetX, boardOffsetY);
+                drawRestCooldown(piece, row, col, canvas, boardOffsetX, boardOffsetY, cellWidth, cellHeight);
+                drawPiece(piece, canvas, boardOffsetX, boardOffsetY, cellWidth, cellHeight);
             }
         }
 
@@ -121,11 +124,12 @@ public class Renderer {
     }
 
     private BufferedImage boardBackgroundImage(int boardWidth, int boardHeight) {
-        if (!boardBackgroundImageLoaded) {
+        if (boardWidth != boardBackgroundImageWidth || boardHeight != boardBackgroundImageHeight) {
             File file = new File(piecesRoot).getParentFile();
             String path = new File(file, BOARD_IMAGE_FILENAME).getPath();
             boardBackgroundImage = new Img().read(path, new Dimension(boardWidth, boardHeight), false, null).get();
-            boardBackgroundImageLoaded = true;
+            boardBackgroundImageWidth = boardWidth;
+            boardBackgroundImageHeight = boardHeight;
         }
         return boardBackgroundImage;
     }
@@ -146,45 +150,45 @@ public class Renderer {
         }
     }
 
-    private void drawBoardCoordinates(Img canvas, int boardOffsetX, int boardOffsetY, int boardWidth, int boardHeight) {
+    private void drawBoardCoordinates(Img canvas, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight) {
         for (int col = 0; col < 8; col++) {
-            int x = boardOffsetX + (int) Math.round(col * GameSnapshot.CELL_WIDTH + GameSnapshot.CELL_WIDTH / 2.0) - 6;
+            int x = boardOffsetX + (int) Math.round(col * cellWidth + cellWidth / 2.0) - 6;
             int y = boardOffsetY - 10;
             canvas.putText(String.valueOf((char) ('a' + col)), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
         }
 
         for (int row = 0; row < 8; row++) {
             int x = boardOffsetX - ROW_LABEL_WIDTH + 10;
-            int y = boardOffsetY + (int) Math.round(row * GameSnapshot.CELL_HEIGHT + GameSnapshot.CELL_HEIGHT / 2.0) + 6;
+            int y = boardOffsetY + (int) Math.round(row * cellHeight + cellHeight / 2.0) + 6;
             canvas.putText(String.valueOf(8 - row), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
         }
     }
 
-    private void drawSelection(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
+    private void drawSelection(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight) {
         for (SelectionSnapshot selection : snapshot.selections()) {
             Position selected = selection.position();
-            int x = boardOffsetX + (int) Math.round(selected.col() * GameSnapshot.CELL_WIDTH);
-            int y = boardOffsetY + (int) Math.round(selected.row() * GameSnapshot.CELL_HEIGHT);
-            int width = (int) Math.round(GameSnapshot.CELL_WIDTH);
-            int height = (int) Math.round(GameSnapshot.CELL_HEIGHT);
+            int x = boardOffsetX + (int) Math.round(selected.col() * cellWidth);
+            int y = boardOffsetY + (int) Math.round(selected.row() * cellHeight);
+            int width = (int) Math.round(cellWidth);
+            int height = (int) Math.round(cellHeight);
 
             canvas.drawRect(x, y, width, height, new Color(255, 215, 0), 4);
         }
     }
 
-    private void drawLegalMoves(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY) {
-        int cellWidth = (int) Math.round(GameSnapshot.CELL_WIDTH);
-        int cellHeight = (int) Math.round(GameSnapshot.CELL_HEIGHT);
+    private void drawLegalMoves(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY, double cellWidthD, double cellHeightD) {
+        int cellWidth = (int) Math.round(cellWidthD);
+        int cellHeight = (int) Math.round(cellHeightD);
 
         for (Position destination : snapshot.legalDestinations()) {
-            int x = boardOffsetX + (int) Math.round(destination.col() * GameSnapshot.CELL_WIDTH);
-            int y = boardOffsetY + (int) Math.round(destination.row() * GameSnapshot.CELL_HEIGHT);
+            int x = boardOffsetX + (int) Math.round(destination.col() * cellWidthD);
+            int y = boardOffsetY + (int) Math.round(destination.row() * cellHeightD);
             Color markerColor = snapshot.isOccupied(destination) ? LEGAL_CAPTURE_MARKER_COLOR : LEGAL_MOVE_MARKER_COLOR;
             canvas.fillRect(x, y, cellWidth, cellHeight, markerColor);
         }
     }
 
-    private void drawRestCooldown(PieceSnapshot piece, int row, int col, Img canvas, int boardOffsetX, int boardOffsetY) {
+    private void drawRestCooldown(PieceSnapshot piece, int row, int col, Img canvas, int boardOffsetX, int boardOffsetY, double cellWidthD, double cellHeightD) {
         boolean isResting = piece.state() == Piece.State.LONG_REST
                 || piece.state() == Piece.State.SHORT_REST;
         if (!isResting || piece.restDurationMs() <= 0) {
@@ -196,10 +200,10 @@ public class Renderer {
             return;
         }
 
-        int x = boardOffsetX + (int) Math.round(col * GameSnapshot.CELL_WIDTH);
-        int y = boardOffsetY + (int) Math.round(row * GameSnapshot.CELL_HEIGHT);
-        int width = (int) Math.round(GameSnapshot.CELL_WIDTH);
-        int height = (int) Math.round(GameSnapshot.CELL_HEIGHT);
+        int x = boardOffsetX + (int) Math.round(col * cellWidthD);
+        int y = boardOffsetY + (int) Math.round(row * cellHeightD);
+        int width = (int) Math.round(cellWidthD);
+        int height = (int) Math.round(cellHeightD);
         int fillHeight = (int) Math.round(height * remainingFraction);
         int fillY = y + (height - fillHeight);
 
@@ -208,7 +212,7 @@ public class Renderer {
         canvas.fillRect(x, fillY, width, fillHeight, fillColor);
     }
 
-    private void drawPiece(PieceSnapshot piece, Img canvas, int boardOffsetX, int boardOffsetY) {
+    private void drawPiece(PieceSnapshot piece, Img canvas, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight) {
         String path = spritePath(piece);
         if (!new File(path).isFile()) {
             if (missingSpriteWarnings.add(path)) {
@@ -217,8 +221,7 @@ public class Renderer {
             return;
         }
 
-        Dimension cellSize = new Dimension(
-                (int) Math.round(GameSnapshot.CELL_WIDTH), (int) Math.round(GameSnapshot.CELL_HEIGHT));
+        Dimension cellSize = new Dimension((int) Math.round(cellWidth), (int) Math.round(cellHeight));
         BufferedImage sprite = cachedImage(path, cellSize);
         new Img(sprite).drawOn(canvas, boardOffsetX + piece.pixelX(), boardOffsetY + piece.pixelY());
     }

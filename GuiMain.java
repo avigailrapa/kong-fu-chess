@@ -12,6 +12,7 @@ import src.view.Renderer;
 
 import javax.swing.*;
 import java.util.List;
+import java.util.function.DoubleFunction;
 import java.util.function.Supplier;
 
 public class GuiMain {
@@ -45,10 +46,11 @@ public class GuiMain {
         Controller controller = new Controller(new BoardMapper(board.getWidth(), board.getHeight()), engine);
         Renderer renderer = new Renderer("assets/pieces");
         GameLoop gameLoop = new GameLoop(engine);
-        Supplier<GameSnapshot> snapshotSupplier = () -> engine.snapshot(
+        DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> engine.snapshot(
                 controller.getSelectedCell().orElse(null),
                 formatMoveLog(moveLogger.getWhiteMoves()),
-                formatMoveLog(moveLogger.getBlackMoves()));
+                formatMoveLog(moveLogger.getBlackMoves()),
+                zoom);
         return new GameWindow.GameComponents(gameLoop, snapshotSupplier, controller, renderer);
     }
 

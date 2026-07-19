@@ -142,16 +142,20 @@ public class GameEngine {
     }
 
     public GameSnapshot snapshot(Position selectedPosition) {
-        return snapshot(selectedPosition, List.of(), List.of());
+        return snapshot(selectedPosition, List.of(), List.of(), GameSnapshot.DEFAULT_ZOOM);
     }
 
     public GameSnapshot snapshot(Position selectedPosition, List<String> whiteMoveLog, List<String> blackMoveLog) {
+        return snapshot(selectedPosition, whiteMoveLog, blackMoveLog, GameSnapshot.DEFAULT_ZOOM);
+    }
+
+    public GameSnapshot snapshot(Position selectedPosition, List<String> whiteMoveLog, List<String> blackMoveLog, double zoom) {
         int width = board.getWidth();
         int height = board.getHeight();
         PieceSnapshot[][] grid = new PieceSnapshot[height][width];
         for (Position position : board.occupiedPositions()) {
             Piece piece = board.getPieceAt(position).orElseThrow();
-            grid[position.row()][position.col()] = pieceSnapshotOf(piece, position);
+            grid[position.row()][position.col()] = pieceSnapshotOf(piece, position, zoom);
         }
         Set<Position> legalDestinations = legalDestinationsFor(selectedPosition);
         List<SelectionSnapshot> selections = selectedPosition == null
@@ -162,7 +166,7 @@ public class GameEngine {
                         .orElse(List.of());
         return new GameSnapshot(width, height, grid, selections, legalDestinations, gameState.isGameOver(),
                                gameState.winner(), gameState.getScore(Piece.Color.WHITE),
-                               gameState.getScore(Piece.Color.BLACK), whiteMoveLog, blackMoveLog);
+                               gameState.getScore(Piece.Color.BLACK), whiteMoveLog, blackMoveLog, zoom);
     }
 
     private Set<Position> legalDestinationsFor(Position selectedPosition) {
@@ -179,9 +183,11 @@ public class GameEngine {
         return ruleEngine.legalDestinations(board, selectedPosition);
     }
 
-    private PieceSnapshot pieceSnapshotOf(Piece piece, Position position) {
-        int pixelX = (int) Math.round(position.col() * GameSnapshot.CELL_WIDTH);
-        int pixelY = (int) Math.round(position.row() * GameSnapshot.CELL_HEIGHT);
+    private PieceSnapshot pieceSnapshotOf(Piece piece, Position position, double zoom) {
+        double cellWidth = GameSnapshot.CELL_WIDTH * zoom;
+        double cellHeight = GameSnapshot.CELL_HEIGHT * zoom;
+        int pixelX = (int) Math.round(position.col() * cellWidth);
+        int pixelY = (int) Math.round(position.row() * cellHeight);
         long elapsedMillis;
         long restDurationMs = 0;
         Piece.State state = piece.getState();
@@ -192,8 +198,8 @@ public class GameEngine {
             elapsedMillis = arbiter.motionElapsedMs(piece);
 
             double progress = Math.min(1.0, (double) elapsedMillis / m.durationMs());
-            pixelX = (int) Math.round(interpolate(m.source().col(), m.destination().col(), progress) * GameSnapshot.CELL_WIDTH);
-            pixelY = (int) Math.round(interpolate(m.source().row(), m.destination().row(), progress) * GameSnapshot.CELL_HEIGHT);
+            pixelX = (int) Math.round(interpolate(m.source().col(), m.destination().col(), progress) * cellWidth);
+            pixelY = (int) Math.round(interpolate(m.source().row(), m.destination().row(), progress) * cellHeight);
         } else if (state == Piece.State.JUMPING) {
             elapsedMillis = arbiter.jumpElapsedMs(piece);
         } else if (state == Piece.State.LONG_REST) {
