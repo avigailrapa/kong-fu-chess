@@ -7,22 +7,25 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.function.DoubleFunction;
 import java.util.function.Supplier;
 
 public class GameWindow {
 
     private static final int SCREEN_CHROME_ALLOWANCE_PX = 80;
     private static final Color BACKGROUND_COLOR = new Color(18, 18, 22);
+    private static final double ZOOM_STEP = 0.1;
 
     private final Supplier<GameComponents> gameFactory;
     private Controller controller;
     private Renderer renderer;
-    private Supplier<GameSnapshot> snapshotSupplier;
+    private DoubleFunction<GameSnapshot> snapshotSupplier;
     private GameLoop gameLoop;
     private final JFrame frame;
     private final ImagePanel panel;
     private final Timer timer;
     private boolean gameOverAnnounced = false;
+    private double zoom = GameSnapshot.DEFAULT_ZOOM;
 
     public GameWindow(Supplier<GameComponents> gameFactory) {
         this.gameFactory = gameFactory;
@@ -32,11 +35,12 @@ public class GameWindow {
         this.panel = new ImagePanel();
         this.frame = new JFrame("♟ Kung Fu Chess ♟");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        JScrollPane scrollPane = new JScrollPane(panel);
+        JScrollPane scrollPane = new JScrollPane(new CenteringPanel(panel));
         scrollPane.setBackground(BACKGROUND_COLOR);
         scrollPane.getViewport().setBackground(BACKGROUND_COLOR);
         frame.getContentPane().setBackground(BACKGROUND_COLOR);
-        frame.add(scrollPane);
+        frame.add(buildZoomToolbar(), BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
 
         panel.addMouseListener(new MouseAdapter() {
             @Override
@@ -64,6 +68,30 @@ public class GameWindow {
         this.renderer = components.renderer();
         this.snapshotSupplier = components.snapshotSupplier();
         this.gameLoop = components.gameLoop();
+        this.controller.setZoom(zoom);
+    }
+
+    private JComponent buildZoomToolbar() {
+        JButton zoomOutButton = new JButton("-");
+        JButton zoomInButton = new JButton("+");
+        zoomOutButton.addActionListener(e -> changeZoom(-ZOOM_STEP));
+        zoomInButton.addActionListener(e -> changeZoom(ZOOM_STEP));
+
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        toolbar.setBackground(BACKGROUND_COLOR);
+        toolbar.add(zoomOutButton);
+        toolbar.add(zoomInButton);
+        return toolbar;
+    }
+
+    private void changeZoom(double delta) {
+        double newZoom = Math.max(GameSnapshot.MIN_ZOOM, Math.min(GameSnapshot.MAX_ZOOM, zoom + delta));
+        if (newZoom == zoom) {
+            return;
+        }
+        zoom = newZoom;
+        controller.setZoom(zoom);
+        repaint();
     }
 
     public void open() {
@@ -100,7 +128,7 @@ public class GameWindow {
     }
 
     private void repaint() {
-        GameSnapshot snapshot = snapshotSupplier.get();
+        GameSnapshot snapshot = snapshotSupplier.apply(zoom);
         BufferedImage image = renderer.render(snapshot);
         panel.setImage(image);
 
@@ -111,8 +139,44 @@ public class GameWindow {
         }
     }
 
-    public record GameComponents(GameLoop gameLoop, Supplier<GameSnapshot> snapshotSupplier,
+    public record GameComponents(GameLoop gameLoop, DoubleFunction<GameSnapshot> snapshotSupplier,
                                   Controller controller, Renderer renderer) {
+    }
+
+    private static class CenteringPanel extends JPanel implements Scrollable {
+        private final JComponent child;
+
+        CenteringPanel(JComponent child) {
+            super(new GridBagLayout());
+            this.child = child;
+            setBackground(BACKGROUND_COLOR);
+            add(child);
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 100;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return getParent() instanceof JViewport && getParent().getWidth() > child.getPreferredSize().width;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return getParent() instanceof JViewport && getParent().getHeight() > child.getPreferredSize().height;
+        }
     }
 
     private static class ImagePanel extends JPanel {

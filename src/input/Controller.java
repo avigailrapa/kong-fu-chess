@@ -17,6 +17,10 @@ public class Controller {
         this.gameEngine = gameEngine;
     }
 
+    public void setZoom(double zoom) {
+        boardMapper.setZoom(zoom);
+    }
+
     public void click(int x, int y) {
         Optional<Position> clicked = boardMapper.pixelToCell(x, y);
 

@@ -46,7 +46,7 @@ public class ControllerTest {
                 grid[position.row()][position.col()] =
                         new PieceSnapshot("p", Piece.Color.WHITE, Piece.Kind.PAWN, Piece.State.IDLE, 0, 0, 0, 0);
             }
-            return new GameSnapshot(8, 8, grid, List.of(), Set.of(), false, null, 0, 0, List.of(), List.of());
+            return new GameSnapshot(8, 8, grid, List.of(), Set.of(), false, null, 0, 0, List.of(), List.of(), GameSnapshot.DEFAULT_ZOOM);
         }
     }
 
