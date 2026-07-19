@@ -1,4 +1,5 @@
 package src.engine;
+import src.bus.EventBus;
 import src.model.*;
 import src.realtime.*;
 import src.rules.*;
@@ -21,6 +22,7 @@ public class GameEngine {
     private final RealTimeArbiter arbiter;
     private final List<MoveObserver> moveObservers = new ArrayList<>();
     private final Map<Piece, Long> motionRequestTimestampMs = new HashMap<>();
+    private final EventBus eventBus = new EventBus();
     private long gameClockMs = 0;
 
     public GameEngine(Board board, GameState gameState, RuleEngine ruleEngine, RealTimeArbiter arbiter) {
@@ -52,6 +54,10 @@ public class GameEngine {
         moveObservers.add(observer);
     }
 
+    public EventBus eventBus() {
+        return eventBus;
+    }
+
     private void notifyMoveObservers(MoveEvent event) {
         for (MoveObserver observer : moveObservers) {
             observer.onMove(event);
@@ -59,11 +65,11 @@ public class GameEngine {
     }
 
     private void fireMoveEvent(Piece piece, Position source, Position destination, boolean capture, boolean kingCapture, long requestTimestampMs) {
-        if (moveObservers.isEmpty()) {
-            return;
-        }
         MoveEvent event = new MoveEvent(piece.getColor(), piece.getKind(), source, destination, capture, kingCapture, requestTimestampMs);
-        notifyMoveObservers(event);
+        eventBus.publish(event);
+        if (!moveObservers.isEmpty()) {
+            notifyMoveObservers(event);
+        }
     }
 
     public MoveResult requestMove(Position source, Position destination) {
@@ -115,12 +121,16 @@ public class GameEngine {
                 Piece.Color loserColor = event.capturedPiece().getColor();
                 Piece.Color winner = loserColor == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
                 gameState.endGame(winner);
+                eventBus.publish(new GameOverEvent(winner));
             }
 
             if (event.capturedPiece() != null && event.movedPiece() != null) {
                 Piece.Color capturingColor = event.movedPiece().getColor();
                 int points = getPieceValue(event.capturedPiece().getKind());
-                gameState.addScore(capturingColor, points);
+                if (points > 0) {
+                    gameState.addScore(capturingColor, points);
+                    eventBus.publish(new ScoreChangedEvent(capturingColor, gameState.getScore(capturingColor), points));
+                }
             }
 
             if (event.movedPiece() != null) {
