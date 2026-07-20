@@ -83,4 +83,30 @@ public class PieceTest {
         Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(0, 0));
         assertThrows(NullPointerException.class, () -> piece.setState(null));
     }
+
+    @Test
+    public void testColorFromLetterIsCaseInsensitiveInverseOfLetter() {
+        for (Piece.Color color : Piece.Color.values()) {
+            assertEquals(color, Piece.Color.fromLetter(color.letter()));
+            assertEquals(color, Piece.Color.fromLetter(Character.toLowerCase(color.letter())));
+        }
+    }
+
+    @Test
+    public void testColorFromLetterRejectsUnknownLetter() {
+        assertThrows(IllegalArgumentException.class, () -> Piece.Color.fromLetter('X'));
+    }
+
+    @Test
+    public void testKindFromLetterIsCaseInsensitiveInverseOfLetter() {
+        for (Piece.Kind kind : Piece.Kind.values()) {
+            assertEquals(kind, Piece.Kind.fromLetter(kind.letter()));
+            assertEquals(kind, Piece.Kind.fromLetter(Character.toLowerCase(kind.letter())));
+        }
+    }
+
+    @Test
+    public void testKindFromLetterRejectsUnknownLetter() {
+        assertThrows(IllegalArgumentException.class, () -> Piece.Kind.fromLetter('X'));
+    }
 }
