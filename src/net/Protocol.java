@@ -61,7 +61,7 @@ public final class Protocol {
                     + AlgebraicNotation.toSquare(m.from()) + AlgebraicNotation.toSquare(m.to());
             case JumpCommand j -> "JUMP " + j.color().letter() + j.kind().letter()
                     + AlgebraicNotation.toSquare(j.at());
-            case MoveAccepted ignored -> "OK";
+            case MoveAccepted _ -> "OK";
             case MoveRejected r -> REJECT_PREFIX + r.reason();
             case StateMessage s -> encodeState(s);
         };

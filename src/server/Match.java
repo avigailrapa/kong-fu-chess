@@ -13,23 +13,23 @@ public class Match {
     private final GameEngine engine;
     private final MoveLogger moveLogger;
     private final long tickIntervalMs;
-    private final Runnable onTick;
     private final ScheduledExecutorService executor;
+    private Runnable onTick;
     private ScheduledFuture<?> tickTask;
 
-    public Match(GameEngine engine, long tickIntervalMs, Runnable onTick) {
+    public Match(GameEngine engine, long tickIntervalMs) {
         this.engine = engine;
         this.tickIntervalMs = tickIntervalMs;
-        this.onTick = onTick;
         this.moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
         this.executor = Executors.newSingleThreadScheduledExecutor();
     }
 
-    public void start() {
+    public void start(Runnable onTick) {
         if (tickTask != null) {
             throw new IllegalStateException("Match already started");
         }
+        this.onTick = onTick;
         tickTask = executor.scheduleAtFixedRate(this::tick, tickIntervalMs, tickIntervalMs, TimeUnit.MILLISECONDS);
     }
 

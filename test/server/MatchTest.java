@@ -37,9 +37,9 @@ public class MatchTest {
     @Test
     public void testStartInvokesOnTickRepeatedly() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(3);
-        Match match = new Match(freshEngine(), 20, latch::countDown);
+        Match match = new Match(freshEngine(), 20);
 
-        match.start();
+        match.start(latch::countDown);
         boolean reachedZero = latch.await(2, TimeUnit.SECONDS);
         match.stop();
 
@@ -50,10 +50,10 @@ public class MatchTest {
     public void testTickAdvancesEngineAndResolvesAMove() throws InterruptedException {
         GameEngine engine = freshEngine();
         CountDownLatch latch = new CountDownLatch(1);
-        Match match = new Match(engine, 2000, latch::countDown);
+        Match match = new Match(engine, 2000);
         try {
             match.submit(() -> engine.requestMove(new Position(7, 0), new Position(4, 0)));
-            match.start();
+            match.start(latch::countDown);
 
             assertTrue(latch.await(4, TimeUnit.SECONDS), "expected at least one tick within 4 seconds");
             assertNotNull(engine.snapshot(null).pieceAt(new Position(4, 0)));
@@ -64,8 +64,7 @@ public class MatchTest {
 
     @Test
     public void testSubmitRunsTasksSequentiallyOnMatchThread() throws InterruptedException {
-        Match match = new Match(freshEngine(), 1000, () -> {
-        });
+        Match match = new Match(freshEngine(), 1000);
         List<Integer> order = new ArrayList<>();
         CountDownLatch latch = new CountDownLatch(5);
         try {
@@ -87,9 +86,9 @@ public class MatchTest {
     @Test
     public void testStopPreventsFurtherTicks() throws InterruptedException {
         AtomicInteger tickCount = new AtomicInteger();
-        Match match = new Match(freshEngine(), 20, tickCount::incrementAndGet);
+        Match match = new Match(freshEngine(), 20);
 
-        match.start();
+        match.start(tickCount::incrementAndGet);
         Thread.sleep(100);
         match.stop();
         Thread.sleep(50); // let any tick already in flight when stop() was called finish
@@ -101,11 +100,12 @@ public class MatchTest {
 
     @Test
     public void testStartTwiceThrows() {
-        Match match = new Match(freshEngine(), 1000, () -> {
-        });
+        Match match = new Match(freshEngine(), 1000);
         try {
-            match.start();
-            assertThrows(IllegalStateException.class, match::start);
+            match.start(() -> {
+            });
+            assertThrows(IllegalStateException.class, () -> match.start(() -> {
+            }));
         } finally {
             match.stop();
         }
@@ -114,8 +114,7 @@ public class MatchTest {
     @Test
     public void testEngineAccessorReturnsConstructorArgument() {
         GameEngine engine = freshEngine();
-        Match match = new Match(engine, 1000, () -> {
-        });
+        Match match = new Match(engine, 1000);
 
         assertSame(engine, match.engine());
     }
@@ -124,10 +123,10 @@ public class MatchTest {
     public void testMoveLoggerIsWiredToEngineMoveObserver() throws InterruptedException {
         GameEngine engine = freshEngine();
         CountDownLatch latch = new CountDownLatch(1);
-        Match match = new Match(engine, 2000, latch::countDown);
+        Match match = new Match(engine, 2000);
         try {
             match.submit(() -> engine.requestMove(new Position(7, 0), new Position(4, 0)));
-            match.start();
+            match.start(latch::countDown);
 
             assertTrue(latch.await(4, TimeUnit.SECONDS));
             assertFalse(match.moveLogger().getWhiteMoves().isEmpty());
