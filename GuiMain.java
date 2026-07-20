@@ -19,17 +19,6 @@ import java.util.function.Supplier;
 
 public class GuiMain {
 
-    private static final String STARTING_BOARD = """
-            bR bN bB bQ bK bB bN bR
-            bP bP bP bP bP bP bP bP
-            .  .  .  .  .  .  .  .
-            .  .  .  .  .  .  .  .
-            .  .  .  .  .  .  .  .
-            .  .  .  .  .  .  .  .
-            wP wP wP wP wP wP wP wP
-            wR wN wB wQ wK wB wN wR
-            """;
-
     public static void main(String[] args) {
         System.setProperty("sun.java2d.uiScale", "1");
         System.setProperty("sun.java2d.dpiaware", "true");
@@ -41,7 +30,7 @@ public class GuiMain {
     }
 
     private static GameWindow.GameComponents createGame() {
-        Board board = new BoardParser().parse(STARTING_BOARD);
+        Board board = new BoardParser().parse(BoardParser.STANDARD_STARTING_POSITION);
         GameEngine engine = GameEngine.fromBoard(board);
         MoveLogger moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
@@ -55,7 +44,7 @@ public class GuiMain {
                 formatMoveLog(moveLogger.getWhiteMoves()),
                 formatMoveLog(moveLogger.getBlackMoves()),
                 zoom);
-        return new GameWindow.GameComponents(gameLoop, snapshotSupplier, controller, renderer, effects);
+        return new GameWindow.GameComponents(gameLoop::tick, snapshotSupplier, controller, renderer, effects);
     }
 
     private static List<String> formatMoveLog(List<MoveEvent> moves) {

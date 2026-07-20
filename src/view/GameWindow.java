@@ -9,6 +9,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.function.DoubleFunction;
+import java.util.function.LongPredicate;
 import java.util.function.Supplier;
 
 public class GameWindow {
@@ -21,7 +22,7 @@ public class GameWindow {
     private Controller controller;
     private Renderer renderer;
     private DoubleFunction<GameSnapshot> snapshotSupplier;
-    private GameLoop gameLoop;
+    private LongPredicate tickSource;
     private EffectsController effects;
     private final JFrame frame;
     private final ImagePanel panel;
@@ -69,7 +70,7 @@ public class GameWindow {
         this.controller = components.controller();
         this.renderer = components.renderer();
         this.snapshotSupplier = components.snapshotSupplier();
-        this.gameLoop = components.gameLoop();
+        this.tickSource = components.tickSource();
         this.effects = components.effects();
         this.controller.setZoom(zoom);
     }
@@ -117,7 +118,7 @@ public class GameWindow {
     public void tick(long ms) {
         boolean bannerWasActive = effects.activeBanner().isPresent();
         effects.tick(ms);
-        if (gameLoop.tick(ms) || bannerWasActive) {
+        if (tickSource.test(ms) || bannerWasActive) {
             repaint();
         }
     }
@@ -145,7 +146,7 @@ public class GameWindow {
         }
     }
 
-    public record GameComponents(GameLoop gameLoop, DoubleFunction<GameSnapshot> snapshotSupplier,
+    public record GameComponents(LongPredicate tickSource, DoubleFunction<GameSnapshot> snapshotSupplier,
                                   Controller controller, Renderer renderer, EffectsController effects) {
     }
 
