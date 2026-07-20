@@ -1,10 +1,14 @@
 package src.input;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Accessors(fluent = true)
 public class CommandParser {
 
     public static class InvalidInputException extends RuntimeException {
@@ -33,16 +37,10 @@ public class CommandParser {
     private static final Pattern JUMP_PATTERN = Pattern.compile("^jump\\s+(-?\\d+)\\s+(-?\\d+)$");
     private static final Pattern VALID_TOKEN = Pattern.compile("^\\.$|^[wb][KQRBNP]$");
 
+    @Getter
     private String boardText;
+    @Getter
     private List<Command> commands;
-
-    public String boardText() {
-        return boardText;
-    }
-
-    public List<Command> commands() {
-        return commands;
-    }
 
     public void parse(String input) {
         String[] lines = input.split("\\r?\\n");

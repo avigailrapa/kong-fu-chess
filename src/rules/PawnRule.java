@@ -13,9 +13,9 @@ public class PawnRule implements PieceRules {
     @Override
     public Set<Position> legalDestinations(IBoard board, Piece piece) {
         Set<Position> destinations = new HashSet<>();
-        Position current = piece.getCell();
-        int forward = piece.getColor() == Piece.Color.WHITE ? -1 : 1;
-        int startingRow = piece.getColor() == Piece.Color.WHITE ? board.getHeight() - 2 : 1;
+        Position current = piece.cell();
+        int forward = piece.color() == Piece.Color.WHITE ? -1 : 1;
+        int startingRow = piece.color() == Piece.Color.WHITE ? board.getHeight() - 2 : 1;
 
         Position forwardCell = new Position(current.row() + forward, current.col());
         boolean forwardOpen = board.isWithinBorder(forwardCell) && board.getPieceAt(forwardCell).isEmpty();
@@ -36,7 +36,7 @@ public class PawnRule implements PieceRules {
                 continue;
             }
             Optional<Piece> occupant = board.getPieceAt(diagonalCell);
-            if (occupant.isPresent() && occupant.get().getColor() != piece.getColor()) {
+            if (occupant.isPresent() && occupant.get().color() != piece.color()) {
                 destinations.add(diagonalCell);
             }
         }

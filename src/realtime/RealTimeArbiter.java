@@ -117,7 +117,7 @@ public class RealTimeArbiter {
     }
 
     public void startJump(Piece piece, Position cell) {
-        if (piece.getState() == Piece.State.MOVING || isResting(piece) || activeJumps.containsKey(piece)) {
+        if (piece.state() == Piece.State.MOVING || isResting(piece) || activeJumps.containsKey(piece)) {
             return;
         }
         piece.setState(Piece.State.JUMPING);
@@ -167,7 +167,7 @@ public class RealTimeArbiter {
         }
         for (Piece piece : duePieces) {
             elapsedByPiece.remove(piece);
-            if (piece.getState() != Piece.State.CAPTURED) {
+            if (piece.state() != Piece.State.CAPTURED) {
                 piece.setState(Piece.State.IDLE);
             }
         }
@@ -206,7 +206,7 @@ public class RealTimeArbiter {
             event = jumpResolver.resolveLanding(defender, cell);
         }
 
-        if (defender.getState() != Piece.State.CAPTURED) {
+        if (defender.state() != Piece.State.CAPTURED) {
             startConfiguredRest(defender, jumpConfigFor(defender).nextStateWhenFinished());
         }
         return event;
@@ -292,7 +292,7 @@ public class RealTimeArbiter {
 
     private void applyRestIfArrived(ArrivalEvent event) {
         Piece piece = event.movedPiece();
-        if (piece.getState() == Piece.State.CAPTURED) {
+        if (piece.state() == Piece.State.CAPTURED) {
             return;
         }
         if (event.to().equals(event.from())) {
@@ -322,7 +322,7 @@ public class RealTimeArbiter {
     }
 
     private String configPathFor(Piece piece, String stateFolder) {
-        return piecesRoot + "/" + piece.getKind().letter() + piece.getColor().letter()
+        return piecesRoot + "/" + piece.kind().letter() + piece.color().letter()
                 + "/states/" + stateFolder + "/config.json";
     }
 }

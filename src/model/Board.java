@@ -49,8 +49,8 @@ public class Board implements IBoard {
         if (occupied.containsKey(position)) {
             throw new IllegalStateException("Cell already occupied: " + position);
         }
-        if (hasPieceWithId(piece.getId())) {
-            throw new IllegalStateException("Duplicate piece id: " + piece.getId());
+        if (hasPieceWithId(piece.id())) {
+            throw new IllegalStateException("Duplicate piece id: " + piece.id());
         }
         occupied.put(position, piece);
         piece.setCell(position);
@@ -96,6 +96,6 @@ public class Board implements IBoard {
     }
 
     private boolean hasPieceWithId(String id) {
-        return occupied.values().stream().anyMatch(p -> p.getId().equals(id));
+        return occupied.values().stream().anyMatch(p -> p.id().equals(id));
     }
 }

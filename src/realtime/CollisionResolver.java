@@ -47,8 +47,8 @@ public class CollisionResolver {
 
     public ArrivalEvent resolveRaceLoserAgainstWinner(Piece winner, Motion winnerMotion, Motion loserMotion) {
         Piece loser = loserMotion.piece();
-        if (loser.getColor() != winner.getColor()) {
-            boolean loserWasKing = loser.getKind() == Piece.Kind.KING;
+        if (loser.color() != winner.color()) {
+            boolean loserWasKing = loser.kind() == Piece.Kind.KING;
             loser.setState(Piece.State.CAPTURED);
             board.removePiece(loserMotion.source());
             return new ArrivalEvent(winner, winnerMotion.source(), winnerMotion.destination(), loser, loserWasKing);
@@ -58,7 +58,7 @@ public class CollisionResolver {
 
     public ArrivalEvent resolveJumpCountersAttackingMotion(Piece defender, Position cell, Motion attackerMotion) {
         Piece attacker = attackerMotion.piece();
-        boolean attackerWasKing = attacker.getKind() == Piece.Kind.KING;
+        boolean attackerWasKing = attacker.kind() == Piece.Kind.KING;
         attacker.setState(Piece.State.CAPTURED);
         board.removePiece(attackerMotion.source());
 
@@ -67,7 +67,7 @@ public class CollisionResolver {
     }
 
     public boolean isPieceAlreadyCaptured(Motion motion) {
-        return motion.piece().getState() == Piece.State.CAPTURED;
+        return motion.piece().state() == Piece.State.CAPTURED;
     }
 
     public boolean isMotionLandingOnAirbornePiece(Motion motion, Set<Piece> airbornePieces) {

@@ -28,8 +28,8 @@ public class RealTimeArbiterTest {
         arbiter.startMotion(rook, new Position(7, 0), new Position(4, 0));
 
         assertTrue(arbiter.hasActiveMotion());
-        assertEquals(Piece.State.MOVING, rook.getState());
-        assertEquals(new Position(7, 0), rook.getCell());
+        assertEquals(Piece.State.MOVING, rook.state());
+        assertEquals(new Position(7, 0), rook.cell());
     }
 
     @Test
@@ -108,7 +108,7 @@ public class RealTimeArbiterTest {
         assertFalse(events.isEmpty());
         assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
         assertTrue(board.getPieceAt(new Position(6, 0)).isPresent());
-        assertEquals(Piece.State.LONG_REST, rook.getState());
+        assertEquals(Piece.State.LONG_REST, rook.state());
         assertTrue(arbiter.isLongResting(rook));
         assertFalse(arbiter.hasActiveMotion());
     }
@@ -192,8 +192,8 @@ public class RealTimeArbiterTest {
         ArrivalEvent event = events.get(0);
         assertEquals(enemyPawn, event.capturedPiece());
         assertFalse(event.kingCaptured());
-        assertEquals(Piece.State.CAPTURED, enemyPawn.getState());
-        assertTrue(board.getPieceAt(new Position(4, 3)).map(p -> p.getId().equals("b1")).orElse(false));
+        assertEquals(Piece.State.CAPTURED, enemyPawn.state());
+        assertTrue(board.getPieceAt(new Position(4, 3)).map(p -> p.id().equals("b1")).orElse(false));
     }
 
     @Test
@@ -263,10 +263,10 @@ public class RealTimeArbiterTest {
         ArrivalEvent event = arbiter.advanceTime(1000).get(0);
 
         Piece atDestination = board.getPieceAt(new Position(0, 1)).orElseThrow();
-        assertEquals(Piece.Kind.QUEEN, atDestination.getKind());
-        assertEquals(Piece.Color.WHITE, atDestination.getColor());
-        assertEquals(Piece.Kind.QUEEN, event.movedPiece().getKind());
-        assertEquals("p1", atDestination.getId());
+        assertEquals(Piece.Kind.QUEEN, atDestination.kind());
+        assertEquals(Piece.Color.WHITE, atDestination.color());
+        assertEquals(Piece.Kind.QUEEN, event.movedPiece().kind());
+        assertEquals("p1", atDestination.id());
     }
 
     @Test
@@ -280,8 +280,8 @@ public class RealTimeArbiterTest {
         arbiter.advanceTime(1000);
 
         Piece atDestination = board.getPieceAt(new Position(1, 1)).orElseThrow();
-        assertEquals(Piece.Kind.QUEEN, atDestination.getKind());
-        assertEquals(Piece.Color.BLACK, atDestination.getColor());
+        assertEquals(Piece.Kind.QUEEN, atDestination.kind());
+        assertEquals(Piece.Color.BLACK, atDestination.color());
     }
 
     @Test
@@ -295,7 +295,7 @@ public class RealTimeArbiterTest {
         arbiter.advanceTime(1000);
 
         Piece promoted = board.getPieceAt(new Position(0, 0)).orElseThrow();
-        assertEquals(Piece.Kind.QUEEN, promoted.getKind());
+        assertEquals(Piece.Kind.QUEEN, promoted.kind());
 
         arbiter.startMotion(promoted, new Position(0, 0), new Position(2, 2));
         List<ArrivalEvent> events = arbiter.advanceTime(2000);
@@ -315,7 +315,7 @@ public class RealTimeArbiterTest {
         arbiter.advanceTime(1000);
 
         Piece atDestination = board.getPieceAt(new Position(1, 0)).orElseThrow();
-        assertEquals(Piece.Kind.PAWN, atDestination.getKind());
+        assertEquals(Piece.Kind.PAWN, atDestination.kind());
     }
 
     @Test
@@ -400,8 +400,8 @@ public class RealTimeArbiterTest {
 
         assertEquals(1, events.size());
         assertEquals(whiteRook, events.get(0).movedPiece());
-        assertEquals(Piece.State.CAPTURED, blackRook.getState());
-        assertTrue(board.getPieceAt(new Position(0, 3)).map(p -> p.getId().equals("r1")).orElse(false));
+        assertEquals(Piece.State.CAPTURED, blackRook.state());
+        assertTrue(board.getPieceAt(new Position(0, 3)).map(p -> p.id().equals("r1")).orElse(false));
         assertTrue(board.getPieceAt(new Position(0, 0)).isEmpty());
     }
 
@@ -421,8 +421,8 @@ public class RealTimeArbiterTest {
 
         assertEquals(1, events.size());
         assertEquals(blackRook, events.get(0).movedPiece());
-        assertEquals(Piece.State.CAPTURED, whiteRook.getState());
-        assertTrue(board.getPieceAt(new Position(0, 0)).map(p -> p.getId().equals("r2")).orElse(false));
+        assertEquals(Piece.State.CAPTURED, whiteRook.state());
+        assertTrue(board.getPieceAt(new Position(0, 0)).map(p -> p.id().equals("r2")).orElse(false));
         assertTrue(board.getPieceAt(new Position(0, 3)).isEmpty());
     }
 
@@ -446,7 +446,7 @@ public class RealTimeArbiterTest {
         assertEquals(rook, events.get(0).movedPiece());
         assertFalse(arbiter.hasActiveJump());
         assertFalse(arbiter.isMoving(rook));
-        assertEquals(Piece.State.SHORT_REST, king.getState());
+        assertEquals(Piece.State.SHORT_REST, king.state());
         assertTrue(arbiter.isShortResting(king));
         assertTrue(board.getPieceAt(new Position(6, 7)).isPresent());
     }
@@ -467,20 +467,20 @@ public class RealTimeArbiterTest {
         arbiter.startMotion(enemyRook, new Position(7, 1), new Position(7, 0)); // 1000ms
         arbiter.advanceTime(500);
         arbiter.startJump(king, new Position(7, 0)); // needs its own 1000ms from here
-        assertEquals(Piece.State.JUMPING, king.getState());
+        assertEquals(Piece.State.JUMPING, king.state());
         arbiter.advanceTime(500); // rook's motion (500+500=1000ms) resolves as a silent displacement
 
-        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.getId().equals("r1")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.id().equals("r1")).orElse(false));
         assertTrue(arbiter.hasActiveJump());
 
         List<ArrivalEvent> events = arbiter.advanceTime(500); // king's jump (500+500=1000ms) lands and eats the rook
 
         assertEquals(1, events.size());
         assertFalse(events.get(0).kingCaptured());
-        assertEquals(Piece.State.CAPTURED, enemyRook.getState());
-        assertEquals(Piece.State.SHORT_REST, king.getState());
+        assertEquals(Piece.State.CAPTURED, enemyRook.state());
+        assertEquals(Piece.State.SHORT_REST, king.state());
         assertTrue(arbiter.isShortResting(king));
-        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.getId().equals("k1")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.id().equals("k1")).orElse(false));
     }
 
     @Test
@@ -498,8 +498,8 @@ public class RealTimeArbiterTest {
 
         assertEquals(1, events.size());
         assertTrue(events.get(0).kingCaptured());
-        assertEquals(Piece.State.CAPTURED, enemyKing.getState());
-        assertEquals(Piece.State.SHORT_REST, rook.getState());
+        assertEquals(Piece.State.CAPTURED, enemyKing.state());
+        assertEquals(Piece.State.SHORT_REST, rook.state());
         assertTrue(arbiter.isShortResting(rook));
     }
 
@@ -512,7 +512,7 @@ public class RealTimeArbiterTest {
         arbiter.startJump(rook, new Position(7, 0));
         arbiter.advanceTime(1000);
         assertFalse(arbiter.hasActiveJump());
-        assertEquals(Piece.State.SHORT_REST, rook.getState());
+        assertEquals(Piece.State.SHORT_REST, rook.state());
         assertTrue(arbiter.isShortResting(rook));
 
         arbiter.startJump(rook, new Position(7, 0));
@@ -534,7 +534,7 @@ public class RealTimeArbiterTest {
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
         arbiter.startMotion(rook, new Position(7, 0), new Position(6, 0));
         arbiter.advanceTime(1000); // rook arrives
-        assertEquals(Piece.State.LONG_REST, rook.getState());
+        assertEquals(Piece.State.LONG_REST, rook.state());
         assertTrue(arbiter.isLongResting(rook));
 
         arbiter.startJump(rook, new Position(6, 0));
@@ -562,16 +562,16 @@ public class RealTimeArbiterTest {
 
         assertTrue(arbiter.isJumping(rook));
         assertTrue(arbiter.isJumping(bishop));
-        assertEquals(Piece.State.JUMPING, rook.getState());
-        assertEquals(Piece.State.JUMPING, bishop.getState());
+        assertEquals(Piece.State.JUMPING, rook.state());
+        assertEquals(Piece.State.JUMPING, bishop.state());
 
         List<ArrivalEvent> events = arbiter.advanceTime(1000);
 
         // Both land safely (nothing displaced either of them), so no ArrivalEvent for either.
         assertTrue(events.isEmpty());
         assertFalse(arbiter.hasActiveJump());
-        assertEquals(Piece.State.SHORT_REST, rook.getState());
-        assertEquals(Piece.State.SHORT_REST, bishop.getState());
+        assertEquals(Piece.State.SHORT_REST, rook.state());
+        assertEquals(Piece.State.SHORT_REST, bishop.state());
         assertTrue(arbiter.isShortResting(rook));
         assertTrue(arbiter.isShortResting(bishop));
     }
@@ -595,9 +595,9 @@ public class RealTimeArbiterTest {
 
         assertEquals(1, events.size());
         assertEquals(rook, events.get(0).movedPiece());
-        assertEquals(Piece.State.CAPTURED, enemyPawn.getState());
-        assertEquals(Piece.State.SHORT_REST, rook.getState());
-        assertEquals(Piece.State.SHORT_REST, bishop.getState());
+        assertEquals(Piece.State.CAPTURED, enemyPawn.state());
+        assertEquals(Piece.State.SHORT_REST, rook.state());
+        assertEquals(Piece.State.SHORT_REST, bishop.state());
         assertTrue(arbiter.isShortResting(rook));
         assertTrue(arbiter.isShortResting(bishop));
         assertFalse(arbiter.hasActiveJump());
@@ -615,7 +615,7 @@ public class RealTimeArbiterTest {
         arbiter.startMotion(bishopB, new Position(4, 2), new Position(6, 0)); // diagonal, 2 squares = 1000ms
 
         arbiter.advanceTime(500); // rookA arrives first, cell (6,0) now occupied by a friendly piece
-        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r1")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.id().equals("r1")).orElse(false));
 
         List<ArrivalEvent> events = arbiter.advanceTime(500); // bishopB's motion is now due too
 
@@ -625,12 +625,12 @@ public class RealTimeArbiterTest {
         assertEquals(new Position(4, 2), event.from());
         assertEquals(new Position(5, 1), event.to()); // one diagonal square short of (6,0), not all the way back to (4,2)
         assertNull(event.capturedPiece());
-        assertEquals(Piece.State.LONG_REST, bishopB.getState());
-        assertEquals(Piece.State.LONG_REST, rookA.getState());
+        assertEquals(Piece.State.LONG_REST, bishopB.state());
+        assertEquals(Piece.State.LONG_REST, rookA.state());
         assertTrue(arbiter.isLongResting(rookA));
         assertTrue(arbiter.isLongResting(bishopB));
-        assertTrue(board.getPieceAt(new Position(5, 1)).map(p -> p.getId().equals("b1")).orElse(false));
-        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r1")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(5, 1)).map(p -> p.id().equals("b1")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.id().equals("r1")).orElse(false));
     }
 
     @Test
@@ -649,10 +649,10 @@ public class RealTimeArbiterTest {
         List<ArrivalEvent> events = arbiter.advanceTime(2000);
 
         assertEquals(2, events.size());
-        assertEquals(Piece.State.CAPTURED, whiteRook.getState());
-        assertEquals(Piece.State.LONG_REST, blackRook.getState());
+        assertEquals(Piece.State.CAPTURED, whiteRook.state());
+        assertEquals(Piece.State.LONG_REST, blackRook.state());
         assertTrue(arbiter.isLongResting(blackRook));
-        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r2")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.id().equals("r2")).orElse(false));
         assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
         assertFalse(arbiter.isMoving(whiteRook));
         assertFalse(arbiter.isMoving(blackRook));
@@ -675,7 +675,7 @@ public class RealTimeArbiterTest {
         // whiteC settles into (6,0) well before whiteA/blackB's race resolves there.
         List<ArrivalEvent> settling = arbiter.advanceTime(500);
         assertEquals(1, settling.size());
-        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("c")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.id().equals("c")).orElse(false));
 
         // whiteA "wins" the race against blackB, but bounces back because whiteC (friendly) is
         // already sitting at the destination - blackB should bounce back too, not be captured.
@@ -684,13 +684,13 @@ public class RealTimeArbiterTest {
         assertEquals(2, raceEvents.size());
         // whiteA's (5,3)->(6,0) hop isn't a straight line (no square "in between" to stop at),
         // so it still reverts all the way to its own source.
-        assertEquals(Piece.State.IDLE, whiteA.getState());
-        assertEquals(Piece.State.IDLE, blackB.getState());
-        assertTrue(board.getPieceAt(new Position(5, 3)).map(p -> p.getId().equals("a")).orElse(false));
+        assertEquals(Piece.State.IDLE, whiteA.state());
+        assertEquals(Piece.State.IDLE, blackB.state());
+        assertTrue(board.getPieceAt(new Position(5, 3)).map(p -> p.id().equals("a")).orElse(false));
         // blackB's (3,0)->(6,0) hop is a straight vertical line, so it stops one square short
         // of (6,0) at (5,0) instead of reverting all the way back to (3,0).
-        assertTrue(board.getPieceAt(new Position(5, 0)).map(p -> p.getId().equals("b")).orElse(false));
-        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("c")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(5, 0)).map(p -> p.id().equals("b")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.id().equals("c")).orElse(false));
     }
 
     @Test
@@ -707,11 +707,11 @@ public class RealTimeArbiterTest {
         List<ArrivalEvent> events = arbiter.advanceTime(2000);
 
         assertEquals(2, events.size());
-        assertEquals(Piece.State.IDLE, rookA.getState());
-        assertEquals(Piece.State.LONG_REST, rookB.getState());
+        assertEquals(Piece.State.IDLE, rookA.state());
+        assertEquals(Piece.State.LONG_REST, rookB.state());
         assertTrue(arbiter.isLongResting(rookB));
-        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.getId().equals("r2")).orElse(false));
-        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.getId().equals("r1")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(6, 0)).map(p -> p.id().equals("r2")).orElse(false));
+        assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.id().equals("r1")).orElse(false));
     }
 
     @Test
@@ -744,8 +744,8 @@ public class RealTimeArbiterTest {
 
         assertEquals(1, events.size());
         assertEquals(new Position(5, 4), events.get(0).to());
-        assertTrue(board.getPieceAt(new Position(5, 4)).map(p -> p.getId().equals("r1")).orElse(false));
-        assertEquals(Piece.State.LONG_REST, rook.getState());
+        assertTrue(board.getPieceAt(new Position(5, 4)).map(p -> p.id().equals("r1")).orElse(false));
+        assertEquals(Piece.State.LONG_REST, rook.state());
     }
 
     @Test

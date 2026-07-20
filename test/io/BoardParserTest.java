@@ -34,13 +34,13 @@ public class BoardParserTest {
 
         Optional<Piece> king = board.getPieceAt(new Position(0, 0));
         assertTrue(king.isPresent());
-        assertEquals(Piece.Color.WHITE, king.get().getColor());
-        assertEquals(Piece.Kind.KING, king.get().getKind());
+        assertEquals(Piece.Color.WHITE, king.get().color());
+        assertEquals(Piece.Kind.KING, king.get().kind());
 
         Optional<Piece> rook = board.getPieceAt(new Position(0, 2));
         assertTrue(rook.isPresent());
-        assertEquals(Piece.Color.BLACK, rook.get().getColor());
-        assertEquals(Piece.Kind.ROOK, rook.get().getKind());
+        assertEquals(Piece.Color.BLACK, rook.get().color());
+        assertEquals(Piece.Kind.ROOK, rook.get().kind());
 
         assertTrue(board.getPieceAt(new Position(1, 1)).isEmpty());
     }

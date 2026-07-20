@@ -85,7 +85,7 @@ public class BoardTest {
 
         assertTrue(board.getPieceAt(from).isEmpty());
         assertEquals(rook, board.getPieceAt(to).get());
-        assertEquals(to, rook.getCell());
+        assertEquals(to, rook.cell());
     }
 
     @Test

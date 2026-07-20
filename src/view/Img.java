@@ -1,12 +1,17 @@
 package src.view;
+import lombok.Getter;
+import lombok.experimental.Accessors;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
+@Accessors(fluent = true)
 public class Img {
 
+    @Getter
     private BufferedImage img;
 
     public Img() {
@@ -83,9 +88,7 @@ public class Img {
         g.dispose();
     }
 
-    public BufferedImage get() { return img; }
-
-       public void fillRect(int x, int y, int width, int height, Color color) {
+    public void fillRect(int x, int y, int width, int height, Color color) {
         if (img == null) throw new IllegalStateException("Image not loaded.");
 
         Graphics2D g = img.createGraphics();

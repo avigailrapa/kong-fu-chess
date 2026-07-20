@@ -1,10 +1,16 @@
 package src.model;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Accessors(fluent = true)
 public class GameState {
+    @Getter
     private boolean gameOver = false;
+    @Getter
     private Piece.Color winner = null;
     private Map<Piece.Color, Integer> scores = new HashMap<>();
 
@@ -28,13 +34,5 @@ public class GameState {
 
     public void endGame() {
         this.gameOver = true;
-    }
-
-    public boolean isGameOver() {
-        return gameOver;
-    }
-
-    public Piece.Color winner() {
-        return winner;
     }
 }

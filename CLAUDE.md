@@ -15,10 +15,16 @@ is the IntelliJ project file (source roots: project root, `src/`, `test/`; exclu
 Dependency jars are just files dropped into `lib/` (fetched by hand from Maven Central, not resolved by any
 tool) — `KongFu.iml`'s `jarDirectory` entry for `lib/` (non-recursive) means IntelliJ picks up anything
 placed there automatically. Besides the JUnit 5 jars, `lib/` has `Java-WebSocket-1.6.0.jar` (used by
-`src/net/`/`src/server/`) and `slf4j-api-2.0.13.jar` (a real runtime dependency of Java-WebSocket, despite
+`src/net/`/`src/server/`), `slf4j-api-2.0.13.jar` (a real runtime dependency of Java-WebSocket, despite
 its own docs describing it as dependency-free — without it, anything using `GameServer`/`NetworkGameProxy`
 throws `NoClassDefFoundError` the first time the library logs anything; with just the API jar and no
-logging backend, SLF4J 2.x prints one harmless one-time "no providers found" warning instead of failing).
+logging backend, SLF4J 2.x prints one harmless one-time "no providers found" warning instead of failing),
+and `lombok-1.18.46.jar` (`@Getter`/`@Setter`/`@RequiredArgsConstructor`, configured fluent/no-prefix via
+`@Accessors(fluent = true)` to match this codebase's existing no-`get`-prefix accessor style everywhere
+else — e.g. `Position.row()`, `Piece.color()` — rather than Lombok's JavaBean-style default; fluent
+setters return the owning instance instead of `void`). Lombok is compile-time-only (an annotation
+processor, not a runtime dependency) but still needs to be on the compiler's `-processorpath`, not just
+`-cp` — see the compile command below.
 
 ## Build & test commands
 
@@ -28,11 +34,16 @@ classpaths and multi-file compiles. PowerShell does not have this problem.
 
 **Compile main sources** (outputs to `out/`, matching the IntelliJ module's output folder). Needs `-cp`
 pointing at `lib/` now that `src/net/`/`src/server/` use the WebSocket jar — main sources had zero external
-dependencies before that, so this flag is new as of those packages existing:
+dependencies before that, so this flag is new as of those packages existing. Also needs `-processorpath`
+pointing at the Lombok jar specifically: on this project's JDK (26), implicit annotation-processor
+discovery via plain `-cp` does not run Lombok at all — not even a warning, it silently skips code
+generation, which then surfaces as a confusing "variable not initialized in the default constructor"
+error on whatever class used `@RequiredArgsConstructor`, with no mention of Lombok anywhere in the output:
 ```powershell
 $cp = (Get-ChildItem lib\*.jar | ForEach-Object { $_.FullName }) -join ";"
+$proc = (Get-ChildItem lib\lombok*.jar).FullName
 $files = Get-ChildItem -Recurse src\*.java, GuiMain.java, Main.java, ServerMain.java, ClientMain.java | ForEach-Object { $_.FullName }
-javac -d out -encoding UTF-8 -cp $cp $files
+javac -d out -encoding UTF-8 -cp $cp -processorpath $proc $files
 ```
 
 **Compile tests** (needs `out/` on the classpath plus the JUnit jars in `lib/`):

@@ -15,11 +15,11 @@ public class MotionResolver {
     public ArrivalEvent resolve(Motion motion) {
         Piece capturedPiece = board.getPieceAt(motion.destination()).orElse(null);
 
-        if (capturedPiece != null && capturedPiece.getColor() == motion.piece().getColor()) {
+        if (capturedPiece != null && capturedPiece.color() == motion.piece().color()) {
             return resolveBounceBack(motion);
         }
 
-        boolean kingCaptured = capturedPiece != null && capturedPiece.getKind() == Piece.Kind.KING;
+        boolean kingCaptured = capturedPiece != null && capturedPiece.kind() == Piece.Kind.KING;
         if (capturedPiece != null) {
             capturedPiece.setState(Piece.State.CAPTURED);
             board.removePiece(motion.destination());
@@ -61,17 +61,17 @@ public class MotionResolver {
     }
 
     private boolean isPromotion(Piece piece) {
-        if (piece.getKind() != Piece.Kind.PAWN) {
+        if (piece.kind() != Piece.Kind.PAWN) {
             return false;
         }
-        int promotionRow = piece.getColor() == Piece.Color.WHITE ? 0 : board.getHeight() - 1;
-        return piece.getCell().row() == promotionRow;
+        int promotionRow = piece.color() == Piece.Color.WHITE ? 0 : board.getHeight() - 1;
+        return piece.cell().row() == promotionRow;
     }
 
     private Piece promoteToQueen(Piece pawn) {
-        Position cell = pawn.getCell();
+        Position cell = pawn.cell();
         board.removePiece(cell);
-        Piece queen = new Piece(pawn.getId(), pawn.getColor(), Piece.Kind.QUEEN, cell);
+        Piece queen = new Piece(pawn.id(), pawn.color(), Piece.Kind.QUEEN, cell);
         board.addPiece(queen, cell);
         return queen;
     }

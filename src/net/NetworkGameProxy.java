@@ -1,5 +1,7 @@
 package src.net;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
@@ -27,6 +29,8 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     // than a MoveResult) lets this same queue carry login replies too, since login's WELCOME/REJECT and a
     // move's OK/REJECT are both just "whatever reply comes back next" from the server's point of view.
     private final LinkedBlockingQueue<CompletableFuture<WireMessage>> pendingReplies = new LinkedBlockingQueue<>();
+    @Getter
+    @Accessors(fluent = true)
     private volatile GameSnapshot latestSnapshot;
 
     public NetworkGameProxy(URI serverUri, long requestTimeoutMs) {
@@ -111,10 +115,6 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         // requestJump's placeholder below).
         enqueuePendingReply();
         send(Protocol.encode(new SelectCommand(selected)));
-    }
-
-    public GameSnapshot latestSnapshot() {
-        return latestSnapshot;
     }
 
     private PieceSnapshot pieceAt(Position position) {
