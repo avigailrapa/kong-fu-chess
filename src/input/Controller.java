@@ -1,6 +1,6 @@
 package src.input;
 
-import src.engine.GameEngine;
+import src.engine.GameCommands;
 import src.engine.MoveResult;
 import src.model.Position;
 
@@ -9,10 +9,10 @@ import java.util.Optional;
 public class Controller {
 
     private final BoardMapper boardMapper;
-    private final GameEngine gameEngine;
+    private final GameCommands gameEngine;
     private Position selectedCell;
 
-    public Controller(BoardMapper boardMapper, GameEngine gameEngine) {
+    public Controller(BoardMapper boardMapper, GameCommands gameEngine) {
         this.boardMapper = boardMapper;
         this.gameEngine = gameEngine;
     }

@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class GameEngine {
+public class GameEngine implements GameCommands {
 
     private final Board board;
     private final GameState gameState;
