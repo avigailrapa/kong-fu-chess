@@ -8,8 +8,11 @@ import src.net.JumpCommand;
 import src.net.MalformedMessageException;
 import src.net.MoveAccepted;
 import src.net.MoveCommand;
+import src.net.LoginCommand;
 import src.net.MoveRejected;
 import src.net.Protocol;
+import src.net.SelectCommand;
+import src.net.Welcome;
 import src.net.WireMessage;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -137,5 +140,60 @@ public class ProtocolTest {
     @Test
     public void testEncodeRejectsNull() {
         assertThrows(MalformedMessageException.class, () -> Protocol.encode(null));
+    }
+
+    @Test
+    public void testLoginCommandRoundTrips() {
+        LoginCommand original = new LoginCommand("alice");
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("LOGIN alice", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsLoginWithMissingUsername() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("LOGIN "));
+    }
+
+    @Test
+    public void testWelcomeRoundTrips() {
+        Welcome original = new Welcome(Piece.Color.BLACK);
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("WELCOME B", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsWelcomeWithInvalidColorLetter() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME X"));
+    }
+
+    @Test
+    public void testSelectCommandWithSquareRoundTrips() {
+        SelectCommand original = new SelectCommand(AlgebraicNotation.toPosition("e4"));
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("SELECT e4", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testSelectCommandWithNoSelectionRoundTrips() {
+        SelectCommand original = new SelectCommand(null);
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("SELECT -", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsSelectWithInvalidSquare() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("SELECT z9"));
     }
 }

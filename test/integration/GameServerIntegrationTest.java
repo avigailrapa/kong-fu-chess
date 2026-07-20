@@ -38,8 +38,9 @@ public class GameServerIntegrationTest {
         server.start();
 
         AtomicInteger stateCount = new AtomicInteger();
+        CountDownLatch gotWelcome = new CountDownLatch(1);
         CountDownLatch gotOk = new CountDownLatch(1);
-        CountDownLatch gotInitialState = new CountDownLatch(1);
+        CountDownLatch gotStateAfterLogin = new CountDownLatch(1);
         WebSocket.Listener listener = new WebSocket.Listener() {
             private final StringBuilder buffer = new StringBuilder();
 
@@ -51,9 +52,11 @@ public class GameServerIntegrationTest {
                     buffer.setLength(0);
                     if (message.equals("OK")) {
                         gotOk.countDown();
+                    } else if (message.equals("WELCOME W")) {
+                        gotWelcome.countDown();
                     } else if (message.startsWith("STATE ")) {
                         stateCount.incrementAndGet();
-                        gotInitialState.countDown();
+                        gotStateAfterLogin.countDown();
                     }
                 }
                 webSocket.request(1);
@@ -69,9 +72,12 @@ public class GameServerIntegrationTest {
                     .buildAsync(URI.create("ws://localhost:" + port), listener)
                     .get(5, TimeUnit.SECONDS);
 
-            // onOpen already pushes one STATE on connect; capture that count before triggering a move,
-            // so the later assertion proves the move caused an *additional* broadcast, not just this one.
-            assertTrue(gotInitialState.await(5, TimeUnit.SECONDS), "expected an initial STATE broadcast on connect");
+            // The server no longer pushes STATE on raw connect - a client must LOGIN first (Level 2).
+            // LOGIN's own reply-then-broadcast still produces one STATE, which this captures before
+            // triggering a move, so the later assertion proves the move caused an *additional* broadcast.
+            client.sendText("LOGIN alice", true).get(5, TimeUnit.SECONDS);
+            assertTrue(gotWelcome.await(5, TimeUnit.SECONDS), "expected WELCOME W over the real socket");
+            assertTrue(gotStateAfterLogin.await(5, TimeUnit.SECONDS), "expected a STATE broadcast after login");
             int stateCountBeforeMove = stateCount.get();
 
             client.sendText("WRa1a4", true).get(5, TimeUnit.SECONDS);

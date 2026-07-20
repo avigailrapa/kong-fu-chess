@@ -23,8 +23,10 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     // connection's messages in the order it received them, so the reply for each request we sent is always
     // the next one to arrive here. Matching by strict FIFO order (rather than a single shared slot) means a
     // late reply to a request we already gave up on (timeout) completes that abandoned future instead of
-    // being mistaken for the reply to whatever request we send next.
-    private final LinkedBlockingQueue<CompletableFuture<MoveResult>> pendingReplies = new LinkedBlockingQueue<>();
+    // being mistaken for the reply to whatever request we send next. Holding the raw WireMessage (rather
+    // than a MoveResult) lets this same queue carry login replies too, since login's WELCOME/REJECT and a
+    // move's OK/REJECT are both just "whatever reply comes back next" from the server's point of view.
+    private final LinkedBlockingQueue<CompletableFuture<WireMessage>> pendingReplies = new LinkedBlockingQueue<>();
     private volatile GameSnapshot latestSnapshot;
 
     public NetworkGameProxy(URI serverUri, long requestTimeoutMs) {
@@ -46,11 +48,16 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         }
         switch (parsed) {
             case StateMessage s -> latestSnapshot = s.snapshot();
-            case MoveAccepted _ -> completeOldestPendingReply(new MoveResult(true, "ok"));
-            case MoveRejected r -> completeOldestPendingReply(new MoveResult(false, r.reason()));
+            case MoveAccepted m -> completeOldestPendingReply(m);
+            case MoveRejected r -> completeOldestPendingReply(r);
+            case Welcome w -> completeOldestPendingReply(w);
+            case LoginCommand _ -> {
+            }
             case MoveCommand _ -> {
             }
             case JumpCommand _ -> {
+            }
+            case SelectCommand _ -> {
             }
         }
     }
@@ -75,9 +82,9 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         if (piece == null) {
             return new MoveResult(false, "empty_source");
         }
-        CompletableFuture<MoveResult> reply = enqueuePendingReply();
+        CompletableFuture<WireMessage> reply = enqueuePendingReply();
         send(Protocol.encode(new MoveCommand(piece.color(), piece.kind(), source, destination)));
-        return awaitReply(reply);
+        return awaitMoveReply(reply);
     }
 
     @Override
@@ -92,6 +99,20 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         send(Protocol.encode(new JumpCommand(piece.color(), piece.kind(), cell)));
     }
 
+    public LoginResult login(String username) {
+        CompletableFuture<WireMessage> reply = enqueuePendingReply();
+        send(Protocol.encode(new LoginCommand(username)));
+        return awaitLoginReply(reply);
+    }
+
+    public void updateSelection(Position selected) {
+        // The server replies OK to a SELECT too; enqueue a (never-awaited) placeholder so that reply is
+        // consumed here rather than being mistaken for a later request's reply (same reasoning as
+        // requestJump's placeholder below).
+        enqueuePendingReply();
+        send(Protocol.encode(new SelectCommand(selected)));
+    }
+
     public GameSnapshot latestSnapshot() {
         return latestSnapshot;
     }
@@ -100,22 +121,22 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         return latestSnapshot == null ? null : latestSnapshot.pieceAt(position);
     }
 
-    private CompletableFuture<MoveResult> enqueuePendingReply() {
-        CompletableFuture<MoveResult> reply = new CompletableFuture<>();
+    private CompletableFuture<WireMessage> enqueuePendingReply() {
+        CompletableFuture<WireMessage> reply = new CompletableFuture<>();
         pendingReplies.add(reply);
         return reply;
     }
 
-    private void completeOldestPendingReply(MoveResult result) {
-        CompletableFuture<MoveResult> reply = pendingReplies.poll();
+    private void completeOldestPendingReply(WireMessage result) {
+        CompletableFuture<WireMessage> reply = pendingReplies.poll();
         if (reply != null) {
             reply.complete(result);
         }
     }
 
-    private MoveResult awaitReply(CompletableFuture<MoveResult> reply) {
+    private MoveResult awaitMoveReply(CompletableFuture<WireMessage> reply) {
         try {
-            return reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS);
+            return toMoveResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
         } catch (TimeoutException e) {
             return new MoveResult(false, "timeout");
         } catch (InterruptedException e) {
@@ -124,5 +145,34 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         } catch (ExecutionException e) {
             return new MoveResult(false, "error");
         }
+    }
+
+    private MoveResult toMoveResult(WireMessage message) {
+        return switch (message) {
+            case MoveAccepted _ -> new MoveResult(true, "ok");
+            case MoveRejected r -> new MoveResult(false, r.reason());
+            default -> new MoveResult(false, "unexpected_message");
+        };
+    }
+
+    private LoginResult awaitLoginReply(CompletableFuture<WireMessage> reply) {
+        try {
+            return toLoginResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
+        } catch (TimeoutException e) {
+            return new LoginResult(false, null, "timeout");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new LoginResult(false, null, "interrupted");
+        } catch (ExecutionException e) {
+            return new LoginResult(false, null, "error");
+        }
+    }
+
+    private LoginResult toLoginResult(WireMessage message) {
+        return switch (message) {
+            case Welcome w -> new LoginResult(true, w.color(), "ok");
+            case MoveRejected r -> new LoginResult(false, null, r.reason());
+            default -> new LoginResult(false, null, "unexpected_message");
+        };
     }
 }
