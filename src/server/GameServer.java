@@ -8,21 +8,28 @@ import src.model.*;
 import src.engine.MoveEvent;
 import src.engine.MoveResult;
 import src.net.JumpCommand;
+import src.net.LoginCommand;
 import src.net.MalformedMessageException;
 import src.net.MoveAccepted;
 import src.net.MoveCommand;
 import src.net.MoveRejected;
 import src.net.Protocol;
+import src.net.SelectCommand;
 import src.net.StateMessage;
+import src.net.Welcome;
 import src.net.WireMessage;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 public class GameServer extends WebSocketServer {
 
     private final Match match;
+    private final Map<WebSocket, Session> sessionsByConnection = new HashMap<>();
 
     public GameServer(InetSocketAddress address, Match match) {
         super(address);
@@ -36,7 +43,6 @@ public class GameServer extends WebSocketServer {
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        match.submit(() -> conn.send(encodedState()));
     }
 
     @Override
@@ -46,7 +52,7 @@ public class GameServer extends WebSocketServer {
     @Override
     public void onMessage(WebSocket conn, String message) {
         match.submit(() -> {
-            String reply = handleMessage(message);
+            String reply = handleMessage(conn, message);
             conn.send(reply);
             broadcastState();
         });
@@ -57,7 +63,7 @@ public class GameServer extends WebSocketServer {
         ex.printStackTrace();
     }
 
-    public String handleMessage(String message) {
+    public String handleMessage(WebSocket conn, String message) {
         WireMessage parsed;
         try {
             parsed = Protocol.parse(message);
@@ -65,15 +71,40 @@ public class GameServer extends WebSocketServer {
             return Protocol.encode(new MoveRejected("malformed"));
         }
         return switch (parsed) {
-            case MoveCommand m -> handleMove(m);
-            case JumpCommand j -> handleJump(j);
+            case LoginCommand l -> handleLogin(conn, l);
+            case MoveCommand m -> handleMove(conn, m);
+            case JumpCommand j -> handleJump(conn, j);
+            case SelectCommand sel -> handleSelect(conn, sel);
             case MoveAccepted _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case MoveRejected _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case StateMessage _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case Welcome _ -> Protocol.encode(new MoveRejected("unexpected_message"));
         };
     }
 
-    private String handleMove(MoveCommand m) {
+    private String handleSelect(WebSocket conn, SelectCommand sel) {
+        Session session = sessionsByConnection.get(conn);
+        if (session != null) {
+            session.selectedCell(sel.selected());
+        }
+        return Protocol.encode(new MoveAccepted());
+    }
+
+    private String handleLogin(WebSocket conn, LoginCommand l) {
+        Optional<Piece.Color> color = match.assignSeat();
+        if (color.isEmpty()) {
+            return Protocol.encode(new MoveRejected("table_full"));
+        }
+        Session session = new Session(conn, l.username(), color.get());
+        match.addSession(session);
+        sessionsByConnection.put(conn, session);
+        return Protocol.encode(new Welcome(color.get()));
+    }
+
+    private String handleMove(WebSocket conn, MoveCommand m) {
+        if (!ownsColor(conn, m.color())) {
+            return Protocol.encode(new MoveRejected("not_your_piece"));
+        }
         if (!declaredTokenMatchesBoard(m.from(), m.color(), m.kind())) {
             return Protocol.encode(new MoveRejected("token_mismatch"));
         }
@@ -83,12 +114,20 @@ public class GameServer extends WebSocketServer {
                 : Protocol.encode(new MoveRejected(result.reason()));
     }
 
-    private String handleJump(JumpCommand j) {
+    private String handleJump(WebSocket conn, JumpCommand j) {
+        if (!ownsColor(conn, j.color())) {
+            return Protocol.encode(new MoveRejected("not_your_piece"));
+        }
         if (!declaredTokenMatchesBoard(j.at(), j.color(), j.kind())) {
             return Protocol.encode(new MoveRejected("token_mismatch"));
         }
         match.engine().requestJump(j.at());
         return Protocol.encode(new MoveAccepted());
+    }
+
+    private boolean ownsColor(WebSocket conn, Piece.Color declaredColor) {
+        Session session = sessionsByConnection.get(conn);
+        return session != null && session.assignedColor() == declaredColor;
     }
 
     private boolean declaredTokenMatchesBoard(Position position, Piece.Color color,

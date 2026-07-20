@@ -1,4 +1,6 @@
 package src.net;
 
-public sealed interface WireMessage permits MoveCommand, JumpCommand, MoveAccepted, MoveRejected, StateMessage {
+public sealed interface WireMessage
+        permits MoveCommand, JumpCommand, MoveAccepted, MoveRejected, StateMessage, LoginCommand, Welcome,
+        SelectCommand {
 }

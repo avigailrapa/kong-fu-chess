@@ -1,6 +1,8 @@
 import src.bus.EventBus;
 import src.input.BoardMapper;
 import src.input.Controller;
+import src.model.Position;
+import src.net.LoginResult;
 import src.net.NetworkGameProxy;
 import src.view.GameSnapshot;
 import src.view.GameWindow;
@@ -10,7 +12,10 @@ import src.view.sound.EffectsController;
 
 import javax.swing.*;
 import java.net.URI;
+import java.util.Objects;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleFunction;
 import java.util.function.LongPredicate;
 import java.util.function.Supplier;
@@ -34,6 +39,7 @@ public class ClientMain {
                 proxy.close();
                 System.exit(1);
             }
+            login(proxy);
             waitForInitialState(proxy);
         } catch (Exception e) {
             System.err.println("Failed to connect to server at " + serverUrl + ": " + e.getMessage());
@@ -50,10 +56,32 @@ public class ClientMain {
         SwingUtilities.invokeLater(window::open);
     }
 
+    private static void login(NetworkGameProxy proxy) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Username: ");
+        String username = scanner.nextLine();
+
+        LoginResult result = proxy.login(username);
+        if (!result.accepted()) {
+            System.err.println("Login rejected: " + result.reason());
+            proxy.close();
+            System.exit(1);
+        }
+        System.out.println("Welcome, playing as " + result.assignedColor());
+    }
+
     private static GameWindow.GameComponents createGame(NetworkGameProxy proxy) {
         Controller controller = new Controller(new BoardMapper(BOARD_WIDTH, BOARD_HEIGHT), proxy);
         Renderer renderer = new Renderer("assets/pieces");
-        LongPredicate tickSource = ms -> true;
+        AtomicReference<Position> lastSentSelection = new AtomicReference<>();
+        LongPredicate tickSource = ms -> {
+            Position selection = controller.getSelectedCell().orElse(null);
+            if (!Objects.equals(selection, lastSentSelection.get())) {
+                lastSentSelection.set(selection);
+                proxy.updateSelection(selection);
+            }
+            return true;
+        };
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> proxy.latestSnapshot();
         // No wire messages carry MoveEvent/GameOverEvent yet, so this bus never receives a publish -
         // sound/banner effects stay silent over the network until that's added to the protocol.

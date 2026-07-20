@@ -2,7 +2,11 @@ package src.server;
 
 import src.engine.GameEngine;
 import src.engine.MoveLogger;
+import src.model.Piece;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -14,6 +18,7 @@ public class Match {
     private final MoveLogger moveLogger;
     private final long tickIntervalMs;
     private final ScheduledExecutorService executor;
+    private final List<Session> seated = new ArrayList<>();
     private Runnable onTick;
     private ScheduledFuture<?> tickTask;
 
@@ -50,6 +55,22 @@ public class Match {
 
     public MoveLogger moveLogger() {
         return moveLogger;
+    }
+
+    public Optional<Piece.Color> assignSeat() {
+        if (seated.size() >= 2) {
+            return Optional.empty();
+        }
+        boolean whiteTaken = seated.stream().anyMatch(s -> s.assignedColor() == Piece.Color.WHITE);
+        return Optional.of(whiteTaken ? Piece.Color.BLACK : Piece.Color.WHITE);
+    }
+
+    public void addSession(Session session) {
+        seated.add(session);
+    }
+
+    public List<Session> seated() {
+        return List.copyOf(seated);
     }
 
     private void tick() {

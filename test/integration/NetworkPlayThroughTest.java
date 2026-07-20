@@ -7,6 +7,7 @@ import src.model.Board;
 import src.model.GameState;
 import src.model.Piece;
 import src.model.Position;
+import src.net.LoginResult;
 import src.net.NetworkGameProxy;
 import src.realtime.RealTimeArbiter;
 import src.rules.PieceRules;
@@ -41,7 +42,11 @@ public class NetworkPlayThroughTest {
         try {
             assertTrue(proxy.connectBlocking(5, TimeUnit.SECONDS), "expected the client to connect");
 
-            waitUntil(() -> proxy.latestSnapshot() != null, "an initial STATE broadcast");
+            LoginResult login = proxy.login("alice");
+            assertTrue(login.accepted(), "expected login to be accepted: " + login.reason());
+            assertEquals(Piece.Color.WHITE, login.assignedColor());
+
+            waitUntil(() -> proxy.latestSnapshot() != null, "a STATE broadcast after login");
             assertTrue(proxy.isOccupied(new Position(7, 0)));
 
             MoveResult result = proxy.requestMove(new Position(7, 0), new Position(4, 0));
