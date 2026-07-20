@@ -37,6 +37,10 @@ public class Renderer {
     private static final Color REST_COOLDOWN_COLOR = new Color(255, 215, 0);
     private static final int REST_COOLDOWN_MAX_ALPHA = 180;
     private static final String BOARD_IMAGE_FILENAME = "board.png";
+    private static final Color BANNER_TEXT_COLOR = new Color(255, 215, 0);
+    private static final Color BANNER_BACKGROUND_COLOR = new Color(0, 0, 0, 160);
+    private static final float BANNER_FONT_SIZE = 2.4f;
+    private static final int BANNER_HEIGHT = 60;
 
     private final String piecesRoot;
     private final Map<String, BufferedImage> imageCache = new HashMap<>();
@@ -57,6 +61,18 @@ public class Renderer {
 
     public int boardOffsetY() {
         return TITLE_HEIGHT + COL_LABEL_HEIGHT;
+    }
+
+    public void drawBanner(BufferedImage image, String text) {
+        Img canvas = new Img(image);
+        int boardOffsetX = boardOffsetX();
+        int boardWidth = image.getWidth() - boardOffsetX - PANEL_WIDTH;
+        int bandY = boardOffsetY();
+        canvas.fillRect(boardOffsetX, bandY, boardWidth, BANNER_HEIGHT, BANNER_BACKGROUND_COLOR);
+
+        int textX = boardOffsetX + boardWidth / 2 - (text.length() * 11);
+        int textY = bandY + BANNER_HEIGHT / 2 + 14;
+        canvas.putText(text, textX, textY, BANNER_FONT_SIZE, BANNER_TEXT_COLOR, 0);
     }
 
     public BufferedImage render(GameSnapshot snapshot) {

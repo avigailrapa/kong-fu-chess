@@ -9,6 +9,8 @@ import src.view.GameLoop;
 import src.view.GameSnapshot;
 import src.view.GameWindow;
 import src.view.Renderer;
+import src.view.sound.ClipSoundPlayer;
+import src.view.sound.EffectsController;
 
 import javax.swing.*;
 import java.util.List;
@@ -46,12 +48,14 @@ public class GuiMain {
         Controller controller = new Controller(new BoardMapper(board.getWidth(), board.getHeight()), engine);
         Renderer renderer = new Renderer("assets/pieces");
         GameLoop gameLoop = new GameLoop(engine);
+        EffectsController effects = new EffectsController(engine.eventBus(), new ClipSoundPlayer("assets"));
+        effects.announceGameStart();
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> engine.snapshot(
                 controller.getSelectedCell().orElse(null),
                 formatMoveLog(moveLogger.getWhiteMoves()),
                 formatMoveLog(moveLogger.getBlackMoves()),
                 zoom);
-        return new GameWindow.GameComponents(gameLoop, snapshotSupplier, controller, renderer);
+        return new GameWindow.GameComponents(gameLoop, snapshotSupplier, controller, renderer, effects);
     }
 
     private static List<String> formatMoveLog(List<MoveEvent> moves) {
