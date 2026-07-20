@@ -10,6 +10,14 @@ public class Piece {
         public char letter() {
             return name().charAt(0);
         }
+
+        public static Color fromLetter(char letter) {
+            return switch (Character.toUpperCase(letter)) {
+                case 'W' -> WHITE;
+                case 'B' -> BLACK;
+                default -> throw new IllegalArgumentException("Invalid piece color letter: " + letter);
+            };
+        }
     }
 
     public enum Kind {
@@ -23,6 +31,18 @@ public class Piece {
                 case BISHOP -> 'B';
                 case KNIGHT -> 'N';
                 case PAWN -> 'P';
+            };
+        }
+
+        public static Kind fromLetter(char letter) {
+            return switch (Character.toUpperCase(letter)) {
+                case 'K' -> KING;
+                case 'Q' -> QUEEN;
+                case 'R' -> ROOK;
+                case 'B' -> BISHOP;
+                case 'N' -> KNIGHT;
+                case 'P' -> PAWN;
+                default -> throw new IllegalArgumentException("Invalid piece kind letter: " + letter);
             };
         }
     }

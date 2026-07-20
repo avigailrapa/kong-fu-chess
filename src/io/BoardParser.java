@@ -47,29 +47,13 @@ public class BoardParser {
         if (token.length() != 2) {
             throw new IllegalArgumentException("Invalid piece token: " + token);
         }
-        Piece.Color color = parseColor(token.charAt(0));
-        Piece.Kind kind = parseKind(token.charAt(1));
-        return new Piece("p" + index, color, kind, position);
-    }
-
-    private Piece.Color parseColor(char c) {
-        return switch (c) {
-            case 'w' -> Piece.Color.WHITE;
-            case 'b' -> Piece.Color.BLACK;
-            default -> throw new IllegalArgumentException("Invalid piece color: " + c);
-        };
-    }
-
-    private Piece.Kind parseKind(char c) {
-        return switch (c) {
-            case 'K' -> Piece.Kind.KING;
-            case 'Q' -> Piece.Kind.QUEEN;
-            case 'R' -> Piece.Kind.ROOK;
-            case 'B' -> Piece.Kind.BISHOP;
-            case 'N' -> Piece.Kind.KNIGHT;
-            case 'P' -> Piece.Kind.PAWN;
-            default -> throw new IllegalArgumentException("Invalid piece kind: " + c);
-        };
+        try {
+            Piece.Color color = Piece.Color.fromLetter(token.charAt(0));
+            Piece.Kind kind = Piece.Kind.fromLetter(token.charAt(1));
+            return new Piece("p" + index, color, kind, position);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid piece token: " + token, e);
+        }
     }
 
     private String[] splitNonBlankLines(String text) {
