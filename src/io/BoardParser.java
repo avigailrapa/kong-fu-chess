@@ -6,6 +6,17 @@ import src.model.Position;
 
 public class BoardParser {
 
+    public static final String STANDARD_STARTING_POSITION = """
+            bR bN bB bQ bK bB bN bR
+            bP bP bP bP bP bP bP bP
+            .  .  .  .  .  .  .  .
+            .  .  .  .  .  .  .  .
+            .  .  .  .  .  .  .  .
+            .  .  .  .  .  .  .  .
+            wP wP wP wP wP wP wP wP
+            wR wN wB wQ wK wB wN wR
+            """;
+
     public Board parse(String text) {
         String[] lines = splitNonBlankLines(text);
         if (lines.length == 0) {
