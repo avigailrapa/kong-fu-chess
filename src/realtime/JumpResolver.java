@@ -22,7 +22,7 @@ public class JumpResolver {
             return Optional.empty();
         }
 
-        boolean occupantWasKing = occupant.getKind() == Piece.Kind.KING;
+        boolean occupantWasKing = occupant.kind() == Piece.Kind.KING;
         occupant.setState(Piece.State.CAPTURED);
         board.removePiece(cell);
         board.addPiece(jumper, cell);

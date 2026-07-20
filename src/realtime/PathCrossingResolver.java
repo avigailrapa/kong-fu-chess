@@ -18,10 +18,10 @@ public class PathCrossingResolver {
             for (int b = a + 1; b < pieces.size(); b++) {
                 Piece pieceA = pieces.get(a);
                 Piece pieceB = pieces.get(b);
-                if (pieceA.getColor() != pieceB.getColor()) {
+                if (pieceA.color() != pieceB.color()) {
                     continue;
                 }
-                if (!isSliding(pieceA.getKind()) || !isSliding(pieceB.getKind())) {
+                if (!isSliding(pieceA.kind()) || !isSliding(pieceB.kind())) {
                     continue;
                 }
 

@@ -1,7 +1,11 @@
 package src.model;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
+
 import java.util.Objects;
 
+@Accessors(fluent = true)
 public class Piece {
 
     public enum Color {
@@ -51,10 +55,15 @@ public class Piece {
         IDLE, MOVING, JUMPING, SHORT_REST, LONG_REST, CAPTURED
     }
 
+    @Getter
     private final String id;
+    @Getter
     private final Color color;
+    @Getter
     private final Kind kind;
+    @Getter
     private Position cell;
+    @Getter
     private State state;
 
     public Piece(String id, Color color, Kind kind, Position cell) {
@@ -63,26 +72,6 @@ public class Piece {
         this.kind = Objects.requireNonNull(kind, "kind must not be null");
         this.cell = Objects.requireNonNull(cell, "cell must not be null");
         this.state = State.IDLE;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public Color getColor() {
-        return color;
-    }
-
-    public Kind getKind() {
-        return kind;
-    }
-
-    public Position getCell() {
-        return cell;
-    }
-
-    public State getState() {
-        return state;
     }
 
     public void setCell(Position cell) {

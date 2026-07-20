@@ -24,7 +24,7 @@ abstract class SlidingRule implements PieceRules {
     }
 
     private void slide(IBoard board, Piece piece, int rowStep, int colStep, Set<Position> destinations) {
-        Position current = piece.getCell();
+        Position current = piece.cell();
         int row = current.row() + rowStep;
         int col = current.col() + colStep;
 
@@ -38,7 +38,7 @@ abstract class SlidingRule implements PieceRules {
             if (occupant.isEmpty()) {
                 destinations.add(candidate);
             } else {
-                if (occupant.get().getColor() != piece.getColor()) {
+                if (occupant.get().color() != piece.color()) {
                     destinations.add(candidate);
                 }
                 return;

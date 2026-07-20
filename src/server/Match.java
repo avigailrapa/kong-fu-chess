@@ -1,5 +1,7 @@
 package src.server;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import src.engine.GameEngine;
 import src.engine.MoveLogger;
 import src.model.Piece;
@@ -12,9 +14,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+@Accessors(fluent = true)
 public class Match {
 
+    @Getter
     private final GameEngine engine;
+    @Getter
     private final MoveLogger moveLogger;
     private final long tickIntervalMs;
     private final ScheduledExecutorService executor;
@@ -47,14 +52,6 @@ public class Match {
 
     public void submit(Runnable task) {
         executor.execute(task);
-    }
-
-    public GameEngine engine() {
-        return engine;
-    }
-
-    public MoveLogger moveLogger() {
-        return moveLogger;
     }
 
     public Optional<Piece.Color> assignSeat() {

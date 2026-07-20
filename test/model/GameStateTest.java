@@ -16,19 +16,19 @@ public class GameStateTest {
 
     @Test
     public void testInitialStateIsNotGameOver() {
-        assertFalse(gameState.isGameOver());
+        assertFalse(gameState.gameOver());
     }
 
     @Test
     public void testEndGameSetsGameOver() {
         gameState.endGame();
-        assertTrue(gameState.isGameOver());
+        assertTrue(gameState.gameOver());
     }
 
     @Test
     public void testEndGameIsIdempotent() {
         gameState.endGame();
         gameState.endGame();
-        assertTrue(gameState.isGameOver());
+        assertTrue(gameState.gameOver());
     }
 }

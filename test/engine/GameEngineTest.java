@@ -44,7 +44,7 @@ public class GameEngineTest {
 
         assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
         assertTrue(board.getPieceAt(new Position(4, 0)).isEmpty());
-        assertEquals(Piece.State.MOVING, rook.getState());
+        assertEquals(Piece.State.MOVING, rook.state());
     }
 
     @Test
@@ -117,7 +117,7 @@ public class GameEngineTest {
 
         assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
-        assertEquals(Piece.State.LONG_REST, rook.getState());
+        assertEquals(Piece.State.LONG_REST, rook.state());
     }
 
     @Test
@@ -181,7 +181,7 @@ public class GameEngineTest {
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         engine.waitMs(3000);
 
-        assertTrue(gameState.isGameOver());
+        assertTrue(gameState.gameOver());
     }
 
     @Test
@@ -196,7 +196,7 @@ public class GameEngineTest {
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         engine.waitMs(3000);
 
-        assertFalse(gameState.isGameOver());
+        assertFalse(gameState.gameOver());
     }
 
     @Test
@@ -229,7 +229,7 @@ public class GameEngineTest {
         engine.waitMs(5000);
 
         assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
-        assertEquals(Piece.State.IDLE, rook.getState());
+        assertEquals(Piece.State.IDLE, rook.state());
     }
 
     @Test
@@ -331,7 +331,7 @@ public class GameEngineTest {
 
         engine.waitMs(500);
 
-        assertFalse(gameState.isGameOver());
+        assertFalse(gameState.gameOver());
     }
 
     @Test
@@ -358,7 +358,7 @@ public class GameEngineTest {
         engine.requestMove(new Position(7, 7), new Position(0, 7)); // movingRook needs 7000ms, stays in motion past the wait below
         engine.requestMove(new Position(7, 0), new Position(4, 0)); // captures the king, ends the game after 3000ms
         engine.waitMs(3000);
-        assertTrue(gameState.isGameOver());
+        assertTrue(gameState.gameOver());
 
         MoveResult result = engine.requestMove(new Position(7, 7), new Position(6, 7));
 
@@ -379,7 +379,7 @@ public class GameEngineTest {
         GameEngine engine = new GameEngine(board, gameState, ruleEngine(), arbiter);
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         engine.waitMs(3000);
-        assertTrue(gameState.isGameOver());
+        assertTrue(gameState.gameOver());
 
         engine.requestJump(new Position(4, 0));
 

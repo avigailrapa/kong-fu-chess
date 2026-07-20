@@ -29,6 +29,6 @@ public class BoardPrinter {
             return ".";
         }
         Piece p = piece.get();
-        return "" + Character.toLowerCase(p.getColor().letter()) + p.getKind().letter();
+        return "" + Character.toLowerCase(p.color().letter()) + p.kind().letter();
     }
 }

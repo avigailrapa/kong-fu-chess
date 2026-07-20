@@ -115,7 +115,7 @@ public class Renderer {
             drawGameOver(canvas, snapshot, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
         }
 
-        return canvas.get();
+        return canvas.img();
     }
 
     private void drawGameOver(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY, int boardWidth, int boardHeight) {
@@ -143,7 +143,7 @@ public class Renderer {
         if (boardWidth != boardBackgroundImageWidth || boardHeight != boardBackgroundImageHeight) {
             File file = new File(piecesRoot).getParentFile();
             String path = new File(file, BOARD_IMAGE_FILENAME).getPath();
-            boardBackgroundImage = new Img().read(path, new Dimension(boardWidth, boardHeight), false, null).get();
+            boardBackgroundImage = new Img().read(path, new Dimension(boardWidth, boardHeight), false, null).img();
             boardBackgroundImageWidth = boardWidth;
             boardBackgroundImageHeight = boardHeight;
         }
@@ -244,7 +244,7 @@ public class Renderer {
 
     private BufferedImage cachedImage(String path, Dimension size) {
         String key = size == null ? path : path + "@" + size.width + "x" + size.height;
-        return imageCache.computeIfAbsent(key, unused -> new Img().read(path, size, true, null).get());
+        return imageCache.computeIfAbsent(key, unused -> new Img().read(path, size, true, null).img());
     }
 
     private String spritePath(PieceSnapshot piece) {

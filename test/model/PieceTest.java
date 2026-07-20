@@ -11,25 +11,25 @@ public class PieceTest {
         Position cell = new Position(0, 0);
         Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.KING, cell);
 
-        assertEquals("w1", piece.getId());
-        assertEquals(Piece.Color.WHITE, piece.getColor());
-        assertEquals(Piece.Kind.KING, piece.getKind());
-        assertEquals(cell, piece.getCell());
-        assertEquals(Piece.State.IDLE, piece.getState());
+        assertEquals("w1", piece.id());
+        assertEquals(Piece.Color.WHITE, piece.color());
+        assertEquals(Piece.Kind.KING, piece.kind());
+        assertEquals(cell, piece.cell());
+        assertEquals(Piece.State.IDLE, piece.state());
     }
 
     @Test
     public void testStateCanBecomeMoving() {
         Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(1, 0));
         piece.setState(Piece.State.MOVING);
-        assertEquals(Piece.State.MOVING, piece.getState());
+        assertEquals(Piece.State.MOVING, piece.state());
     }
 
     @Test
     public void testStateCanBecomeCaptured() {
         Piece piece = new Piece("b1", Piece.Color.BLACK, Piece.Kind.PAWN, new Position(6, 0));
         piece.setState(Piece.State.CAPTURED);
-        assertEquals(Piece.State.CAPTURED, piece.getState());
+        assertEquals(Piece.State.CAPTURED, piece.state());
     }
 
     @Test
@@ -37,9 +37,9 @@ public class PieceTest {
         Piece piece = new Piece("w1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(0, 0));
         piece.setCell(new Position(0, 5));
 
-        assertEquals(new Position(0, 5), piece.getCell());
-        assertEquals(Piece.Kind.ROOK, piece.getKind());
-        assertEquals(Piece.Color.WHITE, piece.getColor());
+        assertEquals(new Position(0, 5), piece.cell());
+        assertEquals(Piece.Kind.ROOK, piece.kind());
+        assertEquals(Piece.Color.WHITE, piece.color());
     }
 
     @Test

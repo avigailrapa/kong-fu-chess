@@ -1,4 +1,7 @@
 package src.engine;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import src.bus.EventBus;
 import src.model.*;
 import src.realtime.*;
@@ -14,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+@RequiredArgsConstructor
 public class GameEngine implements GameCommands {
 
     private final Board board;
@@ -22,15 +26,10 @@ public class GameEngine implements GameCommands {
     private final RealTimeArbiter arbiter;
     private final List<MoveObserver> moveObservers = new ArrayList<>();
     private final Map<Piece, Long> motionRequestTimestampMs = new HashMap<>();
+    @Getter
+    @Accessors(fluent = true)
     private final EventBus eventBus = new EventBus();
     private long gameClockMs = 0;
-
-    public GameEngine(Board board, GameState gameState, RuleEngine ruleEngine, RealTimeArbiter arbiter) {
-        this.board = board;
-        this.gameState = gameState;
-        this.ruleEngine = ruleEngine;
-        this.arbiter = arbiter;
-    }
 
     public static GameEngine fromBoard(Board board) {
         RuleEngine ruleEngine = new RuleEngine(createStandardRules());
@@ -54,10 +53,6 @@ public class GameEngine implements GameCommands {
         moveObservers.add(observer);
     }
 
-    public EventBus eventBus() {
-        return eventBus;
-    }
-
     private void notifyMoveObservers(MoveEvent event) {
         for (MoveObserver observer : moveObservers) {
             observer.onMove(event);
@@ -65,7 +60,7 @@ public class GameEngine implements GameCommands {
     }
 
     private void fireMoveEvent(Piece piece, Position source, Position destination, boolean capture, boolean kingCapture, long requestTimestampMs) {
-        MoveEvent event = new MoveEvent(piece.getColor(), piece.getKind(), source, destination, capture, kingCapture, requestTimestampMs);
+        MoveEvent event = new MoveEvent(piece.color(), piece.kind(), source, destination, capture, kingCapture, requestTimestampMs);
         eventBus.publish(event);
         if (!moveObservers.isEmpty()) {
             notifyMoveObservers(event);
@@ -73,7 +68,7 @@ public class GameEngine implements GameCommands {
     }
 
     public MoveResult requestMove(Position source, Position destination) {
-        if (gameState.isGameOver()) {
+        if (gameState.gameOver()) {
             return new MoveResult(false, "game_over");
         }
         Piece pieceAtSource = board.isWithinBorder(source) ? board.getPieceAt(source).orElse(null) : null;
@@ -104,7 +99,7 @@ public class GameEngine implements GameCommands {
     }
 
     public void requestJump(Position cell) {
-        if (gameState.isGameOver()) {
+        if (gameState.gameOver()) {
             return;
         }
         board.getPieceAt(cell).ifPresent(piece -> arbiter.startJump(piece, cell));
@@ -118,15 +113,15 @@ public class GameEngine implements GameCommands {
         List<ArrivalEvent> events = arbiter.advanceTime(ms);
         for (ArrivalEvent event : events) {
             if (event.kingCaptured()) {
-                Piece.Color loserColor = event.capturedPiece().getColor();
+                Piece.Color loserColor = event.capturedPiece().color();
                 Piece.Color winner = loserColor == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
                 gameState.endGame(winner);
                 eventBus.publish(new GameOverEvent(winner));
             }
 
             if (event.capturedPiece() != null && event.movedPiece() != null) {
-                Piece.Color capturingColor = event.movedPiece().getColor();
-                int points = getPieceValue(event.capturedPiece().getKind());
+                Piece.Color capturingColor = event.movedPiece().color();
+                int points = getPieceValue(event.capturedPiece().kind());
                 if (points > 0) {
                     gameState.addScore(capturingColor, points);
                     eventBus.publish(new ScoreChangedEvent(capturingColor, gameState.getScore(capturingColor), points));
@@ -171,10 +166,10 @@ public class GameEngine implements GameCommands {
         List<SelectionSnapshot> selections = selectedPosition == null
                 ? List.of()
                 : board.getPieceAt(selectedPosition)
-                        .map(piece -> new SelectionSnapshot(piece.getColor(), selectedPosition))
+                        .map(piece -> new SelectionSnapshot(piece.color(), selectedPosition))
                         .map(List::of)
                         .orElse(List.of());
-        return new GameSnapshot(width, height, grid, selections, legalDestinations, gameState.isGameOver(),
+        return new GameSnapshot(width, height, grid, selections, legalDestinations, gameState.gameOver(),
                                gameState.winner(), gameState.getScore(Piece.Color.WHITE),
                                gameState.getScore(Piece.Color.BLACK), whiteMoveLog, blackMoveLog, zoom);
     }
@@ -200,7 +195,7 @@ public class GameEngine implements GameCommands {
         int pixelY = (int) Math.round(position.row() * cellHeight);
         long elapsedMillis;
         long restDurationMs = 0;
-        Piece.State state = piece.getState();
+        Piece.State state = piece.state();
 
         Optional<Motion> motion = arbiter.activeMotion(piece);
         if (motion.isPresent()) {
@@ -222,7 +217,7 @@ public class GameEngine implements GameCommands {
             elapsedMillis = gameClockMs;
         }
 
-        return new PieceSnapshot(piece.getId(), piece.getColor(), piece.getKind(), state,
+        return new PieceSnapshot(piece.id(), piece.color(), piece.kind(), state,
                 pixelX, pixelY, elapsedMillis, restDurationMs);
     }
 

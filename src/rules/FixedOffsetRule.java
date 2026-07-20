@@ -15,7 +15,7 @@ abstract class FixedOffsetRule implements PieceRules {
     @Override
     public Set<Position> legalDestinations(IBoard board, Piece piece) {
         Set<Position> destinations = new HashSet<>();
-        Position current = piece.getCell();
+        Position current = piece.cell();
 
         for (int[] offset : offsets()) {
             Position candidate = new Position(current.row() + offset[0], current.col() + offset[1]);
@@ -24,7 +24,7 @@ abstract class FixedOffsetRule implements PieceRules {
             }
 
             Optional<Piece> occupant = board.getPieceAt(candidate);
-            if (occupant.isEmpty() || occupant.get().getColor() != piece.getColor()) {
+            if (occupant.isEmpty() || occupant.get().color() != piece.color()) {
                 destinations.add(candidate);
             }
         }
