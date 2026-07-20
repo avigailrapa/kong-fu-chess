@@ -1,6 +1,7 @@
 package src.view;
 
 import src.input.Controller;
+import src.view.sound.EffectsController;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,6 +22,7 @@ public class GameWindow {
     private Renderer renderer;
     private DoubleFunction<GameSnapshot> snapshotSupplier;
     private GameLoop gameLoop;
+    private EffectsController effects;
     private final JFrame frame;
     private final ImagePanel panel;
     private final Timer timer;
@@ -68,6 +70,7 @@ public class GameWindow {
         this.renderer = components.renderer();
         this.snapshotSupplier = components.snapshotSupplier();
         this.gameLoop = components.gameLoop();
+        this.effects = components.effects();
         this.controller.setZoom(zoom);
     }
 
@@ -112,7 +115,9 @@ public class GameWindow {
     }
 
     public void tick(long ms) {
-        if (gameLoop.tick(ms)) {
+        boolean bannerWasActive = effects.activeBanner().isPresent();
+        effects.tick(ms);
+        if (gameLoop.tick(ms) || bannerWasActive) {
             repaint();
         }
     }
@@ -130,6 +135,7 @@ public class GameWindow {
     private void repaint() {
         GameSnapshot snapshot = snapshotSupplier.apply(zoom);
         BufferedImage image = renderer.render(snapshot);
+        effects.activeBanner().ifPresent(text -> renderer.drawBanner(image, text));
         panel.setImage(image);
 
         if (snapshot.gameOver() && !gameOverAnnounced) {
@@ -140,7 +146,7 @@ public class GameWindow {
     }
 
     public record GameComponents(GameLoop gameLoop, DoubleFunction<GameSnapshot> snapshotSupplier,
-                                  Controller controller, Renderer renderer) {
+                                  Controller controller, Renderer renderer, EffectsController effects) {
     }
 
     private static class CenteringPanel extends JPanel implements Scrollable {
