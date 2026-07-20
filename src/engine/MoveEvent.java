@@ -16,15 +16,9 @@ public record MoveEvent(Piece.Color color, Piece.Kind kind, Position from, Posit
 
     public String algebraicMove() {
         String prefix = kind == Piece.Kind.PAWN ? "" : kind.letter() + "";
-        String destination = toFileRank(to);
+        String destination = AlgebraicNotation.toSquare(to);
         String captureMark = capture ? "x" : "";
         return prefix + captureMark + destination;
-    }
-
-    private String toFileRank(Position position) {
-        char file = (char) ('a' + position.col());
-        int rank = 8 - position.row();
-        return "" + file + rank;
     }
 
     @Override
