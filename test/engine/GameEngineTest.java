@@ -383,7 +383,7 @@ public class GameEngineTest {
 
         engine.requestJump(new Position(4, 0));
 
-        assertFalse(arbiter.hasActiveJump());
+        assertFalse(arbiter.isJumping(rook));
     }
 
     @Test
@@ -394,7 +394,7 @@ public class GameEngineTest {
 
         engine.requestJump(new Position(3, 3));
 
-        assertFalse(arbiter.hasActiveJump());
+        assertTrue(arbiter.isIdle());
     }
 
     @Test

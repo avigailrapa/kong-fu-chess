@@ -11,11 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
 public class RealTimeArbiterTest {
 
     @Test
-    public void testHasActiveMotionFalseInitially() {
+    public void testArbiterIsIdleInitially() {
         Board board = new Board(8, 8);
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
 
-        assertFalse(arbiter.hasActiveMotion());
+        assertTrue(arbiter.isIdle());
     }
 
     @Test
@@ -27,7 +27,7 @@ public class RealTimeArbiterTest {
 
         arbiter.startMotion(rook, new Position(7, 0), new Position(4, 0));
 
-        assertTrue(arbiter.hasActiveMotion());
+        assertTrue(arbiter.isMoving(rook));
         assertEquals(Piece.State.MOVING, rook.state());
         assertEquals(new Position(7, 0), rook.cell());
     }
@@ -92,7 +92,7 @@ public class RealTimeArbiterTest {
 
         assertTrue(events.isEmpty());
         assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
-        assertTrue(arbiter.hasActiveMotion());
+        assertTrue(arbiter.isMoving(rook));
     }
 
     @Test
@@ -110,7 +110,7 @@ public class RealTimeArbiterTest {
         assertTrue(board.getPieceAt(new Position(6, 0)).isPresent());
         assertEquals(Piece.State.LONG_REST, rook.state());
         assertTrue(arbiter.isLongResting(rook));
-        assertFalse(arbiter.hasActiveMotion());
+        assertFalse(arbiter.isMoving(rook));
     }
 
     @Test
@@ -173,7 +173,7 @@ public class RealTimeArbiterTest {
         List<ArrivalEvent> events = arbiter.advanceTime(500);
 
         assertTrue(events.isEmpty());
-        assertFalse(arbiter.hasActiveMotion());
+        assertTrue(arbiter.isIdle());
     }
 
     @Test
@@ -235,7 +235,7 @@ public class RealTimeArbiterTest {
 
         assertFalse(arbiter.advanceTime(1000).isEmpty());
         assertTrue(arbiter.advanceTime(1000).isEmpty());
-        assertFalse(arbiter.hasActiveMotion());
+        assertFalse(arbiter.isMoving(rook));
     }
 
     @Test
@@ -444,7 +444,7 @@ public class RealTimeArbiterTest {
         // only the rook's motion produces one.
         assertEquals(1, events.size());
         assertEquals(rook, events.get(0).movedPiece());
-        assertFalse(arbiter.hasActiveJump());
+        assertFalse(arbiter.isJumping(king));
         assertFalse(arbiter.isMoving(rook));
         assertEquals(Piece.State.SHORT_REST, king.state());
         assertTrue(arbiter.isShortResting(king));
@@ -471,7 +471,7 @@ public class RealTimeArbiterTest {
         arbiter.advanceTime(500); // rook's motion (500+500=1000ms) resolves as a silent displacement
 
         assertTrue(board.getPieceAt(new Position(7, 0)).map(p -> p.id().equals("r1")).orElse(false));
-        assertTrue(arbiter.hasActiveJump());
+        assertTrue(arbiter.isJumping(king));
 
         List<ArrivalEvent> events = arbiter.advanceTime(500); // king's jump (500+500=1000ms) lands and eats the rook
 
@@ -511,19 +511,19 @@ public class RealTimeArbiterTest {
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
         arbiter.startJump(rook, new Position(7, 0));
         arbiter.advanceTime(1000);
-        assertFalse(arbiter.hasActiveJump());
+        assertFalse(arbiter.isJumping(rook));
         assertEquals(Piece.State.SHORT_REST, rook.state());
         assertTrue(arbiter.isShortResting(rook));
 
         arbiter.startJump(rook, new Position(7, 0));
-        assertFalse(arbiter.hasActiveJump());
+        assertFalse(arbiter.isJumping(rook));
 
         arbiter.advanceTime(500); // short rest (500ms) elapses
         assertFalse(arbiter.isShortResting(rook));
 
         arbiter.startJump(rook, new Position(7, 0));
 
-        assertTrue(arbiter.hasActiveJump());
+        assertTrue(arbiter.isJumping(rook));
     }
 
     @Test
@@ -538,14 +538,14 @@ public class RealTimeArbiterTest {
         assertTrue(arbiter.isLongResting(rook));
 
         arbiter.startJump(rook, new Position(6, 0));
-        assertFalse(arbiter.hasActiveJump());
+        assertFalse(arbiter.isJumping(rook));
 
         arbiter.advanceTime(2000); // long rest (2000ms) elapses
         assertFalse(arbiter.isLongResting(rook));
 
         arbiter.startJump(rook, new Position(6, 0));
 
-        assertTrue(arbiter.hasActiveJump());
+        assertTrue(arbiter.isJumping(rook));
     }
 
     @Test
@@ -569,7 +569,8 @@ public class RealTimeArbiterTest {
 
         // Both land safely (nothing displaced either of them), so no ArrivalEvent for either.
         assertTrue(events.isEmpty());
-        assertFalse(arbiter.hasActiveJump());
+        assertFalse(arbiter.isJumping(rook));
+        assertFalse(arbiter.isJumping(bishop));
         assertEquals(Piece.State.SHORT_REST, rook.state());
         assertEquals(Piece.State.SHORT_REST, bishop.state());
         assertTrue(arbiter.isShortResting(rook));
@@ -600,7 +601,8 @@ public class RealTimeArbiterTest {
         assertEquals(Piece.State.SHORT_REST, bishop.state());
         assertTrue(arbiter.isShortResting(rook));
         assertTrue(arbiter.isShortResting(bishop));
-        assertFalse(arbiter.hasActiveJump());
+        assertFalse(arbiter.isJumping(rook));
+        assertFalse(arbiter.isJumping(bishop));
     }
 
     @Test
