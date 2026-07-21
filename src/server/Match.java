@@ -18,13 +18,15 @@ import java.util.concurrent.TimeUnit;
 public class Match {
 
     @Getter
-    private final GameEngine engine;
+    private GameEngine engine;
     @Getter
-    private final MoveLogger moveLogger;
+    private MoveLogger moveLogger;
     private final long tickIntervalMs;
     private final ScheduledExecutorService executor;
     private final List<Session> seated = new ArrayList<>();
     private Runnable onTick;
+    private Runnable onNewGame = () -> {
+    };
     private ScheduledFuture<?> tickTask;
 
     public Match(GameEngine engine, long tickIntervalMs) {
@@ -33,6 +35,17 @@ public class Match {
         this.moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
         this.executor = Executors.newSingleThreadScheduledExecutor();
+    }
+
+    public void onNewGame(Runnable listener) {
+        this.onNewGame = listener;
+    }
+
+    public void newGame(GameEngine engine) {
+        this.engine = engine;
+        this.moveLogger = new MoveLogger();
+        engine.addMoveObserver(moveLogger);
+        onNewGame.run();
     }
 
     public void start(Runnable onTick) {

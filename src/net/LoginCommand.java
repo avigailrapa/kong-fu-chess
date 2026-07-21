@@ -1,4 +1,4 @@
 package src.net;
 
-public record LoginCommand(String username) implements WireMessage {
+public record LoginCommand(String username, String password) implements WireMessage {
 }

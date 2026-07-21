@@ -3,6 +3,7 @@ package server;
 import org.java_websocket.WebSocket;
 import org.junit.jupiter.api.Test;
 import src.engine.GameEngine;
+import src.engine.GameOverEvent;
 import src.model.Board;
 import src.model.GameState;
 import src.model.Piece;
@@ -13,8 +14,12 @@ import src.rules.RookRule;
 import src.rules.RuleEngine;
 import src.server.GameServer;
 import src.server.Match;
+import src.server.Session;
+import src.server.UserStore;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,7 +39,8 @@ public class GameServerTest {
         board.addPiece(new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0)), new Position(7, 0));
         GameEngine engine = new GameEngine(board, new GameState(), rookOnlyRuleEngine(), new RealTimeArbiter(board));
         Match match = new Match(engine, 1000);
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), match);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), match,
+                new UserStore("jdbc:sqlite::memory:"));
         return new ServerAndMatch(server, match);
     }
 
@@ -42,9 +48,21 @@ public class GameServerTest {
         return freshServerAndMatch().server();
     }
 
+    private ServerAndMatch gameOverServerAndMatch() {
+        Board board = new Board(8, 8);
+        board.addPiece(new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0)), new Position(7, 0));
+        GameState gameState = new GameState();
+        gameState.endGame(Piece.Color.WHITE);
+        GameEngine engine = new GameEngine(board, gameState, rookOnlyRuleEngine(), new RealTimeArbiter(board));
+        Match match = new Match(engine, 1000);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), match,
+                new UserStore("jdbc:sqlite::memory:"));
+        return new ServerAndMatch(server, match);
+    }
+
     private void login(GameServer server, WebSocket conn, String username, Piece.Color expectedColor) {
-        String reply = server.handleMessage(conn, "LOGIN " + username);
-        assertEquals("WELCOME " + expectedColor.letter(), reply);
+        String reply = server.handleMessage(conn, "LOGIN " + username + " pw");
+        assertEquals("WELCOME " + expectedColor.letter() + " 1200", reply);
     }
 
     @Test
@@ -171,8 +189,8 @@ public class GameServerTest {
     public void testFirstThenSecondLoginAreSeatedWhiteThenBlack() {
         GameServer server = freshServer();
 
-        assertEquals("WELCOME W", server.handleMessage(new FakeWebSocket(), "LOGIN alice"));
-        assertEquals("WELCOME B", server.handleMessage(new FakeWebSocket(), "LOGIN bob"));
+        assertEquals("WELCOME W 1200", server.handleMessage(new FakeWebSocket(), "LOGIN alice pw"));
+        assertEquals("WELCOME B 1200", server.handleMessage(new FakeWebSocket(), "LOGIN bob pw"));
     }
 
     @Test
@@ -181,9 +199,29 @@ public class GameServerTest {
         login(server, new FakeWebSocket(), "alice", Piece.Color.WHITE);
         login(server, new FakeWebSocket(), "bob", Piece.Color.BLACK);
 
-        String reply = server.handleMessage(new FakeWebSocket(), "LOGIN carol");
+        String reply = server.handleMessage(new FakeWebSocket(), "LOGIN carol pw");
 
         assertEquals("REJECT table_full", reply);
+    }
+
+    @Test
+    public void testLoginWithWrongPasswordIsRejectedBadCredentials() {
+        GameServer server = freshServer();
+        login(server, new FakeWebSocket(), "alice", Piece.Color.WHITE);
+
+        String reply = server.handleMessage(new FakeWebSocket(), "LOGIN alice wrongpw");
+
+        assertEquals("REJECT bad_credentials", reply);
+    }
+
+    @Test
+    public void testReloginWithCorrectPasswordSucceedsWithPersistedRating() {
+        GameServer server = freshServer();
+        login(server, new FakeWebSocket(), "alice", Piece.Color.WHITE);
+
+        String reply = server.handleMessage(new FakeWebSocket(), "LOGIN alice pw");
+
+        assertEquals("WELCOME B 1200", reply);
     }
 
     @Test
@@ -218,5 +256,63 @@ public class GameServerTest {
         String reply = server.handleMessage(new FakeWebSocket(), "SELECT a1");
 
         assertEquals("OK", reply);
+    }
+
+    @Test
+    public void testNewGameWithoutLoginIsRejectedNotLoggedIn() {
+        GameServer server = freshServer();
+
+        String reply = server.handleMessage(new FakeWebSocket(), "NEWGAME");
+
+        assertEquals("REJECT not_logged_in", reply);
+    }
+
+    @Test
+    public void testNewGameWhileGameInProgressIsRejected() {
+        GameServer server = freshServer();
+        WebSocket conn = new FakeWebSocket();
+        login(server, conn, "alice", Piece.Color.WHITE);
+
+        String reply = server.handleMessage(conn, "NEWGAME");
+
+        assertEquals("REJECT game_in_progress", reply);
+    }
+
+    @Test
+    public void testNewGameAfterGameOverIsAcceptedAndResetsTheBoard() {
+        ServerAndMatch sm = gameOverServerAndMatch();
+        WebSocket conn = new FakeWebSocket();
+        login(sm.server(), conn, "alice", Piece.Color.WHITE);
+
+        String reply = sm.server().handleMessage(conn, "NEWGAME");
+
+        assertEquals("OK", reply);
+        assertFalse(sm.match().engine().snapshot(null).gameOver());
+        assertEquals("OK", sm.server().handleMessage(conn, "WNb1a3"));
+    }
+
+    @Test
+    public void testMoveIsRejectedGameOverBeforeNewGameIsRequested() {
+        ServerAndMatch sm = gameOverServerAndMatch();
+        WebSocket conn = new FakeWebSocket();
+        login(sm.server(), conn, "alice", Piece.Color.WHITE);
+
+        String reply = sm.server().handleMessage(conn, "WRa1a4");
+
+        assertEquals("REJECT game_over", reply);
+    }
+
+    @Test
+    public void testGameOverUpdatesBothRatingsAndSendsEachPlayerTheirOwn() {
+        ServerAndMatch sm = freshServerAndMatch();
+        List<String> whiteMessages = new ArrayList<>();
+        List<String> blackMessages = new ArrayList<>();
+        sm.match().addSession(new Session(whiteMessages::add, "alice", Piece.Color.WHITE, 1200));
+        sm.match().addSession(new Session(blackMessages::add, "bob", Piece.Color.BLACK, 1200));
+
+        sm.match().engine().eventBus().publish(new GameOverEvent(Piece.Color.WHITE));
+
+        assertEquals(List.of("RATING 1216"), whiteMessages);
+        assertEquals(List.of("RATING 1184"), blackMessages);
     }
 }

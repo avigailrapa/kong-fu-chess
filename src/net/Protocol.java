@@ -20,12 +20,13 @@ public final class Protocol {
 
     private static final Pattern MOVE_PATTERN = Pattern.compile("^[WB][KQRBNP][a-h][1-8][a-h][1-8]$");
     private static final Pattern JUMP_PATTERN = Pattern.compile("^JUMP ([WB])([KQRBNP])([a-h][1-8])$");
-    private static final Pattern LOGIN_PATTERN = Pattern.compile("^LOGIN (\\S+)$");
-    private static final Pattern WELCOME_PATTERN = Pattern.compile("^WELCOME ([WB])$");
+    private static final Pattern LOGIN_PATTERN = Pattern.compile("^LOGIN (\\S+) (\\S+)$");
+    private static final Pattern WELCOME_PATTERN = Pattern.compile("^WELCOME ([WB]) (-?\\d+)$");
     private static final Pattern SELECT_COMMAND_PATTERN = Pattern.compile("^SELECT (-|[a-h][1-8])$");
     private static final Pattern MOVE_EVENT_PATTERN = Pattern.compile(
             "^EVENT_MOVE ([WB])([KQRBNP])([a-h][1-8])([a-h][1-8]) ([01]) ([01]) (\\d+)$");
     private static final Pattern GAME_OVER_PATTERN = Pattern.compile("^EVENT_GAMEOVER ([WB]|-)$");
+    private static final Pattern RATING_PATTERN = Pattern.compile("^RATING (-?\\d+)$");
     private static final String REJECT_PREFIX = "REJECT ";
     private static final String STATE_PREFIX = "STATE ";
     private static final String END_STATE = "ENDSTATE";
@@ -49,11 +50,12 @@ public final class Protocol {
         }
         Matcher loginMatcher = LOGIN_PATTERN.matcher(frameBody);
         if (loginMatcher.matches()) {
-            return new LoginCommand(loginMatcher.group(1));
+            return new LoginCommand(loginMatcher.group(1), loginMatcher.group(2));
         }
         Matcher welcomeMatcher = WELCOME_PATTERN.matcher(frameBody);
         if (welcomeMatcher.matches()) {
-            return new Welcome(Piece.Color.fromLetter(welcomeMatcher.group(1).charAt(0)));
+            return new Welcome(Piece.Color.fromLetter(welcomeMatcher.group(1).charAt(0)),
+                    Integer.parseInt(welcomeMatcher.group(2)));
         }
         Matcher selectMatcher = SELECT_COMMAND_PATTERN.matcher(frameBody);
         if (selectMatcher.matches()) {
@@ -68,8 +70,15 @@ public final class Protocol {
         if (gameOverMatcher.matches()) {
             return parseGameOver(gameOverMatcher);
         }
+        Matcher ratingMatcher = RATING_PATTERN.matcher(frameBody);
+        if (ratingMatcher.matches()) {
+            return new RatingChanged(Integer.parseInt(ratingMatcher.group(1)));
+        }
         if (frameBody.equals("OK")) {
             return new MoveAccepted();
+        }
+        if (frameBody.equals("NEWGAME")) {
+            return new NewGameCommand();
         }
         if (frameBody.startsWith(REJECT_PREFIX)) {
             String reason = frameBody.substring(REJECT_PREFIX.length());
@@ -93,12 +102,14 @@ public final class Protocol {
             case MoveAccepted _ -> "OK";
             case MoveRejected r -> REJECT_PREFIX + r.reason();
             case StateMessage s -> encodeState(s);
-            case LoginCommand l -> "LOGIN " + l.username();
-            case Welcome w -> "WELCOME " + w.color().letter();
+            case LoginCommand l -> "LOGIN " + l.username() + " " + l.password();
+            case Welcome w -> "WELCOME " + w.color().letter() + " " + w.rating();
             case SelectCommand sel -> "SELECT " + (sel.selected() == null ? "-" : AlgebraicNotation.toSquare(sel.selected()));
             case MoveOccurred mo -> encodeMoveEvent(mo.event());
             case GameOverMessage go -> "EVENT_GAMEOVER "
                     + (go.event().winner() == null ? "-" : String.valueOf(go.event().winner().letter()));
+            case NewGameCommand _ -> "NEWGAME";
+            case RatingChanged r -> "RATING " + r.newRating();
         };
     }
 

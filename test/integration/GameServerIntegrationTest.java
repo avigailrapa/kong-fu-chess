@@ -12,6 +12,7 @@ import src.rules.RookRule;
 import src.rules.RuleEngine;
 import src.server.GameServer;
 import src.server.Match;
+import src.server.UserStore;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -34,7 +35,8 @@ public class GameServerIntegrationTest {
         Map<Piece.Kind, PieceRules> rulesByKind = Map.of(Piece.Kind.ROOK, new RookRule());
         GameEngine engine = new GameEngine(board, new GameState(), new RuleEngine(rulesByKind), new RealTimeArbiter(board));
         Match match = new Match(engine, 100);
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), match);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), match,
+                new UserStore("jdbc:sqlite::memory:"));
         server.start();
 
         AtomicInteger stateCount = new AtomicInteger();
@@ -52,7 +54,7 @@ public class GameServerIntegrationTest {
                     buffer.setLength(0);
                     if (message.equals("OK")) {
                         gotOk.countDown();
-                    } else if (message.equals("WELCOME W")) {
+                    } else if (message.equals("WELCOME W 1200")) {
                         gotWelcome.countDown();
                     } else if (message.startsWith("STATE ")) {
                         stateCount.incrementAndGet();
@@ -75,7 +77,7 @@ public class GameServerIntegrationTest {
             // The server no longer pushes STATE on raw connect - a client must LOGIN first (Level 2).
             // LOGIN's own reply-then-broadcast still produces one STATE, which this captures before
             // triggering a move, so the later assertion proves the move caused an *additional* broadcast.
-            client.sendText("LOGIN alice", true).get(5, TimeUnit.SECONDS);
+            client.sendText("LOGIN alice pw", true).get(5, TimeUnit.SECONDS);
             assertTrue(gotWelcome.await(5, TimeUnit.SECONDS), "expected WELCOME W over the real socket");
             assertTrue(gotStateAfterLogin.await(5, TimeUnit.SECONDS), "expected a STATE broadcast after login");
             int stateCountBeforeMove = stateCount.get();

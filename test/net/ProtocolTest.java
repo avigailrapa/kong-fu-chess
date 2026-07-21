@@ -14,7 +14,9 @@ import src.net.MoveCommand;
 import src.net.MoveOccurred;
 import src.net.LoginCommand;
 import src.net.MoveRejected;
+import src.net.NewGameCommand;
 import src.net.Protocol;
+import src.net.RatingChanged;
 import src.net.SelectCommand;
 import src.net.Welcome;
 import src.net.WireMessage;
@@ -148,11 +150,11 @@ public class ProtocolTest {
 
     @Test
     public void testLoginCommandRoundTrips() {
-        LoginCommand original = new LoginCommand("alice");
+        LoginCommand original = new LoginCommand("alice", "secret");
 
         String encoded = Protocol.encode(original);
 
-        assertEquals("LOGIN alice", encoded);
+        assertEquals("LOGIN alice secret", encoded);
         assertEquals(original, Protocol.parse(encoded));
     }
 
@@ -162,18 +164,28 @@ public class ProtocolTest {
     }
 
     @Test
+    public void testParseRejectsLoginWithMissingPassword() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("LOGIN alice"));
+    }
+
+    @Test
     public void testWelcomeRoundTrips() {
-        Welcome original = new Welcome(Piece.Color.BLACK);
+        Welcome original = new Welcome(Piece.Color.BLACK, 1200);
 
         String encoded = Protocol.encode(original);
 
-        assertEquals("WELCOME B", encoded);
+        assertEquals("WELCOME B 1200", encoded);
         assertEquals(original, Protocol.parse(encoded));
     }
 
     @Test
     public void testParseRejectsWelcomeWithInvalidColorLetter() {
-        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME X"));
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME X 1200"));
+    }
+
+    @Test
+    public void testParseRejectsWelcomeWithMissingRating() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME W"));
     }
 
     @Test
@@ -241,5 +253,30 @@ public class ProtocolTest {
     @Test
     public void testParseRejectsGameOverWithInvalidColorLetter() {
         assertThrows(MalformedMessageException.class, () -> Protocol.parse("EVENT_GAMEOVER X"));
+    }
+
+    @Test
+    public void testNewGameCommandRoundTrips() {
+        NewGameCommand original = new NewGameCommand();
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("NEWGAME", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testRatingChangedRoundTrips() {
+        RatingChanged original = new RatingChanged(1234);
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("RATING 1234", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsMalformedRating() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("RATING abc"));
     }
 }

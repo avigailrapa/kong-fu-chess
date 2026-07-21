@@ -42,7 +42,7 @@ public class MatchSeatingTest {
     @Test
     public void testSecondConnectionIsAssignedBlack() {
         Match match = freshMatch();
-        match.addSession(new Session(null, "alice", Piece.Color.WHITE));
+        match.addSession(new Session(null, "alice", Piece.Color.WHITE, 1200));
 
         assertEquals(Optional.of(Piece.Color.BLACK), match.assignSeat());
     }
@@ -50,8 +50,8 @@ public class MatchSeatingTest {
     @Test
     public void testThirdConnectionFindsTableFull() {
         Match match = freshMatch();
-        match.addSession(new Session(null, "alice", Piece.Color.WHITE));
-        match.addSession(new Session(null, "bob", Piece.Color.BLACK));
+        match.addSession(new Session(null, "alice", Piece.Color.WHITE, 1200));
+        match.addSession(new Session(null, "bob", Piece.Color.BLACK, 1200));
 
         assertEquals(Optional.empty(), match.assignSeat());
     }
@@ -59,7 +59,7 @@ public class MatchSeatingTest {
     @Test
     public void testAddSessionRegistersInSeatedList() {
         Match match = freshMatch();
-        Session alice = new Session(null, "alice", Piece.Color.WHITE);
+        Session alice = new Session(null, "alice", Piece.Color.WHITE, 1200);
 
         match.addSession(alice);
 

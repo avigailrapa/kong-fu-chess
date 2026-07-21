@@ -36,6 +36,9 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     @Getter
     @Accessors(fluent = true)
     private final EventBus eventBus = new EventBus();
+    @Getter
+    @Accessors(fluent = true)
+    private volatile int latestRating;
 
     public NetworkGameProxy(URI serverUri, long requestTimeoutMs) {
         super(serverUri);
@@ -58,9 +61,13 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             case StateMessage s -> latestSnapshot = s.snapshot();
             case MoveAccepted m -> completeOldestPendingReply(m);
             case MoveRejected r -> completeOldestPendingReply(r);
-            case Welcome w -> completeOldestPendingReply(w);
+            case Welcome w -> {
+                latestRating = w.rating();
+                completeOldestPendingReply(w);
+            }
             case MoveOccurred mo -> eventBus.publish(mo.event());
             case GameOverMessage go -> eventBus.publish(go.event());
+            case RatingChanged r -> latestRating = r.newRating();
             case LoginCommand _ -> {
             }
             case MoveCommand _ -> {
@@ -68,6 +75,8 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             case JumpCommand _ -> {
             }
             case SelectCommand _ -> {
+            }
+            case NewGameCommand _ -> {
             }
         }
     }
@@ -109,9 +118,9 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         send(Protocol.encode(new JumpCommand(piece.color(), piece.kind(), cell)));
     }
 
-    public LoginResult login(String username) {
+    public LoginResult login(String username, String password) {
         CompletableFuture<WireMessage> reply = enqueuePendingReply();
-        send(Protocol.encode(new LoginCommand(username)));
+        send(Protocol.encode(new LoginCommand(username, password)));
         return awaitLoginReply(reply);
     }
 
@@ -121,6 +130,11 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         // requestJump's placeholder below).
         enqueuePendingReply();
         send(Protocol.encode(new SelectCommand(selected)));
+    }
+
+    public void newGame() {
+        enqueuePendingReply();
+        send(Protocol.encode(new NewGameCommand()));
     }
 
     private PieceSnapshot pieceAt(Position position) {
@@ -165,20 +179,20 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         try {
             return toLoginResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
         } catch (TimeoutException e) {
-            return new LoginResult(false, null, "timeout");
+            return new LoginResult(false, null, 0, "timeout");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return new LoginResult(false, null, "interrupted");
+            return new LoginResult(false, null, 0, "interrupted");
         } catch (ExecutionException e) {
-            return new LoginResult(false, null, "error");
+            return new LoginResult(false, null, 0, "error");
         }
     }
 
     private LoginResult toLoginResult(WireMessage message) {
         return switch (message) {
-            case Welcome w -> new LoginResult(true, w.color(), "ok");
-            case MoveRejected r -> new LoginResult(false, null, r.reason());
-            default -> new LoginResult(false, null, "unexpected_message");
+            case Welcome w -> new LoginResult(true, w.color(), w.rating(), "ok");
+            case MoveRejected r -> new LoginResult(false, null, 0, r.reason());
+            default -> new LoginResult(false, null, 0, "unexpected_message");
         };
     }
 }
