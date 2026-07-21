@@ -44,10 +44,6 @@ public class RealTimeArbiter {
         this.collisionResolver = new CollisionResolver(board, jumpResolver, motionResolver);
     }
 
-    public boolean hasActiveMotion() {
-        return !activeMotions.isEmpty();
-    }
-
     public boolean isIdle() {
         return activeMotions.isEmpty() && activeJumps.isEmpty()
                 && longRestElapsedMs.isEmpty() && shortRestElapsedMs.isEmpty();
@@ -55,10 +51,6 @@ public class RealTimeArbiter {
 
     public boolean isMoving(Piece piece) {
         return activeMotions.containsKey(piece);
-    }
-
-    public boolean hasActiveJump() {
-        return !activeJumps.isEmpty();
     }
 
     public boolean isJumping(Piece piece) {

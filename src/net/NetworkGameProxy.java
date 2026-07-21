@@ -67,7 +67,10 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             }
             case MoveOccurred mo -> eventBus.publish(mo.event());
             case GameOverMessage go -> eventBus.publish(go.event());
-            case RatingChanged r -> latestRating = r.newRating();
+            case RatingChanged r -> {
+                latestRating = r.newRating();
+                eventBus.publish(r);
+            }
             case LoginCommand _ -> {
             }
             case MoveCommand _ -> {
