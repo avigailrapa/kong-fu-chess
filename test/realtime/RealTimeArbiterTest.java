@@ -768,5 +768,6 @@ public class RealTimeArbiterTest {
         assertEquals(new Position(0, 4), rookMotion.destination()); 
         Motion queenMotion = arbiter.activeMotion(queen).orElseThrow();
         assertEquals(new Position(4, 7), queenMotion.destination());
+    }
 
 }

@@ -20,7 +20,8 @@ public class GameServerIntegrationTest {
 
     @Test
     public void testRealSocketRoundTripAcceptsAMoveAndBroadcastsState() throws Exception {
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), new UserStore("jdbc:sqlite::memory:"), 100);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
+                new UserStore("jdbc:sqlite::memory:"), 100, 20);
         server.start();
 
         WebSocket clientA = null;
