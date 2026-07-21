@@ -29,7 +29,6 @@ public class KnightRuleTest {
         Board board = new Board(8, 8);
         Piece knight = new Piece("n1", Piece.Color.WHITE, Piece.Kind.KNIGHT, new Position(4, 4));
         board.addPiece(knight, new Position(4, 4));
-        // surround the knight completely with friendly pieces on all adjacent squares
         for (int dr = -1; dr <= 1; dr++) {
             for (int dc = -1; dc <= 1; dc++) {
                 if (dr == 0 && dc == 0) continue;
@@ -76,9 +75,9 @@ public class KnightRuleTest {
 
         Set<Position> destinations = knightRule.legalDestinations(board, knight);
 
-        assertFalse(destinations.contains(new Position(3, 4))); // one step straight
-        assertFalse(destinations.contains(new Position(5, 5))); // one step diagonal
-        assertFalse(destinations.contains(new Position(6, 4))); // two steps straight
-        assertFalse(destinations.contains(new Position(4, 4))); // same cell
+        assertFalse(destinations.contains(new Position(3, 4))); 
+        assertFalse(destinations.contains(new Position(5, 5))); 
+        assertFalse(destinations.contains(new Position(6, 4))); 
+        assertFalse(destinations.contains(new Position(4, 4))); 
     }
 }

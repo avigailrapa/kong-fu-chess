@@ -19,14 +19,12 @@ public class BoardMapperTest {
 
     @Test
     public void testXInSecondColumnRangeMapsToColumnOne() {
-        // Column 1 spans [CELL_WIDTH, 2*CELL_WIDTH) = [92.475, 184.95).
         assertEquals(new Position(0, 1), mapper.pixelToCell(93, 0).get());
         assertEquals(new Position(0, 1), mapper.pixelToCell(184, 0).get());
     }
 
     @Test
     public void testYInSecondRowRangeMapsToRowOne() {
-        // Row 1 spans [CELL_HEIGHT, 2*CELL_HEIGHT) = [93.15, 186.3).
         assertEquals(new Position(1, 0), mapper.pixelToCell(0, 94).get());
         assertEquals(new Position(1, 0), mapper.pixelToCell(0, 186).get());
     }
@@ -40,7 +38,6 @@ public class BoardMapperTest {
 
     @Test
     public void testOutsideClickBeyondBoardIsRejected() {
-        // Board is 8 cells wide/tall: 8*CELL_WIDTH=739.8, 8*CELL_HEIGHT=745.2.
         assertTrue(mapper.pixelToCell(740, 0).isEmpty());
         assertTrue(mapper.pixelToCell(0, 746).isEmpty());
     }
@@ -54,7 +51,6 @@ public class BoardMapperTest {
 
     @Test
     public void testExactBoardEdgeIsInBoundsButOneCellPastIsNot() {
-        // A 2x2 board spans 2*CELL_WIDTH=184.95px by 2*CELL_HEIGHT=186.3px.
         BoardMapper small = new BoardMapper(2, 2);
         assertTrue(small.pixelToCell(184, 186).isPresent());
         assertTrue(small.pixelToCell(185, 0).isEmpty());

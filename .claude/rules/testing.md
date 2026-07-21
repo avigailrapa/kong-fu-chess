@@ -11,7 +11,6 @@ import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectPackage;
-// or: selectClass("engine.GameEngineTest") for a single test class
 import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
 import java.io.PrintWriter;
 

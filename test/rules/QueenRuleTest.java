@@ -19,10 +19,8 @@ public class QueenRuleTest {
 
         Set<Position> destinations = queenRule.legalDestinations(board, queen);
 
-        // straight (rook-like)
         assertTrue(destinations.contains(new Position(0, 4)));
         assertTrue(destinations.contains(new Position(4, 0)));
-        // diagonal (bishop-like)
         assertTrue(destinations.contains(new Position(0, 0)));
         assertTrue(destinations.contains(new Position(7, 7)));
     }

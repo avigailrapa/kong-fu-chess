@@ -301,8 +301,7 @@ public class RealTimeArbiter {
             shortRestElapsedMs.put(piece, 0L);
             piece.setState(Piece.State.SHORT_REST);
         }
-        // "idle" (or anything else): the piece is already idle once its move/jump resolver
-        // ran, so no rest map entry is needed.
+       
     }
 
     private AnimationConfig moveConfigFor(Piece piece) {

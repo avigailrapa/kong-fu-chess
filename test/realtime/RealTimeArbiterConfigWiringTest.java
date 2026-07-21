@@ -41,7 +41,6 @@ public class RealTimeArbiterConfigWiringTest {
 
     @Test
     public void testMoveDurationScalesWithConfiguredSpeed() throws IOException {
-        // Double the shipped 1.5 m/s speed - a 1-cell move should now take half as long (250ms instead of 500ms).
         writeConfig("RW", "move", moveConfig(3.0, "long_rest"));
 
         Board board = new Board(8, 8);
@@ -70,8 +69,6 @@ public class RealTimeArbiterConfigWiringTest {
 
     @Test
     public void testNextStateWhenFinishedIdleSkipsLongRest() throws IOException {
-        // If a move's config says the next state is "idle" rather than "long_rest", the piece
-        // should be immediately movable again with no rest cooldown applied.
         writeConfig("RW", "move", moveConfig(1.5, "idle"));
 
         Board board = new Board(8, 8);
