@@ -2,12 +2,16 @@ package net;
 
 import org.junit.jupiter.api.Test;
 import src.engine.AlgebraicNotation;
+import src.engine.GameOverEvent;
+import src.engine.MoveEvent;
 import src.model.Piece;
 import src.model.Position;
+import src.net.GameOverMessage;
 import src.net.JumpCommand;
 import src.net.MalformedMessageException;
 import src.net.MoveAccepted;
 import src.net.MoveCommand;
+import src.net.MoveOccurred;
 import src.net.LoginCommand;
 import src.net.MoveRejected;
 import src.net.Protocol;
@@ -195,5 +199,47 @@ public class ProtocolTest {
     @Test
     public void testParseRejectsSelectWithInvalidSquare() {
         assertThrows(MalformedMessageException.class, () -> Protocol.parse("SELECT z9"));
+    }
+
+    @Test
+    public void testMoveOccurredRoundTrips() {
+        MoveOccurred original = new MoveOccurred(new MoveEvent(Piece.Color.WHITE, Piece.Kind.PAWN,
+                AlgebraicNotation.toPosition("e2"), AlgebraicNotation.toPosition("e4"), true, false, 1234));
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("EVENT_MOVE WPe2e4 1 0 1234", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testMoveOccurredWithKingCaptureRoundTrips() {
+        MoveOccurred original = new MoveOccurred(new MoveEvent(Piece.Color.BLACK, Piece.Kind.QUEEN,
+                AlgebraicNotation.toPosition("d8"), AlgebraicNotation.toPosition("d1"), true, true, 5000));
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("EVENT_MOVE BQd8d1 1 1 5000", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsMalformedMoveEvent() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("EVENT_MOVE WPe2e4 2 0 1234"));
+    }
+
+    @Test
+    public void testGameOverMessageRoundTrips() {
+        GameOverMessage original = new GameOverMessage(new GameOverEvent(Piece.Color.WHITE));
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("EVENT_GAMEOVER W", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsGameOverWithInvalidColorLetter() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("EVENT_GAMEOVER X"));
     }
 }

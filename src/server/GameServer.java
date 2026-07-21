@@ -5,13 +5,16 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
 import src.model.*;
+import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
 import src.engine.MoveResult;
+import src.net.GameOverMessage;
 import src.net.JumpCommand;
 import src.net.LoginCommand;
 import src.net.MalformedMessageException;
 import src.net.MoveAccepted;
 import src.net.MoveCommand;
+import src.net.MoveOccurred;
 import src.net.MoveRejected;
 import src.net.Protocol;
 import src.net.SelectCommand;
@@ -34,6 +37,16 @@ public class GameServer extends WebSocketServer {
     public GameServer(InetSocketAddress address, Match match) {
         super(address);
         this.match = match;
+        match.engine().eventBus().subscribe(MoveEvent.class, this::broadcastMoveEvent);
+        match.engine().eventBus().subscribe(GameOverEvent.class, this::broadcastGameOver);
+    }
+
+    private void broadcastMoveEvent(MoveEvent event) {
+        broadcast(Protocol.encode(new MoveOccurred(event)));
+    }
+
+    private void broadcastGameOver(GameOverEvent event) {
+        broadcast(Protocol.encode(new GameOverMessage(event)));
     }
 
     @Override
@@ -79,6 +92,8 @@ public class GameServer extends WebSocketServer {
             case MoveRejected _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case StateMessage _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case Welcome _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case MoveOccurred _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case GameOverMessage _ -> Protocol.encode(new MoveRejected("unexpected_message"));
         };
     }
 
@@ -137,11 +152,23 @@ public class GameServer extends WebSocketServer {
     }
 
     private void broadcastState() {
-        broadcast(encodedState());
+        GameSnapshot boardState = match.engine().snapshot(null);
+        for (WebSocket conn : getConnections()) {
+            Session session = sessionsByConnection.get(conn);
+            conn.send(encodedState(ownSelection(session, boardState)));
+        }
     }
 
-    private String encodedState() {
-        GameSnapshot snapshot = match.engine().snapshot(null,
+    private Position ownSelection(Session session, GameSnapshot boardState) {
+        if (session == null || session.selectedCell() == null) {
+            return null;
+        }
+        PieceSnapshot piece = boardState.pieceAt(session.selectedCell());
+        return piece != null && piece.color() == session.assignedColor() ? session.selectedCell() : null;
+    }
+
+    private String encodedState(Position selectedCell) {
+        GameSnapshot snapshot = match.engine().snapshot(selectedCell,
                 match.moveLogger().getWhiteMoves().stream().map(MoveEvent::toString).toList(),
                 match.moveLogger().getBlackMoves().stream().map(MoveEvent::toString).toList());
         return Protocol.encode(new StateMessage(snapshot));

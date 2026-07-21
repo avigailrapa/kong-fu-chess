@@ -182,31 +182,47 @@ model  →  rules  →  realtime  →  engine  →  view (DTOs only: GameSnapsho
   `RuleEngine`/`RealTimeArbiter`/`Board` directly; both only ever call through `GameEngine`/`GameCommands`.
 - **`src/net/`** — the wire protocol shared by client and server, plus the client-side network adapter.
   `WireMessage` is a sealed interface (`MoveCommand`/`JumpCommand`/`MoveAccepted`/`MoveRejected`/
-  `StateMessage`); `Protocol.parse(String)`/`encode(WireMessage)` convert to/from the actual text sent over
-  a WebSocket text frame — a bare 6-char move token (e.g. `WQe2e5`, matching the course slide's literal
-  example, no verb prefix), `JUMP <token>`, `OK`, `REJECT <reason>`, or a multi-line
-  `STATE`/`PIECE`/`SELECT`/`LEGAL`/`WLOG`/`BLOG`/`ENDSTATE` block that flattens/reconstructs a whole
-  `GameSnapshot`. `MalformedMessageException` is what `parse` throws on any bad input; it never lets any
-  other exception type escape. `NetworkGameProxy` (`extends org.java_websocket.client.WebSocketClient`,
-  `implements GameCommands`) is the client-side stand-in for `GameEngine` wherever `Controller` is used —
-  `isOccupied` and the color/kind needed to build a move token are answered from a locally-cached
-  `GameSnapshot` (zero round-trip); `requestMove` blocks the calling thread on a `CompletableFuture` up to
-  a timeout, matched to its reply via a FIFO queue (not a single shared slot) so a late reply to an
-  abandoned/timed-out request can't be misdelivered to whatever request is sent next — the ordering
-  guarantee this relies on is that one WebSocket connection delivers frames in send order both ways, and
-  `GameServer` replies to a connection's messages in the order it received them (see `src/server/` below).
-  `requestJump` stays fire-and-forget, matching `GameCommands`' existing asymmetry.
+  `StateMessage`/`LoginCommand`/`Welcome`/`SelectCommand`/`MoveOccurred`/`GameOverMessage`);
+  `Protocol.parse(String)`/`encode(WireMessage)` convert to/from the actual text sent over a WebSocket text
+  frame — a bare 6-char move token (e.g. `WQe2e5`, matching the course slide's literal example, no verb
+  prefix), `JUMP <token>`, `OK`, `REJECT <reason>`, a multi-line `STATE`/`PIECE`/`SELECT`/`LEGAL`/`WLOG`/
+  `BLOG`/`ENDSTATE` block that flattens/reconstructs a whole `GameSnapshot`, or the server-to-client-only
+  `EVENT_MOVE <color><kind><from><to> <capture:0/1> <kingCapture:0/1> <requestTimestampMs>` /
+  `EVENT_GAMEOVER <color|->` — thin wrappers (`MoveOccurred`/`GameOverMessage`) around the engine's own
+  `MoveEvent`/`GameOverEvent` records, the same wrap-a-`view`/`engine`-type pattern `StateMessage` already
+  uses for `GameSnapshot`. `MalformedMessageException` is what `parse` throws on any bad input; it never
+  lets any other exception type escape. `NetworkGameProxy` (`extends
+  org.java_websocket.client.WebSocketClient`, `implements GameCommands`) is the client-side stand-in for
+  `GameEngine` wherever `Controller` is used — `isOccupied` and the color/kind needed to build a move token
+  are answered from a locally-cached `GameSnapshot` (zero round-trip); `requestMove` blocks the calling
+  thread on a `CompletableFuture` up to a timeout, matched to its reply via a FIFO queue (not a single
+  shared slot) so a late reply to an abandoned/timed-out request can't be misdelivered to whatever request
+  is sent next — the ordering guarantee this relies on is that one WebSocket connection delivers frames in
+  send order both ways, and `GameServer` replies to a connection's messages in the order it received them
+  (see `src/server/` below). `requestJump` stays fire-and-forget, matching `GameCommands`' existing
+  asymmetry. `NetworkGameProxy` also owns its own `EventBus` (fluent `eventBus()` getter, mirroring
+  `GameEngine.eventBus()`) — its `onMessage` publishes the `MoveEvent`/`GameOverEvent` unwrapped from an
+  incoming `MoveOccurred`/`GameOverMessage` onto that bus, so `EffectsController` can subscribe to it over
+  the network exactly as it does to a local `GameEngine`'s bus (see `src/view/` below).
 - **`src/server/`** — `Match` owns one `GameEngine` + a fresh `MoveLogger` wired to it, on its own
   single-threaded `ScheduledExecutorService`; `start(Runnable onTick)` schedules a periodic
   `engine.waitMs(tickIntervalMs)` followed by the given callback, and `submit(Runnable)` funnels any other
   work (incoming messages) onto that same thread — the whole point being `GameEngine`/`RealTimeArbiter`
   have no internal synchronization and must never be touched concurrently. `GameServer extends
-  org.java_websocket.server.WebSocketServer`, composing one `Match` with `Protocol`: `onOpen` sends a
-  fresh client the current `StateMessage`; `onMessage` funnels the request through `match.submit(...)`,
-  cross-checks the move/jump's declared color+kind against what's actually on the board before forwarding
-  to `GameEngine` (rejecting a mismatch with `REJECT token_mismatch`), and broadcasts a `StateMessage` to
-  every connection after handling it; `onStart` calls `match.start(this::broadcastState)` so the periodic
-  tick also broadcasts, not just each reactive per-message update.
+  org.java_websocket.server.WebSocketServer`, composing one `Match` with `Protocol`; its constructor
+  subscribes to `match.engine().eventBus()` for `MoveEvent`/`GameOverEvent` and broadcasts each one to
+  every connection as `MoveOccurred`/`GameOverMessage` the instant it fires, independent of the tick/state
+  cycle below. `onMessage` funnels the request through `match.submit(...)`, cross-checks the move/jump's
+  declared color+kind against what's actually on the board before forwarding to `GameEngine` (rejecting a
+  mismatch with `REJECT token_mismatch`), then calls `broadcastState()`; `onStart` calls
+  `match.start(this::broadcastState)` so the periodic tick also calls it, not just each reactive
+  per-message update. `broadcastState()` sends each connection its *own* `StateMessage`, not one shared
+  broadcast: for each `Session`, it looks up whatever piece currently sits on that session's
+  `selectedCell()` and only passes the selection through to `GameEngine.snapshot(...)` (and thus only
+  populates that client's `LEGAL` destination squares) if the piece's color matches
+  `session.assignedColor()` — reselected/rechecked fresh every broadcast off the live board, so a player
+  can never see legal-destination highlights for a piece they don't own, including a piece that only
+  became the opponent's mid-flight (e.g. captured into their previously-own-colored selected square).
 - **`src/io/`** — `BoardParser`/`BoardPrinter`, plain-text board serialization, model-only dependency.
 - **`src/view/`** — `GameSnapshot`/`PieceSnapshot`/`SelectionSnapshot` are passive, read-only DTOs built by
   `GameEngine.snapshot(...)` (already carrying pre-computed pixel positions, move-log text, legal-destination
@@ -219,9 +235,13 @@ model  →  rules  →  realtime  →  engine  →  view (DTOs only: GameSnapsho
   directly; its only job is advancing simulated time each tick (`engine.waitMs`) and reporting whether
   anything changed, so the window doesn't have to know the engine's API. `EffectsController` doesn't hold a
   `GameEngine` reference — it subscribes to `engine`-defined event records (`MoveEvent`, `GameOverEvent`)
-  published on a `GameEngine`'s `EventBus` (see `src/bus/`, a dependency-free pub/sub package) to trigger
-  one-shot sounds and a short "GAME START!" banner, so those don't have to be re-derived by polling
-  `GameSnapshot` every frame. `EffectsController`, its `SoundPlayer` interface, and the real
+  published on an `EventBus` (see `src/bus/`, a dependency-free pub/sub package) to trigger one-shot sounds
+  and a short "GAME START!" banner, so those don't have to be re-derived by polling `GameSnapshot` every
+  frame; `GuiMain` hands it `GameEngine`'s own bus directly, while `ClientMain` hands it
+  `NetworkGameProxy.eventBus()`, which republishes the same event records after unwrapping them from
+  `MoveOccurred`/`GameOverMessage` frames relayed by `GameServer` (see `src/net/`/`src/server/` above) —
+  `EffectsController` itself doesn't know or care which mode it's in. `EffectsController`, its
+  `SoundPlayer` interface, and the real
   `ClipSoundPlayer` implementation (tries `<root>/<name>.wav` via `javax.sound.sampled`, falls back to
   `Toolkit.beep()`) live in the `src/view/sound/` subpackage — the one place in this project with a nested
   package under one of the 7 top-level ones, kept separate so `EffectsController`'s tests can inject a fake
