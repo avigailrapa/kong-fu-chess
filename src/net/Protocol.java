@@ -1,6 +1,8 @@
 package src.net;
 
 import src.engine.AlgebraicNotation;
+import src.engine.GameOverEvent;
+import src.engine.MoveEvent;
 import src.model.Piece;
 import src.model.Position;
 import src.view.GameSnapshot;
@@ -21,6 +23,9 @@ public final class Protocol {
     private static final Pattern LOGIN_PATTERN = Pattern.compile("^LOGIN (\\S+)$");
     private static final Pattern WELCOME_PATTERN = Pattern.compile("^WELCOME ([WB])$");
     private static final Pattern SELECT_COMMAND_PATTERN = Pattern.compile("^SELECT (-|[a-h][1-8])$");
+    private static final Pattern MOVE_EVENT_PATTERN = Pattern.compile(
+            "^EVENT_MOVE ([WB])([KQRBNP])([a-h][1-8])([a-h][1-8]) ([01]) ([01]) (\\d+)$");
+    private static final Pattern GAME_OVER_PATTERN = Pattern.compile("^EVENT_GAMEOVER ([WB]|-)$");
     private static final String REJECT_PREFIX = "REJECT ";
     private static final String STATE_PREFIX = "STATE ";
     private static final String END_STATE = "ENDSTATE";
@@ -55,6 +60,14 @@ public final class Protocol {
             String square = selectMatcher.group(1);
             return new SelectCommand(square.equals("-") ? null : AlgebraicNotation.toPosition(square));
         }
+        Matcher moveEventMatcher = MOVE_EVENT_PATTERN.matcher(frameBody);
+        if (moveEventMatcher.matches()) {
+            return parseMoveEvent(moveEventMatcher);
+        }
+        Matcher gameOverMatcher = GAME_OVER_PATTERN.matcher(frameBody);
+        if (gameOverMatcher.matches()) {
+            return parseGameOver(gameOverMatcher);
+        }
         if (frameBody.equals("OK")) {
             return new MoveAccepted();
         }
@@ -83,7 +96,17 @@ public final class Protocol {
             case LoginCommand l -> "LOGIN " + l.username();
             case Welcome w -> "WELCOME " + w.color().letter();
             case SelectCommand sel -> "SELECT " + (sel.selected() == null ? "-" : AlgebraicNotation.toSquare(sel.selected()));
+            case MoveOccurred mo -> encodeMoveEvent(mo.event());
+            case GameOverMessage go -> "EVENT_GAMEOVER "
+                    + (go.event().winner() == null ? "-" : String.valueOf(go.event().winner().letter()));
         };
+    }
+
+    private static String encodeMoveEvent(MoveEvent event) {
+        return "EVENT_MOVE " + event.color().letter() + event.kind().letter()
+                + AlgebraicNotation.toSquare(event.from()) + AlgebraicNotation.toSquare(event.to())
+                + ' ' + (event.capture() ? '1' : '0') + ' ' + (event.kingCapture() ? '1' : '0')
+                + ' ' + event.requestTimestampMs();
     }
 
     private static String encodeState(StateMessage message) {
@@ -208,6 +231,31 @@ public final class Protocol {
             return new JumpCommand(color, kind, at);
         } catch (IllegalArgumentException e) {
             throw new MalformedMessageException("malformed jump: " + jumpMatcher.group(), e);
+        }
+    }
+
+    private static WireMessage parseMoveEvent(Matcher moveEventMatcher) {
+        try {
+            Piece.Color color = Piece.Color.fromLetter(moveEventMatcher.group(1).charAt(0));
+            Piece.Kind kind = Piece.Kind.fromLetter(moveEventMatcher.group(2).charAt(0));
+            Position from = AlgebraicNotation.toPosition(moveEventMatcher.group(3));
+            Position to = AlgebraicNotation.toPosition(moveEventMatcher.group(4));
+            boolean capture = moveEventMatcher.group(5).equals("1");
+            boolean kingCapture = moveEventMatcher.group(6).equals("1");
+            long requestTimestampMs = Long.parseLong(moveEventMatcher.group(7));
+            return new MoveOccurred(new MoveEvent(color, kind, from, to, capture, kingCapture, requestTimestampMs));
+        } catch (IllegalArgumentException e) {
+            throw new MalformedMessageException("malformed move event: " + moveEventMatcher.group(), e);
+        }
+    }
+
+    private static WireMessage parseGameOver(Matcher gameOverMatcher) {
+        try {
+            String letter = gameOverMatcher.group(1);
+            Piece.Color winner = letter.equals("-") ? null : Piece.Color.fromLetter(letter.charAt(0));
+            return new GameOverMessage(new GameOverEvent(winner));
+        } catch (IllegalArgumentException e) {
+            throw new MalformedMessageException("malformed game over event: " + gameOverMatcher.group(), e);
         }
     }
 }

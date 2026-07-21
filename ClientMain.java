@@ -1,4 +1,3 @@
-import src.bus.EventBus;
 import src.input.BoardMapper;
 import src.input.Controller;
 import src.model.Position;
@@ -83,9 +82,8 @@ public class ClientMain {
             return true;
         };
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> proxy.latestSnapshot();
-        // No wire messages carry MoveEvent/GameOverEvent yet, so this bus never receives a publish -
-        // sound/banner effects stay silent over the network until that's added to the protocol.
-        EffectsController effects = new EffectsController(new EventBus(), new ClipSoundPlayer("assets"));
+        EffectsController effects = new EffectsController(proxy.eventBus(), new ClipSoundPlayer("assets"));
+        effects.announceGameStart();
         return new GameWindow.GameComponents(tickSource, snapshotSupplier, controller, renderer, effects);
     }
 

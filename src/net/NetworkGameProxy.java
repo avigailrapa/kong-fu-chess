@@ -5,6 +5,7 @@ import lombok.experimental.Accessors;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
+import src.bus.EventBus;
 import src.engine.GameCommands;
 import src.engine.MoveResult;
 import src.model.Position;
@@ -32,6 +33,9 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     @Getter
     @Accessors(fluent = true)
     private volatile GameSnapshot latestSnapshot;
+    @Getter
+    @Accessors(fluent = true)
+    private final EventBus eventBus = new EventBus();
 
     public NetworkGameProxy(URI serverUri, long requestTimeoutMs) {
         super(serverUri);
@@ -55,6 +59,8 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             case MoveAccepted m -> completeOldestPendingReply(m);
             case MoveRejected r -> completeOldestPendingReply(r);
             case Welcome w -> completeOldestPendingReply(w);
+            case MoveOccurred mo -> eventBus.publish(mo.event());
+            case GameOverMessage go -> eventBus.publish(go.event());
             case LoginCommand _ -> {
             }
             case MoveCommand _ -> {
