@@ -123,6 +123,10 @@ public class GameWindow {
         }
     }
 
+    public void setStatusMessage(String message) {
+        frame.setTitle(message);
+    }
+
     private void restart() {
         bindComponents(gameFactory.get());
         this.gameOverAnnounced = false;

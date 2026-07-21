@@ -1,6 +1,4 @@
 package src.net;
 
-import src.model.Piece;
-
-public record Welcome(Piece.Color color, int rating) implements WireMessage {
+public record Welcome(int rating) implements WireMessage {
 }

@@ -71,7 +71,14 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
                 latestRating = r.newRating();
                 eventBus.publish(r);
             }
+            case MatchFound mf -> eventBus.publish(mf);
+            case MatchTimeout mt -> eventBus.publish(mt);
+            case DisconnectCountdown dc -> eventBus.publish(dc);
             case LoginCommand _ -> {
+            }
+            case PlayCommand _ -> {
+            }
+            case CancelPlayCommand _ -> {
             }
             case MoveCommand _ -> {
             }
@@ -140,6 +147,20 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         send(Protocol.encode(new NewGameCommand()));
     }
 
+    public void play() {
+        enqueuePendingReply();
+        send(Protocol.encode(new PlayCommand()));
+    }
+
+    public void cancelPlay() {
+        enqueuePendingReply();
+        send(Protocol.encode(new CancelPlayCommand()));
+    }
+
+    public void resetSnapshot() {
+        latestSnapshot = null;
+    }
+
     private PieceSnapshot pieceAt(Position position) {
         return latestSnapshot == null ? null : latestSnapshot.pieceAt(position);
     }
@@ -182,20 +203,20 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         try {
             return toLoginResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
         } catch (TimeoutException e) {
-            return new LoginResult(false, null, 0, "timeout");
+            return new LoginResult(false, 0, "timeout");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return new LoginResult(false, null, 0, "interrupted");
+            return new LoginResult(false, 0, "interrupted");
         } catch (ExecutionException e) {
-            return new LoginResult(false, null, 0, "error");
+            return new LoginResult(false, 0, "error");
         }
     }
 
     private LoginResult toLoginResult(WireMessage message) {
         return switch (message) {
-            case Welcome w -> new LoginResult(true, w.color(), w.rating(), "ok");
-            case MoveRejected r -> new LoginResult(false, null, 0, r.reason());
-            default -> new LoginResult(false, null, 0, "unexpected_message");
+            case Welcome w -> new LoginResult(true, w.rating(), "ok");
+            case MoveRejected r -> new LoginResult(false, 0, r.reason());
+            default -> new LoginResult(false, 0, "unexpected_message");
         };
     }
 }
