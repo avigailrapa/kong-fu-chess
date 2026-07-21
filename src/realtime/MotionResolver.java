@@ -34,9 +34,6 @@ public class MotionResolver {
     public ArrivalEvent resolveBounceBack(Motion motion) {
         Piece piece = motion.piece();
         Position stoppedAt = motion.cellBeforeDestination();
-        // A same-color obstruction stops the piece one square short of the conflict rather than
-        // reverting it all the way to its source - unless the move was too short to have a square
-        // in between (or wasn't a straight line at all), in which case stoppedAt == source.
         if (!stoppedAt.equals(motion.source())) {
             board.movePiece(motion.source(), stoppedAt);
         }

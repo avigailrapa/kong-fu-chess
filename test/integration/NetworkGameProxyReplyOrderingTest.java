@@ -71,15 +71,12 @@ public class NetworkGameProxyReplyOrderingTest {
                     List.of(), List.of(), 1.0);
             proxy.onMessage(Protocol.encode(new StateMessage(snapshot)));
 
-            // Request A: the silent server never replies, so this genuinely times out (100ms).
             MoveResult resultA = proxy.requestMove(new Position(7, 0), new Position(6, 0));
             assertFalse(resultA.isAccepted());
             assertEquals("timeout", resultA.reason());
 
-            // A's reply finally shows up late -- must be absorbed by A's own abandoned slot, not B's.
             proxy.onMessage("OK");
 
-            // Request B is sent fresh; its own reply must reach it, not A's stale "OK".
             NetworkGameProxy finalProxy = proxy;
             Thread replier = new Thread(() -> {
                 try {

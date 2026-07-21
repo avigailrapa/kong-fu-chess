@@ -91,7 +91,7 @@ public class MatchTest {
         match.start(tickCount::incrementAndGet);
         Thread.sleep(100);
         match.stop();
-        Thread.sleep(50); // let any tick already in flight when stop() was called finish
+        Thread.sleep(50);
         int countAtStop = tickCount.get();
         Thread.sleep(150);
 

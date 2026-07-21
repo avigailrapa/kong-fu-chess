@@ -22,13 +22,7 @@ import java.util.concurrent.TimeoutException;
 public class NetworkGameProxy extends WebSocketClient implements GameCommands {
 
     private final long requestTimeoutMs;
-    // A single WebSocket connection delivers frames in send order both ways, and GameServer replies to a
-    // connection's messages in the order it received them, so the reply for each request we sent is always
-    // the next one to arrive here. Matching by strict FIFO order (rather than a single shared slot) means a
-    // late reply to a request we already gave up on (timeout) completes that abandoned future instead of
-    // being mistaken for the reply to whatever request we send next. Holding the raw WireMessage (rather
-    // than a MoveResult) lets this same queue carry login replies too, since login's WELCOME/REJECT and a
-    // move's OK/REJECT are both just "whatever reply comes back next" from the server's point of view.
+  
     private final LinkedBlockingQueue<CompletableFuture<WireMessage>> pendingReplies = new LinkedBlockingQueue<>();
     @Getter
     @Accessors(fluent = true)
@@ -122,8 +116,6 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         if (piece == null) {
             return;
         }
-        // The server replies OK/REJECT to a jump too; enqueue a (never-awaited) placeholder so that
-        // reply is consumed here rather than being mistaken for a later requestMove's reply.
         enqueuePendingReply();
         send(Protocol.encode(new JumpCommand(piece.color(), piece.kind(), cell)));
     }
@@ -135,9 +127,6 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     }
 
     public void updateSelection(Position selected) {
-        // The server replies OK to a SELECT too; enqueue a (never-awaited) placeholder so that reply is
-        // consumed here rather than being mistaken for a later request's reply (same reasoning as
-        // requestJump's placeholder below).
         enqueuePendingReply();
         send(Protocol.encode(new SelectCommand(selected)));
     }

@@ -42,20 +42,18 @@ public class PathCrossingResolver {
                 long elapsedA = motionElapsedMs.getOrDefault(pieceA, 0L);
                 long elapsedB = motionElapsedMs.getOrDefault(pieceB, 0L);
 
-                // The time window (relative to now) during which each piece is actually
-                // transiting the shared cell - not just "when it eventually gets there".
+               
                 double windowStartA = indexA * perCellA - elapsedA;
                 double windowEndA = (indexA + 1) * perCellA - elapsedA;
                 double windowStartB = indexB * perCellB - elapsedB;
                 double windowEndB = (indexB + 1) * perCellB - elapsedB;
 
-                // Either side already fully passed through the cell - nothing left to avoid.
+               
                 if (windowEndA <= 0 || windowEndB <= 0) {
                     continue;
                 }
 
-                // The two transits don't actually overlap in time (one is long gone before the
-                // other arrives), so there is no real collision even though the paths cross.
+               
                 boolean windowsOverlap = windowStartA < windowEndB && windowStartB < windowEndA;
                 if (!windowsOverlap) {
                     continue;
@@ -95,15 +93,11 @@ public class PathCrossingResolver {
     }
 
     private double perCellDurationMs(Motion motion, List<Position> intermediateCells) {
-        int totalCells = intermediateCells.size() + 1; // + the destination cell itself
+        int totalCells = intermediateCells.size() + 1;  
         return (double) motion.durationMs() / totalCells;
     }
 
-    /**
-     * The straight-line cells strictly between source and destination, in travel order,
-     * excluding the destination itself (that endpoint is already governed by the
-     * separate same-destination race/capture logic in CollisionResolver).
-     */
+  
     private List<Position> intermediateCells(Motion motion) {
         List<Position> cells = new ArrayList<>();
         int deltaRow = motion.destination().row() - motion.source().row();

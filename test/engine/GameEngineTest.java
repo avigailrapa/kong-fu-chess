@@ -129,7 +129,7 @@ public class GameEngineTest {
 
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         engine.waitMs(3000);
-        engine.waitMs(2000); // let the post-move long rest elapse too
+        engine.waitMs(2000); 
         MoveResult result = engine.requestMove(new Position(4, 0), new Position(4, 4));
 
         assertTrue(result.isAccepted());
@@ -144,7 +144,7 @@ public class GameEngineTest {
         GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
 
         engine.requestMove(new Position(7, 0), new Position(4, 0));
-        engine.waitMs(3000); // motion resolves, piece enters long rest
+        engine.waitMs(3000); 
 
         MoveResult result = engine.requestMove(new Position(4, 0), new Position(4, 4));
 
@@ -355,8 +355,8 @@ public class GameEngineTest {
         GameState gameState = new GameState();
         GameEngine engine = new GameEngine(board, gameState, new RuleEngine(rulesByKind), new RealTimeArbiter(board));
 
-        engine.requestMove(new Position(7, 7), new Position(0, 7)); // movingRook needs 7000ms, stays in motion past the wait below
-        engine.requestMove(new Position(7, 0), new Position(4, 0)); // captures the king, ends the game after 3000ms
+        engine.requestMove(new Position(7, 7), new Position(0, 7)); 
+        engine.requestMove(new Position(7, 0), new Position(4, 0)); 
         engine.waitMs(3000);
         assertTrue(gameState.gameOver());
 
@@ -438,11 +438,9 @@ public class GameEngineTest {
         board.addPiece(rook, new Position(7, 0));
         GameEngine engine = new GameEngine(board, new GameState(), ruleEngine(), new RealTimeArbiter(board));
 
-        engine.requestMove(new Position(7, 0), new Position(4, 0)); // 3-cell move, 1500ms duration
-        engine.waitMs(500); // one third of the way through: still mid-flight, board position unchanged
+        engine.requestMove(new Position(7, 0), new Position(4, 0)); 
+        engine.waitMs(500); 
 
-        // The board only updates on arrival, so the piece is still reported at its source cell (7,0);
-        // what must reflect one-third progress is the interpolated pixel position within that snapshot.
         PieceSnapshot snapshot = engine.snapshot(null).pieceAt(new Position(7, 0));
         assertNotNull(snapshot);
         int expectedPartialPixelY = (int) Math.round(Math.round(7 + (4 - 7) * (1.0 / 3.0)) * GameSnapshot.CELL_HEIGHT);
@@ -451,7 +449,7 @@ public class GameEngineTest {
         assertNotEquals(destinationPixelY, snapshot.pixelY(),
                 "one third into a 3-cell move the piece must not already be rendered at the destination");
 
-        engine.waitMs(1000); // remaining time to complete the move
+        engine.waitMs(1000); 
         assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
     }
 }
