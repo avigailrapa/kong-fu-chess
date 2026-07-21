@@ -29,6 +29,8 @@ public final class Protocol {
     private static final Pattern RATING_PATTERN = Pattern.compile("^RATING (-?\\d+)$");
     private static final Pattern MATCH_FOUND_PATTERN = Pattern.compile("^MATCH_FOUND (\\S+) ([WB]) (-?\\d+)$");
     private static final Pattern DISCONNECT_COUNTDOWN_PATTERN = Pattern.compile("^DISCONNECT_COUNTDOWN (\\d+)$");
+    private static final Pattern ROOM_JOIN_PATTERN = Pattern.compile("^ROOM_JOIN (\\S+)$");
+    private static final Pattern ROOM_ID_PATTERN = Pattern.compile("^ROOM_ID (\\S+)$");
     private static final String REJECT_PREFIX = "REJECT ";
     private static final String STATE_PREFIX = "STATE ";
     private static final String END_STATE = "ENDSTATE";
@@ -85,6 +87,14 @@ public final class Protocol {
         if (disconnectCountdownMatcher.matches()) {
             return new DisconnectCountdown(Integer.parseInt(disconnectCountdownMatcher.group(1)));
         }
+        Matcher roomJoinMatcher = ROOM_JOIN_PATTERN.matcher(frameBody);
+        if (roomJoinMatcher.matches()) {
+            return new RoomJoinCommand(roomJoinMatcher.group(1));
+        }
+        Matcher roomIdMatcher = ROOM_ID_PATTERN.matcher(frameBody);
+        if (roomIdMatcher.matches()) {
+            return new RoomId(roomIdMatcher.group(1));
+        }
         if (frameBody.equals("OK")) {
             return new MoveAccepted();
         }
@@ -99,6 +109,12 @@ public final class Protocol {
         }
         if (frameBody.equals("MATCH_TIMEOUT")) {
             return new MatchTimeout();
+        }
+        if (frameBody.equals("ROOM_CREATE")) {
+            return new RoomCreateCommand();
+        }
+        if (frameBody.equals("SPECTATING")) {
+            return new Spectating();
         }
         if (frameBody.startsWith(REJECT_PREFIX)) {
             String reason = frameBody.substring(REJECT_PREFIX.length());
@@ -136,6 +152,10 @@ public final class Protocol {
                     + " " + mf.opponentRating();
             case MatchTimeout _ -> "MATCH_TIMEOUT";
             case DisconnectCountdown dc -> "DISCONNECT_COUNTDOWN " + dc.secondsRemaining();
+            case RoomCreateCommand _ -> "ROOM_CREATE";
+            case RoomJoinCommand rj -> "ROOM_JOIN " + rj.roomId();
+            case RoomId ri -> "ROOM_ID " + ri.roomId();
+            case Spectating _ -> "SPECTATING";
         };
     }
 

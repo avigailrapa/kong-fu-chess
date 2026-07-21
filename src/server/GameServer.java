@@ -26,7 +26,11 @@ import src.net.NewGameCommand;
 import src.net.PlayCommand;
 import src.net.Protocol;
 import src.net.RatingChanged;
+import src.net.RoomCreateCommand;
+import src.net.RoomId;
+import src.net.RoomJoinCommand;
 import src.net.SelectCommand;
+import src.net.Spectating;
 import src.net.StateMessage;
 import src.net.Welcome;
 import src.net.WireMessage;
@@ -50,19 +54,23 @@ public class GameServer extends WebSocketServer {
     private final UserStore userStore;
     private final long tickIntervalMs;
     private final int disconnectCountdownSeconds;
+    private final ActivityLog activityLog;
     private final MatchmakingQueue matchmakingQueue;
+    private final RoomRegistry roomRegistry;
     private final ScheduledExecutorService disconnectTimers = Executors.newSingleThreadScheduledExecutor();
     private final Map<WebSocket, Session> sessionsByConnection = new HashMap<>();
     private final Map<Session, Match> matchBySession = new HashMap<>();
 
     public GameServer(InetSocketAddress address, UserStore userStore, long tickIntervalMs,
-                       int disconnectCountdownSeconds) {
+                       int disconnectCountdownSeconds, ActivityLog activityLog) {
         super(address);
         this.userStore = userStore;
         this.tickIntervalMs = tickIntervalMs;
         this.disconnectCountdownSeconds = disconnectCountdownSeconds;
+        this.activityLog = activityLog;
         this.matchmakingQueue = new MatchmakingQueue(this::onPaired, this::onMatchTimeout,
                 MATCHMAKING_TIMEOUT_MS, RATING_WINDOW);
+        this.roomRegistry = new RoomRegistry(this::newMatch, this::seat, this::wireAndStartMatch, this::addSpectator);
     }
 
     public Match matchFor(WebSocket conn) {
@@ -70,13 +78,25 @@ public class GameServer extends WebSocketServer {
         return session == null ? null : matchBySession.get(session);
     }
 
-    private void onPaired(Session a, Session b) {
+    private Match newMatch() {
         Board board = new BoardParser().parse(BoardParser.STANDARD_STARTING_POSITION);
-        Match match = new Match(GameEngine.fromBoard(board), tickIntervalMs);
+        return new Match(GameEngine.fromBoard(board), tickIntervalMs);
+    }
+
+    private void onPaired(Session a, Session b) {
+        Match match = newMatch();
         seat(match, a);
         seat(match, b);
+        wireAndStartMatch(match);
+    }
+
+    private void wireAndStartMatch(Match match) {
         subscribeToEngineEvents(match);
         match.start(() -> broadcastState(match));
+        List<Session> seated = match.seated();
+        Session a = seated.get(0);
+        Session b = seated.get(1);
+        activityLog.log(a.username() + " vs " + b.username() + " - match started");
         sendQuietly(a, Protocol.encode(new MatchFound(b.username(), a.assignedColor(), b.rating())));
         sendQuietly(b, Protocol.encode(new MatchFound(a.username(), b.assignedColor(), a.rating())));
     }
@@ -84,7 +104,14 @@ public class GameServer extends WebSocketServer {
     private void seat(Match match, Session session) {
         Piece.Color color = match.assignSeat().orElseThrow();
         session.assignedColor(color);
+        session.role(color == Piece.Color.WHITE ? Session.Role.WHITE : Session.Role.BLACK);
         match.addSession(session);
+        matchBySession.put(session, match);
+    }
+
+    private void addSpectator(Match match, Session session) {
+        session.role(Session.Role.SPECTATOR);
+        match.addSpectator(session);
         matchBySession.put(session, match);
     }
 
@@ -104,12 +131,16 @@ public class GameServer extends WebSocketServer {
     }
 
     private void broadcastGameOver(Match match, GameOverEvent event) {
+        activityLog.log("game over - winner: " + (event.winner() == null ? "draw" : event.winner()));
         broadcastToMatch(match, Protocol.encode(new GameOverMessage(event)));
     }
 
     private void broadcastToMatch(Match match, String text) {
         for (Session session : match.seated()) {
             sendQuietly(session, text);
+        }
+        for (Session spectator : match.spectators()) {
+            sendQuietly(spectator, text);
         }
     }
 
@@ -164,12 +195,15 @@ public class GameServer extends WebSocketServer {
         if (opponent == null) {
             return;
         }
+        activityLog.log(disconnected.username() + " disconnected - starting "
+                + disconnectCountdownSeconds + "s resign countdown");
         for (int elapsed = 1; elapsed <= disconnectCountdownSeconds; elapsed++) {
             int secondsRemaining = disconnectCountdownSeconds - elapsed;
             disconnectTimers.schedule(() -> {
                 if (secondsRemaining > 0) {
                     sendQuietly(opponent, Protocol.encode(new DisconnectCountdown(secondsRemaining)));
                 } else {
+                    activityLog.log(disconnected.username() + " did not reconnect - auto-resigning");
                     match.submit(() -> match.engine().resign(disconnected.assignedColor()));
                 }
             }, elapsed, TimeUnit.SECONDS);
@@ -213,6 +247,8 @@ public class GameServer extends WebSocketServer {
             case JumpCommand j -> handleJump(conn, j);
             case SelectCommand sel -> handleSelect(conn, sel);
             case NewGameCommand ng -> handleNewGame(conn, ng);
+            case RoomCreateCommand r -> handleRoomCreate(conn, r);
+            case RoomJoinCommand r -> handleRoomJoin(conn, r);
             case MoveAccepted _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case MoveRejected _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case StateMessage _ -> Protocol.encode(new MoveRejected("unexpected_message"));
@@ -223,6 +259,43 @@ public class GameServer extends WebSocketServer {
             case MatchFound _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case MatchTimeout _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case DisconnectCountdown _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case RoomId _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case Spectating _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+        };
+    }
+
+    private String handleRoomCreate(WebSocket conn, RoomCreateCommand r) {
+        Session session = sessionsByConnection.get(conn);
+        if (session == null) {
+            return Protocol.encode(new MoveRejected("not_logged_in"));
+        }
+        if (matchBySession.containsKey(session)) {
+            return Protocol.encode(new MoveRejected("already_in_match"));
+        }
+        String roomId = roomRegistry.createRoom(session);
+        activityLog.log(session.username() + " created room " + roomId);
+        return Protocol.encode(new RoomId(roomId));
+    }
+
+    private String handleRoomJoin(WebSocket conn, RoomJoinCommand r) {
+        Session session = sessionsByConnection.get(conn);
+        if (session == null) {
+            return Protocol.encode(new MoveRejected("not_logged_in"));
+        }
+        if (matchBySession.containsKey(session)) {
+            return Protocol.encode(new MoveRejected("already_in_match"));
+        }
+        RoomRegistry.JoinOutcome outcome = roomRegistry.joinRoom(r.roomId(), session);
+        return switch (outcome) {
+            case SEATED_BLACK -> {
+                activityLog.log(session.username() + " joined room " + r.roomId() + " as black");
+                yield Protocol.encode(new RoomId(r.roomId()));
+            }
+            case SPECTATING -> {
+                activityLog.log(session.username() + " is spectating room " + r.roomId());
+                yield Protocol.encode(new Spectating());
+            }
+            case NOT_FOUND -> Protocol.encode(new MoveRejected("room_not_found"));
         };
     }
 
@@ -259,6 +332,9 @@ public class GameServer extends WebSocketServer {
         if (session == null) {
             return Protocol.encode(new MoveRejected("not_logged_in"));
         }
+        if (session.role() == Session.Role.SPECTATOR) {
+            return Protocol.encode(new MoveRejected("spectator"));
+        }
         Match match = matchBySession.get(session);
         if (match == null) {
             return Protocol.encode(new MoveRejected("not_in_match"));
@@ -276,6 +352,7 @@ public class GameServer extends WebSocketServer {
         UserRecord user;
         if (existing.isPresent()) {
             if (!userStore.checkPassword(l.username(), l.password())) {
+                activityLog.log(l.username() + " login rejected: bad_credentials");
                 return Protocol.encode(new MoveRejected("bad_credentials"));
             }
             user = existing.get();
@@ -284,10 +361,14 @@ public class GameServer extends WebSocketServer {
         }
         Session session = new Session(conn::send, l.username(), user.rating());
         sessionsByConnection.put(conn, session);
+        activityLog.log(l.username() + " logged in (rating " + user.rating() + ")");
         return Protocol.encode(new Welcome(user.rating()));
     }
 
     private String handleMove(WebSocket conn, MoveCommand m) {
+        if (isSpectator(conn)) {
+            return Protocol.encode(new MoveRejected("spectator"));
+        }
         Match match = matchFor(conn);
         if (match == null || !ownsColor(conn, m.color())) {
             return Protocol.encode(new MoveRejected("not_your_piece"));
@@ -302,6 +383,9 @@ public class GameServer extends WebSocketServer {
     }
 
     private String handleJump(WebSocket conn, JumpCommand j) {
+        if (isSpectator(conn)) {
+            return Protocol.encode(new MoveRejected("spectator"));
+        }
         Match match = matchFor(conn);
         if (match == null || !ownsColor(conn, j.color())) {
             return Protocol.encode(new MoveRejected("not_your_piece"));
@@ -318,6 +402,11 @@ public class GameServer extends WebSocketServer {
         return session != null && session.assignedColor() == declaredColor;
     }
 
+    private boolean isSpectator(WebSocket conn) {
+        Session session = sessionsByConnection.get(conn);
+        return session != null && session.role() == Session.Role.SPECTATOR;
+    }
+
     private boolean declaredTokenMatchesBoard(Match match, Position position, Piece.Color color,
                                               Piece.Kind kind) {
         PieceSnapshot piece = match.engine().snapshot(null).pieceAt(position);
@@ -328,6 +417,9 @@ public class GameServer extends WebSocketServer {
         GameSnapshot boardState = match.engine().snapshot(null);
         for (Session session : match.seated()) {
             sendQuietly(session, encodedState(match, ownSelection(session, boardState)));
+        }
+        for (Session spectator : match.spectators()) {
+            sendQuietly(spectator, encodedState(match, null));
         }
     }
 

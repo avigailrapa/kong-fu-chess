@@ -1,5 +1,6 @@
 package app;
 
+import src.server.ActivityLog;
 import src.server.GameServer;
 import src.server.UserStore;
 
@@ -17,8 +18,9 @@ public class ServerMain {
     public static void main(String[] args) throws InterruptedException {
         new File(DATA_DIR).mkdirs();
         UserStore userStore = new UserStore("jdbc:sqlite:" + DATA_DIR + "/kongfu.db");
+        ActivityLog activityLog = new ActivityLog(DATA_DIR + "/activity.log");
         GameServer server = new GameServer(new InetSocketAddress(PORT), userStore, TICK_INTERVAL_MS,
-                DISCONNECT_COUNTDOWN_SECONDS);
+                DISCONNECT_COUNTDOWN_SECONDS, activityLog);
 
         server.start();
         if (!waitForBoundPort(server)) {

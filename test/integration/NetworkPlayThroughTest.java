@@ -6,10 +6,14 @@ import src.model.Piece;
 import src.model.Position;
 import src.net.LoginResult;
 import src.net.NetworkGameProxy;
+import src.net.RoomCreateResult;
+import src.net.RoomJoinResult;
+import src.server.ActivityLog;
 import src.server.GameServer;
 import src.server.UserStore;
 import src.view.GameSnapshot;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
@@ -18,10 +22,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class NetworkPlayThroughTest {
 
+    private ActivityLog tempActivityLog() throws Exception {
+        return new ActivityLog(File.createTempFile("kongfu-activity", ".log").getAbsolutePath());
+    }
+
     @Test
     public void testMoveRequestedThroughProxyIsAcceptedAndSnapshotUpdates() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 100, 20);
+                new UserStore("jdbc:sqlite::memory:"), 100, 20, tempActivityLog());
         server.start();
 
         int port = waitForBoundPort(server);
@@ -56,7 +64,7 @@ public class NetworkPlayThroughTest {
     @Test
     public void testOpponentDisconnectResignsAndUpdatesBothRatings() throws Exception {
         UserStore userStore = new UserStore("jdbc:sqlite::memory:");
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 100, 1);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 100, 1, tempActivityLog());
         server.start();
 
         int port = waitForBoundPort(server);
@@ -86,6 +94,62 @@ public class NetworkPlayThroughTest {
                     "resigning player's persisted rating should decrease");
         } finally {
             black.closeBlocking();
+            server.stop();
+        }
+    }
+
+    @Test
+    public void testRoomCreateJoinAndSpectateFlow() throws Exception {
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
+                new UserStore("jdbc:sqlite::memory:"), 100, 20, tempActivityLog());
+        server.start();
+
+        int port = waitForBoundPort(server);
+        NetworkGameProxy creator = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        NetworkGameProxy joiner = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        NetworkGameProxy spectator = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        NetworkGameProxy stranger = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        try {
+            assertTrue(creator.connectBlocking(5, TimeUnit.SECONDS));
+            assertTrue(joiner.connectBlocking(5, TimeUnit.SECONDS));
+            assertTrue(spectator.connectBlocking(5, TimeUnit.SECONDS));
+            assertTrue(stranger.connectBlocking(5, TimeUnit.SECONDS));
+
+            creator.login("alice", "pw");
+            joiner.login("bob", "pw");
+            spectator.login("carol", "pw");
+            stranger.login("dave", "pw");
+
+            RoomCreateResult created = creator.createRoom();
+            assertTrue(created.accepted(), "expected room creation to be accepted: " + created.reason());
+            assertNotNull(created.roomId());
+
+            RoomJoinResult joined = joiner.joinRoom(created.roomId());
+            assertTrue(joined.accepted(), "expected join to be accepted: " + joined.reason());
+            assertFalse(joined.spectating(), "the second player should be seated, not spectating");
+
+            waitUntil(() -> creator.latestSnapshot() != null && joiner.latestSnapshot() != null,
+                    "both players to receive an initial STATE after the room fills");
+
+            RoomJoinResult spectating = spectator.joinRoom(created.roomId());
+            assertTrue(spectating.accepted(), "expected spectate to be accepted: " + spectating.reason());
+            assertTrue(spectating.spectating(), "a third joiner should become a spectator");
+
+            waitUntil(() -> spectator.latestSnapshot() != null, "the spectator to receive an initial STATE");
+            assertTrue(spectator.isOccupied(new Position(7, 1)));
+
+            MoveResult spectatorMove = spectator.requestMove(new Position(7, 1), new Position(5, 1));
+            assertFalse(spectatorMove.isAccepted());
+            assertEquals("spectator", spectatorMove.reason());
+
+            RoomJoinResult notFound = stranger.joinRoom("NOSUCHROOM");
+            assertFalse(notFound.accepted());
+            assertEquals("room_not_found", notFound.reason());
+        } finally {
+            creator.closeBlocking();
+            joiner.closeBlocking();
+            spectator.closeBlocking();
+            stranger.closeBlocking();
             server.stop();
         }
     }

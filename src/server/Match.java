@@ -24,6 +24,7 @@ public class Match {
     private final long tickIntervalMs;
     private final ScheduledExecutorService executor;
     private final List<Session> seated = new ArrayList<>();
+    private final List<Session> spectators = new ArrayList<>();
     private Runnable onTick;
     private Runnable onNewGame = () -> {
     };
@@ -81,6 +82,14 @@ public class Match {
 
     public List<Session> seated() {
         return List.copyOf(seated);
+    }
+
+    public void addSpectator(Session session) {
+        spectators.add(session);
+    }
+
+    public List<Session> spectators() {
+        return List.copyOf(spectators);
     }
 
     private void tick() {
