@@ -1,3 +1,5 @@
+package app;
+
 import src.engine.MoveEvent;
 import src.engine.MoveLogger;
 import src.engine.GameEngine;
