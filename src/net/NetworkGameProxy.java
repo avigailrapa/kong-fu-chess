@@ -68,6 +68,8 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             case MatchFound mf -> eventBus.publish(mf);
             case MatchTimeout mt -> eventBus.publish(mt);
             case DisconnectCountdown dc -> eventBus.publish(dc);
+            case RoomId r -> completeOldestPendingReply(r);
+            case Spectating s -> completeOldestPendingReply(s);
             case LoginCommand _ -> {
             }
             case PlayCommand _ -> {
@@ -81,6 +83,10 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             case SelectCommand _ -> {
             }
             case NewGameCommand _ -> {
+            }
+            case RoomCreateCommand _ -> {
+            }
+            case RoomJoinCommand _ -> {
             }
         }
     }
@@ -150,6 +156,18 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         latestSnapshot = null;
     }
 
+    public RoomCreateResult createRoom() {
+        CompletableFuture<WireMessage> reply = enqueuePendingReply();
+        send(Protocol.encode(new RoomCreateCommand()));
+        return awaitRoomCreateReply(reply);
+    }
+
+    public RoomJoinResult joinRoom(String roomId) {
+        CompletableFuture<WireMessage> reply = enqueuePendingReply();
+        send(Protocol.encode(new RoomJoinCommand(roomId)));
+        return awaitRoomJoinReply(reply);
+    }
+
     private PieceSnapshot pieceAt(Position position) {
         return latestSnapshot == null ? null : latestSnapshot.pieceAt(position);
     }
@@ -206,6 +224,49 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             case Welcome w -> new LoginResult(true, w.rating(), "ok");
             case MoveRejected r -> new LoginResult(false, 0, r.reason());
             default -> new LoginResult(false, 0, "unexpected_message");
+        };
+    }
+
+    private RoomCreateResult awaitRoomCreateReply(CompletableFuture<WireMessage> reply) {
+        try {
+            return toRoomCreateResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
+        } catch (TimeoutException e) {
+            return new RoomCreateResult(false, null, "timeout");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new RoomCreateResult(false, null, "interrupted");
+        } catch (ExecutionException e) {
+            return new RoomCreateResult(false, null, "error");
+        }
+    }
+
+    private RoomCreateResult toRoomCreateResult(WireMessage message) {
+        return switch (message) {
+            case RoomId r -> new RoomCreateResult(true, r.roomId(), "ok");
+            case MoveRejected r -> new RoomCreateResult(false, null, r.reason());
+            default -> new RoomCreateResult(false, null, "unexpected_message");
+        };
+    }
+
+    private RoomJoinResult awaitRoomJoinReply(CompletableFuture<WireMessage> reply) {
+        try {
+            return toRoomJoinResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
+        } catch (TimeoutException e) {
+            return new RoomJoinResult(false, false, "timeout");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new RoomJoinResult(false, false, "interrupted");
+        } catch (ExecutionException e) {
+            return new RoomJoinResult(false, false, "error");
+        }
+    }
+
+    private RoomJoinResult toRoomJoinResult(WireMessage message) {
+        return switch (message) {
+            case RoomId r -> new RoomJoinResult(true, false, "ok");
+            case Spectating s -> new RoomJoinResult(true, true, "ok");
+            case MoveRejected r -> new RoomJoinResult(false, false, r.reason());
+            default -> new RoomJoinResult(false, false, "unexpected_message");
         };
     }
 }

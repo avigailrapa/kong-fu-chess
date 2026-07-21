@@ -22,7 +22,11 @@ import src.net.NewGameCommand;
 import src.net.PlayCommand;
 import src.net.Protocol;
 import src.net.RatingChanged;
+import src.net.RoomCreateCommand;
+import src.net.RoomId;
+import src.net.RoomJoinCommand;
 import src.net.SelectCommand;
+import src.net.Spectating;
 import src.net.Welcome;
 import src.net.WireMessage;
 
@@ -343,5 +347,45 @@ public class ProtocolTest {
     @Test
     public void testParseRejectsMalformedDisconnectCountdown() {
         assertThrows(MalformedMessageException.class, () -> Protocol.parse("DISCONNECT_COUNTDOWN abc"));
+    }
+
+    @Test
+    public void testRoomCreateCommandRoundTrips() {
+        RoomCreateCommand original = new RoomCreateCommand();
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("ROOM_CREATE", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testRoomJoinCommandRoundTrips() {
+        RoomJoinCommand original = new RoomJoinCommand("AB12CD");
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("ROOM_JOIN AB12CD", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testRoomIdRoundTrips() {
+        RoomId original = new RoomId("AB12CD");
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("ROOM_ID AB12CD", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testSpectatingRoundTrips() {
+        Spectating original = new Spectating();
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("SPECTATING", encoded);
+        assertEquals(original, Protocol.parse(encoded));
     }
 }

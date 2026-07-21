@@ -5,10 +5,14 @@ import org.junit.jupiter.api.Test;
 import src.engine.GameOverEvent;
 import src.model.Piece;
 import src.model.Position;
+import src.net.RoomCreateResult;
+import src.net.RoomJoinResult;
+import src.server.ActivityLog;
 import src.server.GameServer;
 import src.server.Match;
 import src.server.UserStore;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,8 +24,17 @@ public class GameServerTest {
 
     private ServerAndStore freshServerAndStore() {
         UserStore userStore = new UserStore("jdbc:sqlite::memory:");
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 1000, 20);
+        ActivityLog activityLog = tempActivityLog();
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 1000, 20, activityLog);
         return new ServerAndStore(server, userStore);
+    }
+
+    private ActivityLog tempActivityLog() {
+        try {
+            return new ActivityLog(File.createTempFile("kongfu-activity", ".log").getAbsolutePath());
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private GameServer freshServer() {
@@ -336,5 +349,109 @@ public class GameServerTest {
 
         assertEquals(1216, ss.userStore().find("alice").orElseThrow().rating());
         assertEquals(1184, ss.userStore().find("bob").orElseThrow().rating());
+    }
+
+    @Test
+    public void testRoomCreateReturnsRoomId() {
+        GameServer server = freshServer();
+        WebSocket conn = new FakeWebSocket();
+        login(server, conn, "alice");
+
+        String reply = server.handleMessage(conn, "ROOM_CREATE");
+
+        assertTrue(reply.startsWith("ROOM_ID "), "expected a ROOM_ID reply, got: " + reply);
+    }
+
+    @Test
+    public void testRoomCreateWithoutLoginIsRejectedNotLoggedIn() {
+        GameServer server = freshServer();
+
+        String reply = server.handleMessage(new FakeWebSocket(), "ROOM_CREATE");
+
+        assertEquals("REJECT not_logged_in", reply);
+    }
+
+    @Test
+    public void testSecondPlayerJoiningRoomIsSeatedBlack() {
+        GameServer server = freshServer();
+        WebSocket creatorConn = new FakeWebSocket();
+        WebSocket joinerConn = new FakeWebSocket();
+        login(server, creatorConn, "alice");
+        login(server, joinerConn, "bob");
+        String roomId = roomIdFrom(server.handleMessage(creatorConn, "ROOM_CREATE"));
+
+        String reply = server.handleMessage(joinerConn, "ROOM_JOIN " + roomId);
+
+        assertEquals("ROOM_ID " + roomId, reply);
+        assertEquals(Piece.Color.BLACK, server.matchFor(joinerConn).seated().stream()
+                .filter(s -> s.username().equals("bob")).findFirst().orElseThrow().assignedColor());
+    }
+
+    @Test
+    public void testThirdPlayerJoiningRoomIsSpectating() {
+        GameServer server = freshServer();
+        WebSocket creatorConn = new FakeWebSocket();
+        WebSocket joinerConn = new FakeWebSocket();
+        WebSocket spectatorConn = new FakeWebSocket();
+        login(server, creatorConn, "alice");
+        login(server, joinerConn, "bob");
+        login(server, spectatorConn, "carol");
+        String roomId = roomIdFrom(server.handleMessage(creatorConn, "ROOM_CREATE"));
+        server.handleMessage(joinerConn, "ROOM_JOIN " + roomId);
+
+        String reply = server.handleMessage(spectatorConn, "ROOM_JOIN " + roomId);
+
+        assertEquals("SPECTATING", reply);
+    }
+
+    @Test
+    public void testJoiningNonexistentRoomReturnsRoomNotFound() {
+        GameServer server = freshServer();
+        WebSocket conn = new FakeWebSocket();
+        login(server, conn, "alice");
+
+        String reply = server.handleMessage(conn, "ROOM_JOIN NOSUCHROOM");
+
+        assertEquals("REJECT room_not_found", reply);
+    }
+
+    @Test
+    public void testSpectatorMoveIsRejected() {
+        GameServer server = freshServer();
+        WebSocket creatorConn = new FakeWebSocket();
+        WebSocket joinerConn = new FakeWebSocket();
+        WebSocket spectatorConn = new FakeWebSocket();
+        login(server, creatorConn, "alice");
+        login(server, joinerConn, "bob");
+        login(server, spectatorConn, "carol");
+        String roomId = roomIdFrom(server.handleMessage(creatorConn, "ROOM_CREATE"));
+        server.handleMessage(joinerConn, "ROOM_JOIN " + roomId);
+        server.handleMessage(spectatorConn, "ROOM_JOIN " + roomId);
+
+        String reply = server.handleMessage(spectatorConn, "WPe2e4");
+
+        assertEquals("REJECT spectator", reply);
+    }
+
+    @Test
+    public void testSpectatorNewGameIsRejected() {
+        GameServer server = freshServer();
+        WebSocket creatorConn = new FakeWebSocket();
+        WebSocket joinerConn = new FakeWebSocket();
+        WebSocket spectatorConn = new FakeWebSocket();
+        login(server, creatorConn, "alice");
+        login(server, joinerConn, "bob");
+        login(server, spectatorConn, "carol");
+        String roomId = roomIdFrom(server.handleMessage(creatorConn, "ROOM_CREATE"));
+        server.handleMessage(joinerConn, "ROOM_JOIN " + roomId);
+        server.handleMessage(spectatorConn, "ROOM_JOIN " + roomId);
+
+        String reply = server.handleMessage(spectatorConn, "NEWGAME");
+
+        assertEquals("REJECT spectator", reply);
+    }
+
+    private String roomIdFrom(String roomIdReply) {
+        return roomIdReply.substring("ROOM_ID ".length());
     }
 }

@@ -18,10 +18,14 @@ public class Session {
     private Piece.Color assignedColor;
     @Setter
     private Position selectedCell;
+    @Setter
+    private Role role;
 
     public Session(ClientConnection connection, String username, int rating) {
         this.connection = connection;
         this.username = username;
         this.rating = rating;
     }
+
+    public enum Role { WHITE, BLACK, SPECTATOR }
 }
