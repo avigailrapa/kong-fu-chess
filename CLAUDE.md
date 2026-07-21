@@ -1,316 +1,94 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository.
 
 ## Project
 
-"Kung Fu Chess" — a real-time chess variant where moves play out over simulated time (a piece travels
-at a fixed speed instead of teleporting instantly), pieces have a rest/cooldown period after moving, and
-two pieces can race for the same square or cross paths mid-flight. There are two front ends over the same
-engine: a Swing GUI (`GuiMain.java`) and a text-command console runner (`Main.java`) that reads a small DSL
-from stdin.
+"Kung Fu Chess" — a real-time chess variant: moves travel over simulated time instead of
+teleporting, pieces rest/cool down after moving, and two pieces can race for a square or cross
+paths mid-flight. Two front ends over one engine: a Swing GUI (`app/GuiMain.java`) and a
+text-command console runner (`app/Main.java`) reading a small DSL from stdin
+(@.claude/rules/text-dsl.md).
 
-There is no build tool (no Maven/Gradle/build.xml) — this is a plain `javac`-compiled project. `KongFu.iml`
-is the IntelliJ project file (source roots: project root, `src/`, `test/`; excludes `out/` and `legacy/`).
-Dependency jars are just files dropped into `lib/` (fetched by hand from Maven Central, not resolved by any
-tool) — `KongFu.iml`'s `jarDirectory` entry for `lib/` (non-recursive) means IntelliJ picks up anything
-placed there automatically. Besides the JUnit 5 jars, `lib/` has `Java-WebSocket-1.6.0.jar` (used by
-`src/net/`/`src/server/`), `slf4j-api-2.0.13.jar` (a real runtime dependency of Java-WebSocket, despite
-its own docs describing it as dependency-free — without it, anything using `GameServer`/`NetworkGameProxy`
-throws `NoClassDefFoundError` the first time the library logs anything; with just the API jar and no
-logging backend, SLF4J 2.x prints one harmless one-time "no providers found" warning instead of failing),
-`lombok-1.18.46.jar` (`@Getter`/`@Setter`/`@RequiredArgsConstructor`, configured fluent/no-prefix via
-`@Accessors(fluent = true)` to match this codebase's existing no-`get`-prefix accessor style everywhere
-else — e.g. `Position.row()`, `Piece.color()` — rather than Lombok's JavaBean-style default; fluent
-setters return the owning instance instead of `void`; Lombok is compile-time-only, an annotation processor
-not a runtime dependency, but still needs to be on the compiler's `-processorpath`, not just `-cp` — see
-the compile command below), and `sqlite-jdbc-3.53.2.0.jar` (used by `src/server/UserStore.java` — a single
-jar with no classifier needed, since `org.xerial:sqlite-jdbc`'s default artifact bundles native binaries
-for every supported platform, not just Windows; registers itself as a JDBC driver automatically via the
-JDBC 4 `META-INF/services` mechanism, so `DriverManager.getConnection("jdbc:sqlite:...")` works with no
-explicit `Class.forName` call anywhere in this codebase).
+Plain `javac`-compiled — no Maven/Gradle/build.xml. `KongFu.iml` is the IntelliJ project file
+(source roots: project root, `src/`, `test/`). Dependency jars live in `lib/`, fetched by hand, not
+resolved by any tool (@.claude/rules/dependencies.md).
 
-## Build & test commands
+Top-level layout: `app/` (entry points, `package app`), `src/` (layered engine, packages prefixed
+`src.*` since the project root — not `src/` itself — is the source root), `test/` (mirrors `src/`
+and `app/` package-for-package, minus the `src.` prefix), `lib/` (jars), `assets/` (piece
+sprites/board image).
 
-Use PowerShell for these, not Git Bash — Git Bash mangles the `;` classpath separator and does POSIX-path
-conversion on arguments passed to the native `javac`/`java` binaries, which silently breaks multi-jar
-classpaths and multi-file compiles. PowerShell does not have this problem.
+## Commands
 
-**Compile main sources** (outputs to `out/`, matching the IntelliJ module's output folder). Needs `-cp`
-pointing at `lib/` now that `src/net/`/`src/server/` use the WebSocket jar — main sources had zero external
-dependencies before that, so this flag is new as of those packages existing. Also needs `-processorpath`
-pointing at the Lombok jar specifically: on this project's JDK (26), implicit annotation-processor
-discovery via plain `-cp` does not run Lombok at all — not even a warning, it silently skips code
-generation, which then surfaces as a confusing "variable not initialized in the default constructor"
-error on whatever class used `@RequiredArgsConstructor`, with no mention of Lombok anywhere in the output:
+Use PowerShell, not Git Bash — Git Bash mangles the `;` classpath separator and POSIX-converts
+paths passed to `javac`/`java`, silently breaking multi-jar classpaths and multi-file compiles.
+
+**Compile main** (outputs to `out/`; needs `-processorpath` for Lombok — plain `-cp` silently
+skips annotation processing on this project's JDK):
 ```powershell
 $cp = (Get-ChildItem lib\*.jar | ForEach-Object { $_.FullName }) -join ";"
 $proc = (Get-ChildItem lib\lombok*.jar).FullName
-$files = Get-ChildItem -Recurse src\*.java, GuiMain.java, Main.java, ServerMain.java, ClientMain.java | ForEach-Object { $_.FullName }
+$files = Get-ChildItem -Recurse src\*.java, app\*.java | ForEach-Object { $_.FullName }
 javac -d out -encoding UTF-8 -cp $cp -processorpath $proc $files
 ```
 
-**Compile tests** (needs `out/` on the classpath plus the JUnit jars in `lib/`):
+**Compile tests** (`out/` + JUnit jars from `lib/` on classpath):
 ```powershell
 $cp = "out;" + ((Get-ChildItem lib\*.jar | ForEach-Object { $_.FullName }) -join ";")
 $files = Get-ChildItem -Recurse test\*.java | ForEach-Object { $_.FullName }
 javac -d out -cp $cp $files
 ```
 
-**Run the GUI:**
-```powershell
-javaw -cp out GuiMain
-```
+**Run** (entry points live in the `app` package, so classes are referenced fully-qualified):
+- GUI: `javaw -cp out app.GuiMain`
+- Console/DSL: `java -cp out app.Main < path\to\script.kfc`
+- Server: `java -cp "out;lib\*" app.ServerMain`
+- Client: `java -cp "out;lib\*" app.ClientMain [wsUrl]` (defaults to `ws://localhost:8887`)
 
-**Run the console/text-DSL mode** (reads a script from stdin — see "Text DSL" below):
-```powershell
-java -cp out Main < path\to\script.kfc
-```
-Both of the above stay exactly `-cp out` (no jars needed) — neither `GuiMain` nor `Main` imports anything
-from `src/net/`/`src/server/`, so the WebSocket jar is never resolved at their runtime. Only the main
-*compile* command needs `-cp` now, because it compiles every `.java` file under `src/` in one pass, `net`/
-`server` included.
+GUI/console stay `-cp out` (no jars — neither imports `src/net`/`src/server`); server/client need
+`lib\*` since they pull in the WebSocket jar transitively.
 
-**Run the server** (binds a WebSocket port and hosts one `Match`):
-```powershell
-java -cp "out;lib\*" ServerMain
-```
+**Test:** no `junit-platform-console-standalone.jar` in `lib/` — run tests via a hand-written
+JUnit `Launcher` driver class, not a single `java -jar` command (@.claude/rules/testing.md).
 
-**Run the client** (connects to a running server, defaults to `ws://localhost:8887`; pass a URL as the
-first arg to point at a different host):
-```powershell
-java -cp "out;lib\*" ClientMain
-```
-Both need `lib\*` on the runtime classpath (unlike `GuiMain`/`Main` above) since `ServerMain`/`ClientMain`
-pull in the WebSocket jar transitively through `src/net/`/`src/server/`.
+## Code Style
 
-**Run tests:** `lib/` only has `junit-jupiter-api`/`junit-jupiter-engine`/`junit-platform-*` jars — there is
-no `junit-platform-console-standalone.jar`, so tests can't be run with a single `java -jar` command. Drive
-the `org.junit.platform.launcher.Launcher` API directly with a throwaway driver class instead:
-```java
-import org.junit.platform.launcher.Launcher;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.platform.launcher.core.LauncherFactory;
-import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
-import org.junit.platform.launcher.listeners.TestExecutionSummary;
-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectPackage;
-// or: selectClass("engine.GameEngineTest") for a single test class
-import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
-import java.io.PrintWriter;
-
-public class RunTests {
-    public static void main(String[] args) {
-        LauncherDiscoveryRequest request = request()
-                .selectors(selectPackage("engine"), selectPackage("input"), selectPackage("realtime"),
-                        selectPackage("model"), selectPackage("rules"), selectPackage("io"), selectPackage("view"),
-                        selectPackage("bus"), selectPackage("net"), selectPackage("server"),
-                        selectPackage("integration"))
-                .build();
-        Launcher launcher = LauncherFactory.create();
-        SummaryGeneratingListener listener = new SummaryGeneratingListener();
-        launcher.registerTestExecutionListeners(listener);
-        launcher.execute(request);
-        TestExecutionSummary summary = listener.getSummary();
-        summary.printTo(new PrintWriter(System.out));
-        summary.printFailuresTo(new PrintWriter(System.out));
-        System.exit(summary.getTotalFailureCount() > 0 ? 1 : 0);
-    }
-}
-```
-Compile it against the same classpath as the tests, then `java -cp out;lib\*;. RunTests`. Note that test
-packages don't have a `test.` prefix (`test/engine/GameEngineTest.java` declares `package engine;`), so
-`selectPackage`/`selectClass` use the bare package name. Make sure `selectPackage("integration")` is
-actually included — it's easy to leave out (the very first version of this snippet did, silently skipping
-`test/integration/` — including `TextScriptsTest` — for a while) since nothing fails loudly when a package
-is just never discovered.
-
-Full-suite runs now take several seconds, not milliseconds: `test/server/MatchTest.java` and the
-`test/integration/` server/client tests exercise a real `ScheduledExecutorService` tick loop and, in a few
-cases, a real bound socket, so they wait on real wall-clock timing (with generous timeouts, not tight
-sleeps) rather than an injected `ms` argument the way `GameEngine.waitMs`/`EffectsController.tick` do.
-
-`javac`/`java` print `warning: unknown enum constant Status.STABLE` noise from JUnit's `@API` annotations
-(the `apiguardian` jar isn't in `lib/`) — harmless, not a real error.
+- Never add comments — not even "why"-only ones. Write self-explanatory names/structure instead.
+- Fluent, no-`get`-prefix accessors everywhere (`Position.row()`, `Piece.color()`), matched by
+  Lombok's `@Accessors(fluent = true)`. Never write JavaBean-style `getX()`/`setX()`.
 
 ## Architecture
 
-Strict one-directional layering; each layer only depends on the ones below it, never sideways or up. This
-is enforced by convention (not a build tool), so when adding code, check which package it belongs in by
-what it's allowed to depend on:
+Strict one-directional layering, enforced by convention only (no build-tool check): each layer
+depends only on the ones below it, never sideways or up. Full per-class contracts:
+@.claude/rules/architecture.md.
 
 ```
-model  →  rules  →  realtime  →  engine  →  view (DTOs only: GameSnapshot/PieceSnapshot/SelectionSnapshot)
+model  →  rules  →  realtime  →  engine  →  view (DTOs only)
                                    ↑  ↑  ↑
-                                bus │  │  input (Controller depends on GameCommands, GameEngine's narrow
-                                    │  │         3-method interface; BoardMapper depends on GameSnapshot
-                                    │  │         only for its CELL_WIDTH/CELL_HEIGHT constants)
-                                    │  net (wire protocol + NetworkGameProxy, a second GameCommands
-                                    │       implementation — see below) / server (GameServer + Match,
-                                    │       depends on net for the wire protocol)
-                                    engine also publishes to its EventBus (src/bus/); view/sound
-                                    subscribes to that same bus (see src/view/ and src/bus/ below)
+                                bus │  │  input (Controller / CommandParser+Runner)
+                                    │  net (wire protocol, NetworkGameProxy) / server (GameServer, Match)
+                                    engine also publishes to bus; view/sound subscribes
 ```
 
-- **`src/model/`** — `Position`, `Piece`, `Board`/`IBoard`, `GameState`. Zero dependencies on anything else
-  in the project. `Board` is the only mutable piece-position store; `Piece.State` carries both logical
-  state (`IDLE`/`MOVING`/`JUMPING`/`CAPTURED`) and the rest states (`SHORT_REST`/`LONG_REST`).
-- **`src/bus/`** — `EventBus`, a small generic type-keyed pub/sub (`subscribe(Class<T>, Consumer<? super T>)`,
-  `publish(Object)`). Zero dependencies on anything else in the project, same as `model`. `GameEngine` owns
-  one `EventBus` instance per game and publishes `MoveEvent`/`GameOverEvent`/`ScoreChangedEvent` (all in
-  `src/engine/`) onto it; this coexists with the older `MoveObserver`/`MoveLogger` mechanism rather than
-  replacing it.
-- **`src/rules/`** — `PieceRules` is a Strategy interface (`legalDestinations(board, piece)`), one
-  implementation per piece kind (`RookRule`, `BishopRule`, etc.), sharing `SlidingRule`/`FixedOffsetRule`
-  base classes. `RuleEngine` is the read-only validation service (`validateMove`, `legalDestinations`) —
-  it never mutates `Board` and knows nothing about game-over.
-- **`src/realtime/`** — `RealTimeArbiter` owns all in-flight `Motion`s, jumps, and rest timers, and is the
-  only thing that resolves arrivals/captures/races. `MotionResolver`/`JumpResolver`/`CollisionResolver`/
-  `PathCrossingResolver` are its internal collaborators (collision when two pieces target the same square;
-  path-crossing when two pieces' straight-line paths intersect mid-flight). Depends on `IBoard` (not the
-  concrete `Board`) plus `view.AnimationConfig` (an accepted exception, for reading per-piece speed from
-  the asset JSON). Has zero knowledge of `GameState` — king-capture is only *reported* via `ArrivalEvent`,
-  never acted on here.
-- **`src/engine/`** — `GameEngine` is the application service and the only public command boundary
-  (`requestMove`, `requestJump`, `waitMs`, `snapshot`). It composes `Board`+`GameState`+`RuleEngine`+
-  `RealTimeArbiter` and is the one place allowed to construct `view` DTOs. `MoveObserver`/`MoveLogger`
-  give a decoupled way to react to completed moves (e.g. for the on-screen move log) without `GameEngine`
-  knowing anything about rendering; `GameEngine.eventBus()` is the newer, more general alternative to that
-  same idea (see `src/bus/` above). `GameCommands` is the 3-method interface (`isOccupied`, `requestMove`,
-  `requestJump`) that `GameEngine implements`, extracted so `src/input/Controller` can depend on the
-  interface instead of the concrete class. `AlgebraicNotation` converts `Position` to/from a 2-character
-  algebraic square string (`"e7"`) in both directions, with input validation — `MoveEvent.algebraicMove()`
-  delegates to it rather than duplicating the conversion.
-- **`src/input/`** — `Controller` (GUI path: pixel click → `BoardMapper.pixelToCell` → `GameCommands` call,
-  implemented by `GameEngine`) and `CommandParser`/`CommandRunner`/`ConsoleRunner` (text-DSL path, used by
-  both `Main.java` and the `test/integration/` script tests — see below). Neither depends on
-  `RuleEngine`/`RealTimeArbiter`/`Board` directly; both only ever call through `GameEngine`/`GameCommands`.
-- **`src/net/`** — the wire protocol shared by client and server, plus the client-side network adapter.
-  `WireMessage` is a sealed interface (`MoveCommand`/`JumpCommand`/`MoveAccepted`/`MoveRejected`/
-  `StateMessage`/`LoginCommand`/`Welcome`/`SelectCommand`/`MoveOccurred`/`GameOverMessage`/
-  `NewGameCommand`/`RatingChanged`); `Protocol.parse(String)`/`encode(WireMessage)` convert to/from the
-  actual text sent over a WebSocket text frame — a bare 6-char move token (e.g. `WQe2e5`, matching the
-  course slide's literal example, no verb prefix), `JUMP <token>`, `OK`, `REJECT <reason>`, `NEWGAME`
-  (client asks the server to start a fresh game — only accepted once the current one is over, see
-  `src/server/` below), a multi-line `STATE`/`PIECE`/`SELECT`/`LEGAL`/`WLOG`/`BLOG`/`ENDSTATE` block that
-  flattens/reconstructs a whole `GameSnapshot`, or the server-to-client-only
-  `EVENT_MOVE <color><kind><from><to> <capture:0/1> <kingCapture:0/1> <requestTimestampMs>` /
-  `EVENT_GAMEOVER <color|->` / `RATING <newRating>` — the first two are thin wrappers
-  (`MoveOccurred`/`GameOverMessage`) around the engine's own `MoveEvent`/`GameOverEvent` records, the same
-  wrap-a-`view`/`engine`-type pattern `StateMessage` already uses for `GameSnapshot`; `RatingChanged` is
-  sent to one connection at a time (not broadcast), since the two players' post-game ratings differ.
-  `LOGIN <username> <password>` and `WELCOME <color> <rating>` (both extended for accounts — see
-  `src/server/`'s `UserStore` below) round out the login exchange. `MalformedMessageException` is what
-  `parse` throws on any bad input; it never lets any other exception type escape. `NetworkGameProxy`
-  (`extends org.java_websocket.client.WebSocketClient`, `implements GameCommands`) is the client-side
-  stand-in for `GameEngine` wherever `Controller` is used — `isOccupied` and the color/kind needed to build
-  a move token are answered from a locally-cached `GameSnapshot` (zero round-trip); `requestMove` blocks
-  the calling thread on a `CompletableFuture` up to a timeout, matched to its reply via a FIFO queue (not a
-  single shared slot) so a late reply to an abandoned/timed-out request can't be misdelivered to whatever
-  request is sent next — the ordering guarantee this relies on is that one WebSocket connection delivers
-  frames in send order both ways, and `GameServer` replies to a connection's messages in the order it
-  received them (see `src/server/` below). `requestJump`/`newGame` stay fire-and-forget, matching
-  `GameCommands`' existing asymmetry. `NetworkGameProxy` also owns its own `EventBus` (fluent `eventBus()`
-  getter, mirroring `GameEngine.eventBus()`) — its `onMessage` publishes the `MoveEvent`/`GameOverEvent`
-  unwrapped from an incoming `MoveOccurred`/`GameOverMessage` onto that bus, so `EffectsController` can
-  subscribe to it over the network exactly as it does to a local `GameEngine`'s bus (see `src/view/`
-  below); it also tracks the latest `RatingChanged`/`Welcome` value via a fluent `latestRating()` getter.
-- **`src/server/`** — `Match` owns a `GameEngine` + a `MoveLogger` wired to it, on its own single-threaded
-  `ScheduledExecutorService`; `start(Runnable onTick)` schedules a periodic `engine.waitMs(tickIntervalMs)`
-  followed by the given callback, and `submit(Runnable)` funnels any other work (incoming messages) onto
-  that same thread — the whole point being `GameEngine`/`RealTimeArbiter` have no internal synchronization
-  and must never be touched concurrently. Both `engine` and `moveLogger` are replaceable, not `final`:
-  `newGame(GameEngine)` swaps in a fresh engine (rebuilding `moveLogger` and rewiring it as that engine's
-  move observer) and then runs a registered `onNewGame(Runnable)` listener, since anything that subscribed
-  to the *old* engine's `EventBus` (like `GameServer`'s move/game-over broadcasting, see below) would
-  otherwise keep listening to a bus nothing publishes to anymore. `GameServer extends
-  org.java_websocket.server.WebSocketServer`, composing one `Match`, one `UserStore`, and `Protocol`; its
-  constructor subscribes to `match.engine().eventBus()` for `MoveEvent`/`GameOverEvent` (via a
-  `subscribeToEngineEvents()` method also re-run through the `onNewGame` hook above) and broadcasts each
-  `MoveEvent`/`GameOverEvent` to every connection as `MoveOccurred`/`GameOverMessage` the instant it fires,
-  independent of the tick/state cycle below; a second `GameOverEvent` subscriber,
-  `updateRatingsAfterGameOver`, looks up both seated `Session`s, runs `EloCalculator.updatedRating` for
-  each (K=32, draws split 0.5/0.5 when `GameOverEvent.winner()` is `null`), persists both via
-  `UserStore.updateRating`, updates each in-memory `Session.rating()` in place (so a same-session rematch
-  after `NEWGAME` starts from the just-updated rating, not the stale login-time one), and sends each player
-  their own `RatingChanged` directly on their connection. `onMessage` funnels the request through
-  `match.submit(...)`, cross-checks the move/jump's declared color+kind against what's actually on the
-  board before forwarding to `GameEngine` (rejecting a mismatch with `REJECT token_mismatch`), then calls
-  `broadcastState()`; `onStart` calls `match.start(this::broadcastState)` so the periodic tick also calls
-  it, not just each reactive per-message update. `handleLogin` calls `match.assignSeat()` first (rejecting
-  `table_full` before touching the database at all), then `UserStore.find`/`createUser`/`checkPassword` —
-  a brand-new username is created on the spot at the default rating (1200), an existing one must pass
-  `checkPassword` or the login is rejected `bad_credentials`; either way the accepted reply is
-  `WELCOME <color> <rating>` and a `Session` (now carrying that `rating`, mutable, alongside the existing
-  mutable `selectedCell`) is seated. `handleNewGame` requires an existing session (`not_logged_in`
-  otherwise) and the match to actually be over (`game_in_progress` otherwise), then calls
-  `match.newGame(GameEngine.fromBoard(...))` with a freshly parsed standard starting board.
-  `broadcastState()` sends each connection its *own* `StateMessage`, not one shared broadcast: for each
-  `Session`, it looks up whatever piece currently sits on that session's `selectedCell()` and only passes
-  the selection through to `GameEngine.snapshot(...)` (and thus only populates that client's `LEGAL`
-  destination squares) if the piece's color matches `session.assignedColor()` — reselected/rechecked fresh
-  every broadcast off the live board, so a player can never see legal-destination highlights for a piece
-  they don't own, including a piece that only became the opponent's mid-flight (e.g. captured into their
-  previously-own-colored selected square). `UserStore` (`jdbc:sqlite:<url>`, one `Connection` held open for
-  the store's whole lifetime — required for `jdbc:sqlite::memory:` to work at all across multiple calls,
-  since a fresh connection to `:memory:` gets its own empty database) owns the `users` table
-  (`username` primary key, `password_hash`/`password_salt`, `rating` defaulting to 1200) and creates it if
-  missing on construction; `ServerMain` points it at `server-data/kongfu.db`, creating that directory first
-  since the SQLite driver creates the database file itself but not missing parent directories.
-  `PasswordHasher` is SHA-256 salted with `SecureRandom` (JDK-only, no external hashing library — this is
-  a course project, not something handling real user data). `EloCalculator.updatedRating` is the standard
-  logistic-expectation formula with `K=32`.
-- **`src/io/`** — `BoardParser`/`BoardPrinter`, plain-text board serialization, model-only dependency.
-- **`src/view/`** — `GameSnapshot`/`PieceSnapshot`/`SelectionSnapshot` are passive, read-only DTOs built by
-  `GameEngine.snapshot(...)` (already carrying pre-computed pixel positions, move-log text, legal-destination
-  set, etc. — nothing in `view` re-derives game logic). `Renderer.render(GameSnapshot)` is a pure
-  snapshot-to-`BufferedImage` function and must never import anything from `src.engine`/`src.model`/
-  `src.realtime` beyond value types like `Piece.Color`/`Position`. `GameWindow` is the Swing shell (JFrame +
-  mouse input + repaint loop) and must never import `GameEngine` either — it only holds a
-  `Supplier<GameSnapshot>`, a `Controller`, a `Renderer`, a `GameLoop`, and an `EffectsController`. `GameLoop` and `EffectsController`
-  are the two classes in `view` allowed to reach into `engine`. `GameLoop` holds a `GameEngine` reference
-  directly; its only job is advancing simulated time each tick (`engine.waitMs`) and reporting whether
-  anything changed, so the window doesn't have to know the engine's API. `EffectsController` doesn't hold a
-  `GameEngine` reference — it subscribes to `engine`-defined event records (`MoveEvent`, `GameOverEvent`)
-  published on an `EventBus` (see `src/bus/`, a dependency-free pub/sub package) to trigger one-shot sounds
-  and a short "GAME START!" banner, so those don't have to be re-derived by polling `GameSnapshot` every
-  frame; `GuiMain` hands it `GameEngine`'s own bus directly, while `ClientMain` hands it
-  `NetworkGameProxy.eventBus()`, which republishes the same event records after unwrapping them from
-  `MoveOccurred`/`GameOverMessage` frames relayed by `GameServer` (see `src/net/`/`src/server/` above) —
-  `EffectsController` itself doesn't know or care which mode it's in. `EffectsController`, its
-  `SoundPlayer` interface, and the real
-  `ClipSoundPlayer` implementation (tries `<root>/<name>.wav` via `javax.sound.sampled`, falls back to
-  `Toolkit.beep()`) live in the `src/view/sound/` subpackage — the one place in this project with a nested
-  package under one of the 7 top-level ones, kept separate so `EffectsController`'s tests can inject a fake
-  `SoundPlayer` without touching real audio. `Renderer.drawBanner(BufferedImage, String)` is what
-  `EffectsController`'s banner text is actually painted with. `Img` is a thin `BufferedImage` wrapper (load/resize/draw/text) — all pixel drawing goes through it,
-  never raw `Graphics2D` calls scattered elsewhere. `AnimationConfig` loads a piece's per-state JSON
-  (`speed_m_per_sec`, `next_state_when_finished`, `frames_per_sec`, `is_loop`) via regex, not a JSON library.
+- `model` / `bus` — zero project dependencies.
+- `rules` — read-only move legality (`PieceRules`, `RuleEngine`); never mutates `Board`.
+- `realtime` — `RealTimeArbiter` resolves all in-flight motion, jumps, rests, arrivals, races.
+- `engine` — `GameEngine`, the one public command boundary; only place allowed to build `view` DTOs.
+- `input` — GUI click path and text-DSL path; both call through `GameEngine`/`GameCommands` only.
+- `net` / `server` — WebSocket wire protocol, client proxy, match/session/rating server.
+- `view` — `Renderer`/`GameWindow` see only `GameSnapshot` DTOs, never live model/engine objects.
+- `io` — plain-text board serialization, model-only dependency.
 
-Because `Renderer`/`GameWindow` only ever see `GameSnapshot`, a rendering bug can be reproduced/tested with
-a hand-built fake `GameSnapshot` — no real `Board`/`GameEngine`/`Controller` needed.
+Piece asset layout (`assets/pieces/...config.json`): @.claude/rules/text-dsl.md.
 
-### Text DSL (`.kfc` scripts, used by `Main.java` and `test/integration/scripts/*.kfc`)
+## Workflow
 
-```
-Board:
-bR bN bB bQ bK bB bN bR
-.  .  .  .  .  .  .  .
-...
-Commands:
-click <x> <y>
-wait <ms>
-jump <x> <y>
-print board
-```
-Board tokens: `.` for empty, `<w|b><K|Q|R|B|N|P>` for a piece (e.g. `wK`). `print board` is the only
-assertion mechanism in scripts — `TextScriptsTest` runs each `.kfc` file and diffs the captured stdout.
-
-### Piece assets
-
-`assets/pieces/<KindLetter><ColorLetter>/states/{idle,move,jump,short_rest,long_rest}/config.json` +
-`sprites/*.png` — e.g. `assets/pieces/PW/` is the white pawn (kind letter first, then color letter — the
-opposite order from the board-token format `wP` used in `.kfc` files and `BoardParser`). Each state's
-`config.json` carries that state's `speed_m_per_sec` (0 for non-moving states), `next_state_when_finished`
-(`"idle"`, `"short_rest"`, or `"long_rest"` — this is what actually drives whether/how long a piece rests
-after moving or jumping, not a hardcoded rule), `frames_per_sec`, and `is_loop`. `assets/board.png` is the
-board background image; `Renderer` requires it to exist (no procedural fallback).
+- Cross-check design/model decisions against the course design PDF before writing code; treat it
+  as authoritative over earlier informal or pasted instructions.
+- Don't build interim scaffolding (stub interfaces, fake seams) to make a blocked component
+  compile — defer the component until its real dependency actually exists.
+- Ask before every `git commit` and before editing any document, including memory files — one
+  approval doesn't carry over to the next commit/edit.
+- Never cite design-doc page numbers ("p.X") or iteration numbers in commit messages.

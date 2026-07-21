@@ -1,8 +1,11 @@
+package app;
+
 import src.input.BoardMapper;
 import src.input.Controller;
 import src.model.Position;
 import src.net.LoginResult;
 import src.net.NetworkGameProxy;
+import src.net.RatingChanged;
 import src.view.GameSnapshot;
 import src.view.GameWindow;
 import src.view.Renderer;
@@ -99,6 +102,7 @@ public class ClientMain {
             return true;
         };
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> proxy.latestSnapshot();
+        proxy.eventBus().subscribe(RatingChanged.class, r -> System.out.println("New rating: " + r.newRating()));
         EffectsController effects = new EffectsController(proxy.eventBus(), new ClipSoundPlayer("assets"));
         effects.announceGameStart();
         return new GameWindow.GameComponents(tickSource, snapshotSupplier, controller, renderer, effects);

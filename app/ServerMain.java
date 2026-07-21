@@ -1,3 +1,5 @@
+package app;
+
 import src.engine.GameEngine;
 import src.io.BoardParser;
 import src.model.Board;

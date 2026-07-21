@@ -1,3 +1,5 @@
+package app;
+
 import src.input.CommandParser;
 import src.input.CommandRunner;
 import src.input.ConsoleRunner;
