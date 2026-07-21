@@ -134,4 +134,42 @@ public class MatchTest {
             match.stop();
         }
     }
+
+    @Test
+    public void testNewGameReplacesEngine() {
+        Match match = new Match(freshEngine(), 1000);
+        GameEngine replacementEngine = freshEngine();
+
+        match.newGame(replacementEngine);
+
+        assertSame(replacementEngine, match.engine());
+    }
+
+    @Test
+    public void testNewGameInvokesRegisteredListener() {
+        Match match = new Match(freshEngine(), 1000);
+        AtomicInteger listenerCalls = new AtomicInteger();
+        match.onNewGame(listenerCalls::incrementAndGet);
+
+        match.newGame(freshEngine());
+
+        assertEquals(1, listenerCalls.get());
+    }
+
+    @Test
+    public void testNewGameWiresFreshMoveLoggerToReplacementEngine() throws InterruptedException {
+        GameEngine replacementEngine = freshEngine();
+        Match match = new Match(freshEngine(), 2000);
+        match.newGame(replacementEngine);
+        CountDownLatch latch = new CountDownLatch(1);
+        try {
+            match.submit(() -> replacementEngine.requestMove(new Position(7, 0), new Position(4, 0)));
+            match.start(latch::countDown);
+
+            assertTrue(latch.await(4, TimeUnit.SECONDS));
+            assertFalse(match.moveLogger().getWhiteMoves().isEmpty());
+        } finally {
+            match.stop();
+        }
+    }
 }

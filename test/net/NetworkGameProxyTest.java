@@ -6,6 +6,7 @@ import src.model.Piece;
 import src.model.Position;
 import src.net.NetworkGameProxy;
 import src.net.Protocol;
+import src.net.RatingChanged;
 import src.net.StateMessage;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
@@ -99,5 +100,14 @@ public class NetworkGameProxyTest {
         NetworkGameProxy proxy = newProxy();
 
         assertDoesNotThrow(() -> proxy.requestJump(new Position(0, 0)));
+    }
+
+    @Test
+    public void testRatingChangedUpdatesLatestRating() {
+        NetworkGameProxy proxy = newProxy();
+
+        proxy.onMessage(Protocol.encode(new RatingChanged(1234)));
+
+        assertEquals(1234, proxy.latestRating());
     }
 }

@@ -10,6 +10,7 @@ import src.view.sound.ClipSoundPlayer;
 import src.view.sound.EffectsController;
 
 import javax.swing.*;
+import java.io.Console;
 import java.net.URI;
 import java.util.Objects;
 import java.util.Scanner;
@@ -25,6 +26,7 @@ public class ClientMain {
     private static final long REQUEST_TIMEOUT_MS = 2000;
     private static final long CONNECT_TIMEOUT_SECONDS = 5;
     private static final long INITIAL_STATE_TIMEOUT_MS = 5000;
+    private static final long NEW_GAME_CONFIRM_TIMEOUT_MS = 5000;
     private static final int BOARD_WIDTH = 8;
     private static final int BOARD_HEIGHT = 8;
 
@@ -59,17 +61,32 @@ public class ClientMain {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Username: ");
         String username = scanner.nextLine();
+        String password = readPassword(scanner);
 
-        LoginResult result = proxy.login(username);
+        LoginResult result = proxy.login(username, password);
         if (!result.accepted()) {
             System.err.println("Login rejected: " + result.reason());
             proxy.close();
             System.exit(1);
         }
-        System.out.println("Welcome, playing as " + result.assignedColor());
+        System.out.println("Welcome, playing as " + result.assignedColor() + " (rating " + result.rating() + ")");
+    }
+
+    private static String readPassword(Scanner scanner) {
+        Console console = System.console();
+        if (console != null) {
+            return new String(console.readPassword("Password: "));
+        }
+        System.out.print("Password: ");
+        return scanner.nextLine();
     }
 
     private static GameWindow.GameComponents createGame(NetworkGameProxy proxy) {
+        GameSnapshot current = proxy.latestSnapshot();
+        if (current != null && current.gameOver()) {
+            proxy.newGame();
+            awaitNewGameConfirmed(proxy);
+        }
         Controller controller = new Controller(new BoardMapper(BOARD_WIDTH, BOARD_HEIGHT), proxy);
         Renderer renderer = new Renderer("assets/pieces");
         AtomicReference<Position> lastSentSelection = new AtomicReference<>();
@@ -85,6 +102,18 @@ public class ClientMain {
         EffectsController effects = new EffectsController(proxy.eventBus(), new ClipSoundPlayer("assets"));
         effects.announceGameStart();
         return new GameWindow.GameComponents(tickSource, snapshotSupplier, controller, renderer, effects);
+    }
+
+    private static void awaitNewGameConfirmed(NetworkGameProxy proxy) {
+        long deadline = System.currentTimeMillis() + NEW_GAME_CONFIRM_TIMEOUT_MS;
+        while (proxy.latestSnapshot().gameOver() && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     private static void waitForInitialState(NetworkGameProxy proxy) throws InterruptedException {
