@@ -10,15 +10,20 @@ import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
 import src.engine.MoveResult;
 import src.io.BoardParser;
+import src.net.CancelPlayCommand;
+import src.net.DisconnectCountdown;
 import src.net.GameOverMessage;
 import src.net.JumpCommand;
 import src.net.LoginCommand;
 import src.net.MalformedMessageException;
+import src.net.MatchFound;
+import src.net.MatchTimeout;
 import src.net.MoveAccepted;
 import src.net.MoveCommand;
 import src.net.MoveOccurred;
 import src.net.MoveRejected;
 import src.net.NewGameCommand;
+import src.net.PlayCommand;
 import src.net.Protocol;
 import src.net.RatingChanged;
 import src.net.SelectCommand;
@@ -33,36 +38,89 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class GameServer extends WebSocketServer {
 
-    private final Match match;
+    private static final long MATCHMAKING_TIMEOUT_MS = 60_000;
+    private static final int RATING_WINDOW = 100;
+
     private final UserStore userStore;
+    private final long tickIntervalMs;
+    private final int disconnectCountdownSeconds;
+    private final MatchmakingQueue matchmakingQueue;
+    private final ScheduledExecutorService disconnectTimers = Executors.newSingleThreadScheduledExecutor();
     private final Map<WebSocket, Session> sessionsByConnection = new HashMap<>();
+    private final Map<Session, Match> matchBySession = new HashMap<>();
 
-    public GameServer(InetSocketAddress address, Match match, UserStore userStore) {
+    public GameServer(InetSocketAddress address, UserStore userStore, long tickIntervalMs,
+                       int disconnectCountdownSeconds) {
         super(address);
-        this.match = match;
         this.userStore = userStore;
-        subscribeToEngineEvents();
-        match.onNewGame(this::subscribeToEngineEvents);
+        this.tickIntervalMs = tickIntervalMs;
+        this.disconnectCountdownSeconds = disconnectCountdownSeconds;
+        this.matchmakingQueue = new MatchmakingQueue(this::onPaired, this::onMatchTimeout,
+                MATCHMAKING_TIMEOUT_MS, RATING_WINDOW);
     }
 
-    private void subscribeToEngineEvents() {
-        match.engine().eventBus().subscribe(MoveEvent.class, this::broadcastMoveEvent);
-        match.engine().eventBus().subscribe(GameOverEvent.class, this::broadcastGameOver);
-        match.engine().eventBus().subscribe(GameOverEvent.class, this::updateRatingsAfterGameOver);
+    public Match matchFor(WebSocket conn) {
+        Session session = sessionsByConnection.get(conn);
+        return session == null ? null : matchBySession.get(session);
     }
 
-    private void broadcastMoveEvent(MoveEvent event) {
-        broadcast(Protocol.encode(new MoveOccurred(event)));
+    private void onPaired(Session a, Session b) {
+        Board board = new BoardParser().parse(BoardParser.STANDARD_STARTING_POSITION);
+        Match match = new Match(GameEngine.fromBoard(board), tickIntervalMs);
+        seat(match, a);
+        seat(match, b);
+        subscribeToEngineEvents(match);
+        match.start(() -> broadcastState(match));
+        sendQuietly(a, Protocol.encode(new MatchFound(b.username(), a.assignedColor(), b.rating())));
+        sendQuietly(b, Protocol.encode(new MatchFound(a.username(), b.assignedColor(), a.rating())));
     }
 
-    private void broadcastGameOver(GameOverEvent event) {
-        broadcast(Protocol.encode(new GameOverMessage(event)));
+    private void seat(Match match, Session session) {
+        Piece.Color color = match.assignSeat().orElseThrow();
+        session.assignedColor(color);
+        match.addSession(session);
+        matchBySession.put(session, match);
     }
 
-    private void updateRatingsAfterGameOver(GameOverEvent event) {
+    private void onMatchTimeout(Session session) {
+        sendQuietly(session, Protocol.encode(new MatchTimeout()));
+    }
+
+    private void subscribeToEngineEvents(Match match) {
+        match.engine().eventBus().subscribe(MoveEvent.class, event -> broadcastMoveEvent(match, event));
+        match.engine().eventBus().subscribe(GameOverEvent.class, event -> broadcastGameOver(match, event));
+        match.engine().eventBus().subscribe(GameOverEvent.class, event -> updateRatingsAfterGameOver(match, event));
+        match.onNewGame(() -> subscribeToEngineEvents(match));
+    }
+
+    private void broadcastMoveEvent(Match match, MoveEvent event) {
+        broadcastToMatch(match, Protocol.encode(new MoveOccurred(event)));
+    }
+
+    private void broadcastGameOver(Match match, GameOverEvent event) {
+        broadcastToMatch(match, Protocol.encode(new GameOverMessage(event)));
+    }
+
+    private void broadcastToMatch(Match match, String text) {
+        for (Session session : match.seated()) {
+            sendQuietly(session, text);
+        }
+    }
+
+    private void sendQuietly(Session session, String text) {
+        try {
+            session.connection().send(text);
+        } catch (RuntimeException e) {
+        }
+    }
+
+    private void updateRatingsAfterGameOver(Match match, GameOverEvent event) {
         List<Session> seated = match.seated();
         Session white = seated.stream().filter(s -> s.assignedColor() == Piece.Color.WHITE).findFirst().orElse(null);
         Session black = seated.stream().filter(s -> s.assignedColor() == Piece.Color.BLACK).findFirst().orElse(null);
@@ -76,13 +134,12 @@ public class GameServer extends WebSocketServer {
         userStore.updateRating(black.username(), newBlackRating);
         white.rating(newWhiteRating);
         black.rating(newBlackRating);
-        white.connection().send(Protocol.encode(new RatingChanged(newWhiteRating)));
-        black.connection().send(Protocol.encode(new RatingChanged(newBlackRating)));
+        sendQuietly(white, Protocol.encode(new RatingChanged(newWhiteRating)));
+        sendQuietly(black, Protocol.encode(new RatingChanged(newBlackRating)));
     }
 
     @Override
     public void onStart() {
-        match.start(this::broadcastState);
     }
 
     @Override
@@ -91,15 +148,49 @@ public class GameServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+        Session session = sessionsByConnection.remove(conn);
+        if (session == null) {
+            return;
+        }
+        matchmakingQueue.cancel(session);
+        Match match = matchBySession.get(session);
+        if (match != null) {
+            startDisconnectCountdown(match, session);
+        }
+    }
+
+    private void startDisconnectCountdown(Match match, Session disconnected) {
+        Session opponent = match.seated().stream().filter(s -> s != disconnected).findFirst().orElse(null);
+        if (opponent == null) {
+            return;
+        }
+        for (int elapsed = 1; elapsed <= disconnectCountdownSeconds; elapsed++) {
+            int secondsRemaining = disconnectCountdownSeconds - elapsed;
+            disconnectTimers.schedule(() -> {
+                if (secondsRemaining > 0) {
+                    sendQuietly(opponent, Protocol.encode(new DisconnectCountdown(secondsRemaining)));
+                } else {
+                    match.submit(() -> match.engine().resign(disconnected.assignedColor()));
+                }
+            }, elapsed, TimeUnit.SECONDS);
+        }
     }
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        match.submit(() -> {
+        Match match = matchFor(conn);
+        Runnable task = () -> {
             String reply = handleMessage(conn, message);
             conn.send(reply);
-            broadcastState();
-        });
+            if (match != null) {
+                broadcastState(match);
+            }
+        };
+        if (match != null) {
+            match.submit(task);
+        } else {
+            task.run();
+        }
     }
 
     @Override
@@ -116,6 +207,8 @@ public class GameServer extends WebSocketServer {
         }
         return switch (parsed) {
             case LoginCommand l -> handleLogin(conn, l);
+            case PlayCommand p -> handlePlay(conn, p);
+            case CancelPlayCommand c -> handleCancelPlay(conn, c);
             case MoveCommand m -> handleMove(conn, m);
             case JumpCommand j -> handleJump(conn, j);
             case SelectCommand sel -> handleSelect(conn, sel);
@@ -127,7 +220,30 @@ public class GameServer extends WebSocketServer {
             case MoveOccurred _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case GameOverMessage _ -> Protocol.encode(new MoveRejected("unexpected_message"));
             case RatingChanged _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case MatchFound _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case MatchTimeout _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            case DisconnectCountdown _ -> Protocol.encode(new MoveRejected("unexpected_message"));
         };
+    }
+
+    private String handlePlay(WebSocket conn, PlayCommand p) {
+        Session session = sessionsByConnection.get(conn);
+        if (session == null) {
+            return Protocol.encode(new MoveRejected("not_logged_in"));
+        }
+        if (matchBySession.containsKey(session)) {
+            return Protocol.encode(new MoveRejected("already_in_match"));
+        }
+        matchmakingQueue.enqueue(session);
+        return Protocol.encode(new MoveAccepted());
+    }
+
+    private String handleCancelPlay(WebSocket conn, CancelPlayCommand c) {
+        Session session = sessionsByConnection.get(conn);
+        if (session != null) {
+            matchmakingQueue.cancel(session);
+        }
+        return Protocol.encode(new MoveAccepted());
     }
 
     private String handleSelect(WebSocket conn, SelectCommand sel) {
@@ -139,8 +255,13 @@ public class GameServer extends WebSocketServer {
     }
 
     private String handleNewGame(WebSocket conn, NewGameCommand ng) {
-        if (!sessionsByConnection.containsKey(conn)) {
+        Session session = sessionsByConnection.get(conn);
+        if (session == null) {
             return Protocol.encode(new MoveRejected("not_logged_in"));
+        }
+        Match match = matchBySession.get(session);
+        if (match == null) {
+            return Protocol.encode(new MoveRejected("not_in_match"));
         }
         if (!match.engine().snapshot(null).gameOver()) {
             return Protocol.encode(new MoveRejected("game_in_progress"));
@@ -151,10 +272,6 @@ public class GameServer extends WebSocketServer {
     }
 
     private String handleLogin(WebSocket conn, LoginCommand l) {
-        Optional<Piece.Color> color = match.assignSeat();
-        if (color.isEmpty()) {
-            return Protocol.encode(new MoveRejected("table_full"));
-        }
         Optional<UserRecord> existing = userStore.find(l.username());
         UserRecord user;
         if (existing.isPresent()) {
@@ -165,17 +282,17 @@ public class GameServer extends WebSocketServer {
         } else {
             user = userStore.createUser(l.username(), l.password());
         }
-        Session session = new Session(conn::send, l.username(), color.get(), user.rating());
-        match.addSession(session);
+        Session session = new Session(conn::send, l.username(), user.rating());
         sessionsByConnection.put(conn, session);
-        return Protocol.encode(new Welcome(color.get(), user.rating()));
+        return Protocol.encode(new Welcome(user.rating()));
     }
 
     private String handleMove(WebSocket conn, MoveCommand m) {
-        if (!ownsColor(conn, m.color())) {
+        Match match = matchFor(conn);
+        if (match == null || !ownsColor(conn, m.color())) {
             return Protocol.encode(new MoveRejected("not_your_piece"));
         }
-        if (!declaredTokenMatchesBoard(m.from(), m.color(), m.kind())) {
+        if (!declaredTokenMatchesBoard(match, m.from(), m.color(), m.kind())) {
             return Protocol.encode(new MoveRejected("token_mismatch"));
         }
         MoveResult result = match.engine().requestMove(m.from(), m.to());
@@ -185,10 +302,11 @@ public class GameServer extends WebSocketServer {
     }
 
     private String handleJump(WebSocket conn, JumpCommand j) {
-        if (!ownsColor(conn, j.color())) {
+        Match match = matchFor(conn);
+        if (match == null || !ownsColor(conn, j.color())) {
             return Protocol.encode(new MoveRejected("not_your_piece"));
         }
-        if (!declaredTokenMatchesBoard(j.at(), j.color(), j.kind())) {
+        if (!declaredTokenMatchesBoard(match, j.at(), j.color(), j.kind())) {
             return Protocol.encode(new MoveRejected("token_mismatch"));
         }
         match.engine().requestJump(j.at());
@@ -200,17 +318,16 @@ public class GameServer extends WebSocketServer {
         return session != null && session.assignedColor() == declaredColor;
     }
 
-    private boolean declaredTokenMatchesBoard(Position position, Piece.Color color,
+    private boolean declaredTokenMatchesBoard(Match match, Position position, Piece.Color color,
                                               Piece.Kind kind) {
         PieceSnapshot piece = match.engine().snapshot(null).pieceAt(position);
         return piece != null && piece.color() == color && piece.kind() == kind;
     }
 
-    private void broadcastState() {
+    private void broadcastState(Match match) {
         GameSnapshot boardState = match.engine().snapshot(null);
-        for (WebSocket conn : getConnections()) {
-            Session session = sessionsByConnection.get(conn);
-            conn.send(encodedState(ownSelection(session, boardState)));
+        for (Session session : match.seated()) {
+            sendQuietly(session, encodedState(match, ownSelection(session, boardState)));
         }
     }
 
@@ -222,7 +339,7 @@ public class GameServer extends WebSocketServer {
         return piece != null && piece.color() == session.assignedColor() ? session.selectedCell() : null;
     }
 
-    private String encodedState(Position selectedCell) {
+    private String encodedState(Match match, Position selectedCell) {
         GameSnapshot snapshot = match.engine().snapshot(selectedCell,
                 match.moveLogger().getWhiteMoves().stream().map(MoveEvent::toString).toList(),
                 match.moveLogger().getBlackMoves().stream().map(MoveEvent::toString).toList());

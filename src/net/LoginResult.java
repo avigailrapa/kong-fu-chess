@@ -1,6 +1,4 @@
 package src.net;
 
-import src.model.Piece;
-
-public record LoginResult(boolean accepted, Piece.Color assignedColor, int rating, String reason) {
+public record LoginResult(boolean accepted, int rating, String reason) {
 }

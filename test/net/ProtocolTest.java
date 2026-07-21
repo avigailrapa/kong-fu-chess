@@ -6,15 +6,20 @@ import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
 import src.model.Piece;
 import src.model.Position;
+import src.net.CancelPlayCommand;
+import src.net.DisconnectCountdown;
 import src.net.GameOverMessage;
 import src.net.JumpCommand;
 import src.net.MalformedMessageException;
+import src.net.MatchFound;
+import src.net.MatchTimeout;
 import src.net.MoveAccepted;
 import src.net.MoveCommand;
 import src.net.MoveOccurred;
 import src.net.LoginCommand;
 import src.net.MoveRejected;
 import src.net.NewGameCommand;
+import src.net.PlayCommand;
 import src.net.Protocol;
 import src.net.RatingChanged;
 import src.net.SelectCommand;
@@ -170,22 +175,22 @@ public class ProtocolTest {
 
     @Test
     public void testWelcomeRoundTrips() {
-        Welcome original = new Welcome(Piece.Color.BLACK, 1200);
+        Welcome original = new Welcome(1200);
 
         String encoded = Protocol.encode(original);
 
-        assertEquals("WELCOME B 1200", encoded);
+        assertEquals("WELCOME 1200", encoded);
         assertEquals(original, Protocol.parse(encoded));
     }
 
     @Test
-    public void testParseRejectsWelcomeWithInvalidColorLetter() {
-        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME X 1200"));
+    public void testParseRejectsWelcomeWithNonNumericRating() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME abc"));
     }
 
     @Test
     public void testParseRejectsWelcomeWithMissingRating() {
-        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME W"));
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("WELCOME"));
     }
 
     @Test
@@ -278,5 +283,65 @@ public class ProtocolTest {
     @Test
     public void testParseRejectsMalformedRating() {
         assertThrows(MalformedMessageException.class, () -> Protocol.parse("RATING abc"));
+    }
+
+    @Test
+    public void testPlayCommandRoundTrips() {
+        PlayCommand original = new PlayCommand();
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("PLAY", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testCancelPlayCommandRoundTrips() {
+        CancelPlayCommand original = new CancelPlayCommand();
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("CANCEL_PLAY", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testMatchFoundRoundTrips() {
+        MatchFound original = new MatchFound("bob", Piece.Color.WHITE, 1250);
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("MATCH_FOUND bob W 1250", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsMalformedMatchFound() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("MATCH_FOUND bob X 1250"));
+    }
+
+    @Test
+    public void testMatchTimeoutRoundTrips() {
+        MatchTimeout original = new MatchTimeout();
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("MATCH_TIMEOUT", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testDisconnectCountdownRoundTrips() {
+        DisconnectCountdown original = new DisconnectCountdown(15);
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("DISCONNECT_COUNTDOWN 15", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testParseRejectsMalformedDisconnectCountdown() {
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("DISCONNECT_COUNTDOWN abc"));
     }
 }

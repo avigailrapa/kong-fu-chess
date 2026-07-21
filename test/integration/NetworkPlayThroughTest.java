@@ -1,26 +1,17 @@
 package integration;
 
 import org.junit.jupiter.api.Test;
-import src.engine.GameEngine;
 import src.engine.MoveResult;
-import src.model.Board;
-import src.model.GameState;
 import src.model.Piece;
 import src.model.Position;
 import src.net.LoginResult;
 import src.net.NetworkGameProxy;
-import src.realtime.RealTimeArbiter;
-import src.rules.PieceRules;
-import src.rules.RookRule;
-import src.rules.RuleEngine;
 import src.server.GameServer;
-import src.server.Match;
 import src.server.UserStore;
 import src.view.GameSnapshot;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,50 +20,43 @@ public class NetworkPlayThroughTest {
 
     @Test
     public void testMoveRequestedThroughProxyIsAcceptedAndSnapshotUpdates() throws Exception {
-        Board board = new Board(8, 8);
-        board.addPiece(new Piece("r1", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0)), new Position(7, 0));
-        Map<Piece.Kind, PieceRules> rulesByKind = Map.of(Piece.Kind.ROOK, new RookRule());
-        GameEngine engine = new GameEngine(board, new GameState(), new RuleEngine(rulesByKind),
-                new RealTimeArbiter(board));
-        Match match = new Match(engine, 100);
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), match,
-                new UserStore("jdbc:sqlite::memory:"));
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
+                new UserStore("jdbc:sqlite::memory:"), 100, 20);
         server.start();
 
         int port = waitForBoundPort(server);
-        NetworkGameProxy proxy = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        NetworkGameProxy white = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        NetworkGameProxy black = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
         try {
-            assertTrue(proxy.connectBlocking(5, TimeUnit.SECONDS), "expected the client to connect");
+            assertTrue(white.connectBlocking(5, TimeUnit.SECONDS));
+            assertTrue(black.connectBlocking(5, TimeUnit.SECONDS));
 
-            LoginResult login = proxy.login("alice", "pw");
-            assertTrue(login.accepted(), "expected login to be accepted: " + login.reason());
-            assertEquals(Piece.Color.WHITE, login.assignedColor());
+            LoginResult whiteLogin = white.login("alice", "pw");
+            LoginResult blackLogin = black.login("bob", "pw");
+            assertTrue(whiteLogin.accepted(), "expected login to be accepted: " + whiteLogin.reason());
+            assertTrue(blackLogin.accepted(), "expected login to be accepted: " + blackLogin.reason());
 
-            waitUntil(() -> proxy.latestSnapshot() != null, "a STATE broadcast after login");
-            assertTrue(proxy.isOccupied(new Position(7, 0)));
+            white.play();
+            black.play();
+            waitUntil(() -> white.latestSnapshot() != null && black.latestSnapshot() != null,
+                    "both clients to receive an initial STATE after pairing");
+            assertTrue(white.isOccupied(new Position(7, 1)));
 
-            MoveResult result = proxy.requestMove(new Position(7, 0), new Position(4, 0));
+            MoveResult result = white.requestMove(new Position(7, 1), new Position(5, 2));
 
             assertTrue(result.isAccepted(), "expected the move to be accepted: " + result.reason());
-            waitUntil(() -> pieceHasArrived(proxy, new Position(4, 0)), "the piece to arrive at its destination");
+            waitUntil(() -> pieceHasArrived(white, new Position(5, 2)), "the piece to arrive at its destination");
         } finally {
-            proxy.closeBlocking();
-            match.stop();
+            white.closeBlocking();
+            black.closeBlocking();
             server.stop();
         }
     }
 
     @Test
-    public void testKingCaptureEndsGameAndUpdatesBothRatings() throws Exception {
-        Board board = new Board(8, 8);
-        board.addPiece(new Piece("wr", Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0)), new Position(7, 0));
-        board.addPiece(new Piece("bk", Piece.Color.BLACK, Piece.Kind.KING, new Position(7, 3)), new Position(7, 3));
-        Map<Piece.Kind, PieceRules> rulesByKind = Map.of(Piece.Kind.ROOK, new RookRule());
-        GameEngine engine = new GameEngine(board, new GameState(), new RuleEngine(rulesByKind),
-                new RealTimeArbiter(board));
-        Match match = new Match(engine, 100);
+    public void testOpponentDisconnectResignsAndUpdatesBothRatings() throws Exception {
         UserStore userStore = new UserStore("jdbc:sqlite::memory:");
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), match, userStore);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 100, 1);
         server.start();
 
         int port = waitForBoundPort(server);
@@ -87,23 +71,21 @@ public class NetworkPlayThroughTest {
             assertEquals(1200, whiteLogin.rating());
             assertEquals(1200, blackLogin.rating());
 
+            white.play();
+            black.play();
             waitUntil(() -> white.latestSnapshot() != null && black.latestSnapshot() != null,
-                    "initial STATE for both clients");
+                    "both clients to receive an initial STATE after pairing");
 
-            MoveResult result = white.requestMove(new Position(7, 0), new Position(7, 3));
-            assertTrue(result.isAccepted(), "expected the capturing move to be accepted: " + result.reason());
-
-            waitUntil(() -> white.latestRating() != 1200, "white's rating to change after the win");
-            waitUntil(() -> black.latestRating() != 1200, "black's rating to change after the loss");
-
-            assertTrue(white.latestRating() > 1200, "winner's rating should increase");
-            assertTrue(black.latestRating() < 1200, "loser's rating should decrease");
-            assertEquals(white.latestRating(), userStore.find("alice").orElseThrow().rating());
-            assertEquals(black.latestRating(), userStore.find("bob").orElseThrow().rating());
-        } finally {
             white.closeBlocking();
+
+            waitUntil(() -> black.latestRating() != 1200,
+                    "black's rating to change after white disconnects and resigns");
+            assertTrue(black.latestRating() > 1200, "surviving player's rating should increase");
+            assertEquals(black.latestRating(), userStore.find("bob").orElseThrow().rating());
+            assertTrue(userStore.find("alice").orElseThrow().rating() < 1200,
+                    "resigning player's persisted rating should decrease");
+        } finally {
             black.closeBlocking();
-            match.stop();
             server.stop();
         }
     }

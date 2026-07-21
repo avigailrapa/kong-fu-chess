@@ -105,6 +105,15 @@ public class GameEngine implements GameCommands {
         board.getPieceAt(cell).ifPresent(piece -> arbiter.startJump(piece, cell));
     }
 
+    public void resign(Piece.Color resigningColor) {
+        if (gameState.gameOver()) {
+            return;
+        }
+        Piece.Color winner = resigningColor == Piece.Color.WHITE ? Piece.Color.BLACK : Piece.Color.WHITE;
+        gameState.endGame(winner);
+        eventBus.publish(new GameOverEvent(winner));
+    }
+
     public void waitMs(long ms) {
         if (ms < 0) {
             throw new IllegalArgumentException("ms must not be negative");

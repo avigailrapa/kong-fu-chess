@@ -12,16 +12,16 @@ public class Session {
 
     private final ClientConnection connection;
     private final String username;
-    private final Piece.Color assignedColor;
-    @Setter
-    private Position selectedCell;
     @Setter
     private int rating;
+    @Setter
+    private Piece.Color assignedColor;
+    @Setter
+    private Position selectedCell;
 
-    public Session(ClientConnection connection, String username, Piece.Color assignedColor, int rating) {
+    public Session(ClientConnection connection, String username, int rating) {
         this.connection = connection;
         this.username = username;
-        this.assignedColor = assignedColor;
         this.rating = rating;
     }
 }

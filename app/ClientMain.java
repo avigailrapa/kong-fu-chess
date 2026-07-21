@@ -3,11 +3,15 @@ package app;
 import src.input.BoardMapper;
 import src.input.Controller;
 import src.model.Position;
+import src.net.DisconnectCountdown;
 import src.net.LoginResult;
+import src.net.MatchFound;
+import src.net.MatchTimeout;
 import src.net.NetworkGameProxy;
 import src.net.RatingChanged;
 import src.view.GameSnapshot;
 import src.view.GameWindow;
+import src.view.HomeScreen;
 import src.view.Renderer;
 import src.view.sound.ClipSoundPlayer;
 import src.view.sound.EffectsController;
@@ -44,7 +48,6 @@ public class ClientMain {
                 System.exit(1);
             }
             login(proxy);
-            waitForInitialState(proxy);
         } catch (Exception e) {
             System.err.println("Failed to connect to server at " + serverUrl + ": " + e.getMessage());
             proxy.close();
@@ -54,10 +57,7 @@ public class ClientMain {
         System.setProperty("sun.java2d.uiScale", "1");
         System.setProperty("sun.java2d.dpiaware", "true");
 
-        Supplier<GameWindow.GameComponents> gameFactory = () -> createGame(proxy);
-        GameWindow window = new GameWindow(gameFactory);
-
-        SwingUtilities.invokeLater(window::open);
+        SwingUtilities.invokeLater(() -> openHomeScreen(proxy));
     }
 
     private static void login(NetworkGameProxy proxy) {
@@ -72,7 +72,7 @@ public class ClientMain {
             proxy.close();
             System.exit(1);
         }
-        System.out.println("Welcome, playing as " + result.assignedColor() + " (rating " + result.rating() + ")");
+        System.out.println("Welcome, " + username + " (rating " + result.rating() + ")");
     }
 
     private static String readPassword(Scanner scanner) {
@@ -82,6 +82,49 @@ public class ClientMain {
         }
         System.out.print("Password: ");
         return scanner.nextLine();
+    }
+
+    private static void openHomeScreen(NetworkGameProxy proxy) {
+        AtomicReference<HomeScreen> homeScreenRef = new AtomicReference<>();
+        HomeScreen homeScreen = new HomeScreen(
+                () -> {
+                    proxy.play();
+                    homeScreenRef.get().showSearching();
+                },
+                () -> {
+                    proxy.cancelPlay();
+                    homeScreenRef.get().hideSearching();
+                });
+        homeScreenRef.set(homeScreen);
+
+        proxy.eventBus().subscribe(MatchFound.class, matchFound -> SwingUtilities.invokeLater(() -> {
+            homeScreen.close();
+            startMatch(proxy, matchFound);
+        }));
+        proxy.eventBus().subscribe(MatchTimeout.class,
+                matchTimeout -> SwingUtilities.invokeLater(homeScreen::showCantFindMatch));
+
+        homeScreen.open();
+    }
+
+    private static void startMatch(NetworkGameProxy proxy, MatchFound matchFound) {
+        proxy.resetSnapshot();
+        System.out.println("Match found vs " + matchFound.opponentUsername() + " (rating "
+                + matchFound.opponentRating() + "), playing as " + matchFound.assignedColor());
+
+        Supplier<GameWindow.GameComponents> gameFactory = () -> createGame(proxy);
+        GameWindow window = new GameWindow(gameFactory);
+        proxy.eventBus().subscribe(DisconnectCountdown.class, disconnectCountdown -> SwingUtilities.invokeLater(
+                () -> window.setStatusMessage("Opponent disconnected - resigning in "
+                        + disconnectCountdown.secondsRemaining() + "s")));
+
+        try {
+            waitForInitialState(proxy);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        window.open();
     }
 
     private static GameWindow.GameComponents createGame(NetworkGameProxy proxy) {
