@@ -17,7 +17,7 @@ public class CommandRunner {
     public void initialize(String boardText) {
         board = boardParser.parse(boardText);
         engine = GameEngine.fromBoard(board);
-        BoardMapper mapper = new BoardMapper(board.getWidth(), board.getHeight());
+        BoardMapper mapper = new BoardMapper(board.width(), board.height());
         clickHandler = new ClickHandler(mapper, engine);
     }
 

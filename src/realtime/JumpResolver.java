@@ -13,7 +13,7 @@ public class JumpResolver {
     private final IBoard board;
 
     public Optional<ArrivalEvent> resolveLanding(Piece jumper, Position cell) {
-        Piece occupant = board.getPieceAt(cell).orElse(null);
+        Piece occupant = board.pieceAt(cell).orElse(null);
 
         if (occupant == null || occupant == jumper) {
             markSurvivedJump(jumper);

@@ -71,7 +71,7 @@ public class CollisionResolver {
         if (airbornePieces.isEmpty()) {
             return false;
         }
-        Piece occupant = board.getPieceAt(motion.destination()).orElse(null);
+        Piece occupant = board.pieceAt(motion.destination()).orElse(null);
         return occupant != null && airbornePieces.contains(occupant);
     }
 

@@ -19,8 +19,8 @@ public class BoardTest {
 
     @Test
     public void testDimensionsAreInferredCorrectly() {
-        assertEquals(8, board.getWidth());
-        assertEquals(8, board.getHeight());
+        assertEquals(8, board.width());
+        assertEquals(8, board.height());
     }
 
     @Test
@@ -42,7 +42,7 @@ public class BoardTest {
 
     @Test
     public void testEmptyCellReturnsNoPiece() {
-        Optional<Piece> result = board.getPieceAt(new Position(3, 3));
+        Optional<Piece> result = board.pieceAt(new Position(3, 3));
         assertTrue(result.isEmpty());
     }
 
@@ -52,7 +52,7 @@ public class BoardTest {
         Piece king = new Piece("wK1", Piece.Color.WHITE, Piece.Kind.KING, cell);
         board.addPiece(king, cell);
 
-        Optional<Piece> result = board.getPieceAt(cell);
+        Optional<Piece> result = board.pieceAt(cell);
         assertTrue(result.isPresent());
         assertEquals(king, result.get());
     }
@@ -83,8 +83,8 @@ public class BoardTest {
 
         board.movePiece(from, to);
 
-        assertTrue(board.getPieceAt(from).isEmpty());
-        assertEquals(rook, board.getPieceAt(to).get());
+        assertTrue(board.pieceAt(from).isEmpty());
+        assertEquals(rook, board.pieceAt(to).get());
         assertEquals(to, rook.cell());
     }
 
@@ -113,7 +113,7 @@ public class BoardTest {
         Piece removed = board.removePiece(cell);
 
         assertEquals(piece, removed);
-        assertTrue(board.getPieceAt(cell).isEmpty());
+        assertTrue(board.pieceAt(cell).isEmpty());
     }
 
     @Test
@@ -123,7 +123,7 @@ public class BoardTest {
 
     @Test
     public void testOutOfBoundsAccessThrows() {
-        assertThrows(IllegalArgumentException.class, () -> board.getPieceAt(new Position(-1, 0)));
+        assertThrows(IllegalArgumentException.class, () -> board.pieceAt(new Position(-1, 0)));
         assertThrows(IllegalArgumentException.class,
                 () -> board.addPiece(new Piece("x", Piece.Color.WHITE, Piece.Kind.PAWN, new Position(9, 9)), new Position(9, 9)));
         assertThrows(IllegalArgumentException.class, () -> board.removePiece(new Position(9, 9)));

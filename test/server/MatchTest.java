@@ -129,7 +129,7 @@ public class MatchTest {
             match.start(latch::countDown);
 
             assertTrue(latch.await(4, TimeUnit.SECONDS));
-            assertFalse(match.moveLogger().getWhiteMoves().isEmpty());
+            assertFalse(match.moveLogger().whiteMoves().isEmpty());
         } finally {
             match.stop();
         }
@@ -167,7 +167,7 @@ public class MatchTest {
             match.start(latch::countDown);
 
             assertTrue(latch.await(4, TimeUnit.SECONDS));
-            assertFalse(match.moveLogger().getWhiteMoves().isEmpty());
+            assertFalse(match.moveLogger().whiteMoves().isEmpty());
         } finally {
             match.stop();
         }

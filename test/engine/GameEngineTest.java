@@ -42,8 +42,8 @@ public class GameEngineTest {
 
         engine.requestMove(new Position(7, 0), new Position(4, 0));
 
-        assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
-        assertTrue(board.getPieceAt(new Position(4, 0)).isEmpty());
+        assertTrue(board.pieceAt(new Position(7, 0)).isPresent());
+        assertTrue(board.pieceAt(new Position(4, 0)).isEmpty());
         assertEquals(Piece.State.MOVING, rook.state());
     }
 
@@ -115,8 +115,8 @@ public class GameEngineTest {
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         engine.waitMs(3000);
 
-        assertTrue(board.getPieceAt(new Position(7, 0)).isEmpty());
-        assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
+        assertTrue(board.pieceAt(new Position(7, 0)).isEmpty());
+        assertTrue(board.pieceAt(new Position(4, 0)).isPresent());
         assertEquals(Piece.State.LONG_REST, rook.state());
     }
 
@@ -228,7 +228,7 @@ public class GameEngineTest {
         engine.requestMove(new Position(7, 0), new Position(5, 3));
         engine.waitMs(5000);
 
-        assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
+        assertTrue(board.pieceAt(new Position(7, 0)).isPresent());
         assertEquals(Piece.State.IDLE, rook.state());
     }
 
@@ -246,9 +246,9 @@ public class GameEngineTest {
 
         assertFalse(result.isAccepted());
         assertEquals("illegal_piece_move", result.reason());
-        assertTrue(board.getPieceAt(new Position(0, 0)).isPresent());
-        assertTrue(board.getPieceAt(new Position(0, 1)).isPresent());
-        assertTrue(board.getPieceAt(new Position(0, 2)).isEmpty());
+        assertTrue(board.pieceAt(new Position(0, 0)).isPresent());
+        assertTrue(board.pieceAt(new Position(0, 1)).isPresent());
+        assertTrue(board.pieceAt(new Position(0, 2)).isEmpty());
     }
 
     @Test
@@ -265,8 +265,8 @@ public class GameEngineTest {
 
         assertFalse(result.isAccepted());
         assertEquals("friendly_destination", result.reason());
-        assertTrue(board.getPieceAt(new Position(7, 0)).isPresent());
-        assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
+        assertTrue(board.pieceAt(new Position(7, 0)).isPresent());
+        assertTrue(board.pieceAt(new Position(4, 0)).isPresent());
     }
 
     @Test
@@ -296,12 +296,12 @@ public class GameEngineTest {
         MoveResult bishopMove = engine.requestMove(new Position(7, 2), new Position(5, 4));
         assertTrue(bishopMove.isAccepted());
         engine.waitMs(2000);
-        assertTrue(board.getPieceAt(new Position(5, 4)).isPresent());
+        assertTrue(board.pieceAt(new Position(5, 4)).isPresent());
 
         MoveResult knightMove = engine.requestMove(new Position(7, 1), new Position(5, 2));
         assertTrue(knightMove.isAccepted());
         engine.waitMs(2000);
-        assertTrue(board.getPieceAt(new Position(5, 2)).isPresent());
+        assertTrue(board.pieceAt(new Position(5, 2)).isPresent());
 
         MoveResult pawnMove = engine.requestMove(new Position(6, 4), new Position(5, 4));
         assertFalse(pawnMove.isAccepted());
@@ -410,7 +410,7 @@ public class GameEngineTest {
         engine.requestMove(new Position(4, 7), new Position(4, 4));
 
         assertDoesNotThrow(() -> engine.waitMs(4000));
-        assertTrue(board.getPieceAt(new Position(4, 4)).isPresent());
+        assertTrue(board.pieceAt(new Position(4, 4)).isPresent());
     }
 
     @Test
@@ -427,8 +427,8 @@ public class GameEngineTest {
         assertTrue(attackResult.isAccepted());
 
         assertDoesNotThrow(() -> engine.waitMs(1000));
-        assertTrue(board.getPieceAt(new Position(4, 4)).isPresent());
-        assertEquals(jumper, board.getPieceAt(new Position(4, 4)).get());
+        assertTrue(board.pieceAt(new Position(4, 4)).isPresent());
+        assertEquals(jumper, board.pieceAt(new Position(4, 4)).get());
     }
 
     @Test
@@ -452,6 +452,6 @@ public class GameEngineTest {
                 "one third into a 3-cell move the piece must not already be rendered at the destination");
 
         engine.waitMs(1000); 
-        assertTrue(board.getPieceAt(new Position(4, 0)).isPresent());
+        assertTrue(board.pieceAt(new Position(4, 0)).isPresent());
     }
 }

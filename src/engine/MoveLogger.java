@@ -19,11 +19,11 @@ public class MoveLogger implements MoveObserver {
         }
     }
 
-    public List<MoveEvent> getWhiteMoves() {
+    public List<MoveEvent> whiteMoves() {
         return Collections.unmodifiableList(whiteMoves);
     }
 
-    public List<MoveEvent> getBlackMoves() {
+    public List<MoveEvent> blackMoves() {
         return Collections.unmodifiableList(blackMoves);
     }
 }

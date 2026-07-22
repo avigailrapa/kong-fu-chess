@@ -23,7 +23,7 @@ abstract class FixedOffsetRule implements PieceRules {
                 continue;
             }
 
-            Optional<Piece> occupant = board.getPieceAt(candidate);
+            Optional<Piece> occupant = board.pieceAt(candidate);
             if (occupant.isEmpty() || occupant.get().color() != piece.color()) {
                 destinations.add(candidate);
             }

@@ -34,7 +34,7 @@ abstract class SlidingRule implements PieceRules {
                 return;
             }
 
-            Optional<Piece> occupant = board.getPieceAt(candidate);
+            Optional<Piece> occupant = board.pieceAt(candidate);
             if (occupant.isEmpty()) {
                 destinations.add(candidate);
             } else {

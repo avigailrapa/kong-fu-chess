@@ -10,14 +10,14 @@ public class BoardPrinter {
 
     public String print(IBoard board) {
         StringBuilder output = new StringBuilder();
-        for (int row = 0; row < board.getHeight(); row++) {
-            for (int col = 0; col < board.getWidth(); col++) {
+        for (int row = 0; row < board.height(); row++) {
+            for (int col = 0; col < board.width(); col++) {
                 if (col > 0) {
                     output.append(' ');
                 }
-                output.append(tokenFor(board.getPieceAt(new Position(row, col))));
+                output.append(tokenFor(board.pieceAt(new Position(row, col))));
             }
-            if (row < board.getHeight() - 1) {
+            if (row < board.height() - 1) {
                 output.append('\n');
             }
         }
