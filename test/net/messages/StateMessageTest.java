@@ -7,9 +7,9 @@ import src.net.MalformedMessageException;
 import src.net.Protocol;
 import src.net.messages.StateMessage;
 import src.net.messages.WireMessage;
-import src.view.GameSnapshot;
-import src.view.PieceSnapshot;
-import src.view.SelectionSnapshot;
+import src.view.snapshot.GameSnapshot;
+import src.view.snapshot.PieceSnapshot;
+import src.view.snapshot.SelectionSnapshot;
 
 import java.util.List;
 import java.util.Set;

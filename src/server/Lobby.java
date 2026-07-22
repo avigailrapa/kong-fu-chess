@@ -34,8 +34,13 @@ import src.net.messages.StateMessage;
 import src.net.messages.Welcome;
 import src.net.messages.WelcomeBack;
 import src.net.messages.WireMessage;
-import src.view.GameSnapshot;
-import src.view.PieceSnapshot;
+import src.server.auth.UserRecord;
+import src.server.auth.UserStore;
+import src.server.matchmaking.MatchmakingQueue;
+import src.server.matchmaking.ReconnectManager;
+import src.server.matchmaking.RoomRegistry;
+import src.view.snapshot.GameSnapshot;
+import src.view.snapshot.PieceSnapshot;
 
 import java.util.HashMap;
 import java.util.List;

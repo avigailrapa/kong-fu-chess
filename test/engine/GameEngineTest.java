@@ -1,12 +1,13 @@
 package engine;
 import src.engine.GameEngine;
 import src.engine.MoveResult;
-import src.view.GameSnapshot;
-import src.view.PieceSnapshot;
+import src.view.snapshot.GameSnapshot;
+import src.view.snapshot.PieceSnapshot;
 import src.model.*;
 import org.junit.jupiter.api.Test;
 import src.realtime.*;
 import src.rules.*;
+import src.rules.pieces.*;
 
 
 import java.util.Map;

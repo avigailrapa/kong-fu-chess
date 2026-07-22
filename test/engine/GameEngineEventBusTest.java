@@ -11,7 +11,7 @@ import src.model.Piece;
 import src.model.Position;
 import src.realtime.RealTimeArbiter;
 import src.rules.PieceRules;
-import src.rules.RookRule;
+import src.rules.pieces.RookRule;
 import src.rules.RuleEngine;
 
 import java.util.ArrayList;

@@ -3,6 +3,9 @@ package src.view;
 import lombok.RequiredArgsConstructor;
 import src.model.Piece;
 import src.model.Position;
+import src.view.snapshot.GameSnapshot;
+import src.view.snapshot.PieceSnapshot;
+import src.view.snapshot.SelectionSnapshot;
 
 import java.awt.Color;
 import java.awt.Dimension;

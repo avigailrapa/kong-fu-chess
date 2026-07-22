@@ -35,8 +35,8 @@ import src.net.messages.StateMessage;
 import src.net.messages.Welcome;
 import src.net.messages.WelcomeBack;
 import src.net.messages.WireMessage;
-import src.view.GameSnapshot;
-import src.view.PieceSnapshot;
+import src.view.snapshot.GameSnapshot;
+import src.view.snapshot.PieceSnapshot;
 
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;

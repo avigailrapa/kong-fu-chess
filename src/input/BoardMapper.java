@@ -5,7 +5,7 @@ import src.model.Position;
 
 import java.util.Optional;
 
-import src.view.GameSnapshot;
+import src.view.snapshot.GameSnapshot;
 
 @RequiredArgsConstructor
 public class BoardMapper {
