@@ -15,16 +15,16 @@ public class PawnRule implements PieceRules {
         Set<Position> destinations = new HashSet<>();
         Position current = piece.cell();
         int forward = piece.color() == Piece.Color.WHITE ? -1 : 1;
-        int startingRow = piece.color() == Piece.Color.WHITE ? board.getHeight() - 2 : 1;
+        int startingRow = piece.color() == Piece.Color.WHITE ? board.height() - 2 : 1;
 
         Position forwardCell = new Position(current.row() + forward, current.col());
-        boolean forwardOpen = board.isWithinBorder(forwardCell) && board.getPieceAt(forwardCell).isEmpty();
+        boolean forwardOpen = board.isWithinBorder(forwardCell) && board.pieceAt(forwardCell).isEmpty();
         if (forwardOpen) {
             destinations.add(forwardCell);
 
             if (current.row() == startingRow) {
                 Position twoStepCell = new Position(current.row() + forward * 2, current.col());
-                if (board.isWithinBorder(twoStepCell) && board.getPieceAt(twoStepCell).isEmpty()) {
+                if (board.isWithinBorder(twoStepCell) && board.pieceAt(twoStepCell).isEmpty()) {
                     destinations.add(twoStepCell);
                 }
             }
@@ -35,7 +35,7 @@ public class PawnRule implements PieceRules {
             if (!board.isWithinBorder(diagonalCell)) {
                 continue;
             }
-            Optional<Piece> occupant = board.getPieceAt(diagonalCell);
+            Optional<Piece> occupant = board.pieceAt(diagonalCell);
             if (occupant.isPresent() && occupant.get().color() != piece.color()) {
                 destinations.add(diagonalCell);
             }

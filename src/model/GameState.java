@@ -23,7 +23,7 @@ public class GameState {
         scores.put(color, scores.get(color) + points);
     }
 
-    public int getScore(Piece.Color color) {
+    public int score(Piece.Color color) {
         return scores.get(color);
     }
 

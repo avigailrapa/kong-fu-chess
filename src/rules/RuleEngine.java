@@ -18,7 +18,7 @@ public class RuleEngine {
             return Set.of();
         }
 
-        Piece movingPiece = board.getPieceAt(source).orElse(null);
+        Piece movingPiece = board.pieceAt(source).orElse(null);
         if (movingPiece == null) {
             return Set.of();
         }
@@ -35,12 +35,12 @@ public class RuleEngine {
             return MoveValidation.invalid("outside_board");
         }
 
-        Piece movingPiece = board.getPieceAt(source).orElse(null);
+        Piece movingPiece = board.pieceAt(source).orElse(null);
         if (movingPiece == null) {
             return MoveValidation.invalid("empty_source");
         }
 
-        Piece targetPiece = board.getPieceAt(destination).orElse(null);
+        Piece targetPiece = board.pieceAt(destination).orElse(null);
         if (targetPiece != null && targetPiece.color() == movingPiece.color()) {
             return MoveValidation.invalid("friendly_destination");
         }

@@ -22,12 +22,12 @@ public class Board implements IBoard {
     }
 
     @Override
-    public int getWidth() {
+    public int width() {
         return width;
     }
 
     @Override
-    public int getHeight() {
+    public int height() {
         return height;
     }
 
@@ -38,7 +38,7 @@ public class Board implements IBoard {
     }
 
     @Override
-    public Optional<Piece> getPieceAt(Position position) {
+    public Optional<Piece> pieceAt(Position position) {
         requireWithinBorder(position);
         return Optional.ofNullable(occupied.get(position));
     }

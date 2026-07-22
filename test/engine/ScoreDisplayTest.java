@@ -31,8 +31,8 @@ public class ScoreDisplayTest {
         engine.requestMove(new Position(7, 0), new Position(4, 0));
         engine.waitMs(3000);
 
-        assertEquals(9, gameState.getScore(Piece.Color.WHITE));
-        assertEquals(0, gameState.getScore(Piece.Color.BLACK));
+        assertEquals(9, gameState.score(Piece.Color.WHITE));
+        assertEquals(0, gameState.score(Piece.Color.BLACK));
         assertEquals(9, engine.snapshot(null).whiteScore());
     }
 }

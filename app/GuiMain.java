@@ -36,15 +36,15 @@ public class GuiMain {
         GameEngine engine = GameEngine.fromBoard(board);
         MoveLogger moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
-        ClickHandler clickHandler = new ClickHandler(new BoardMapper(board.getWidth(), board.getHeight()), engine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(board.width(), board.height()), engine);
         Renderer renderer = new Renderer("assets/pieces");
         GameLoop gameLoop = new GameLoop(engine);
         EffectsController effects = new EffectsController(engine.eventBus(), new ClipSoundPlayer("assets"));
         effects.announceGameStart();
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> engine.snapshot(
                 clickHandler.getSelectedCell().orElse(null),
-                formatMoveLog(moveLogger.getWhiteMoves()),
-                formatMoveLog(moveLogger.getBlackMoves()),
+                formatMoveLog(moveLogger.whiteMoves()),
+                formatMoveLog(moveLogger.blackMoves()),
                 zoom);
         return new GameWindow.GameComponents(gameLoop::tick, snapshotSupplier, clickHandler, renderer, effects);
     }

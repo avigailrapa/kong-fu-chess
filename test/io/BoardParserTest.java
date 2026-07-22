@@ -20,8 +20,8 @@ public class BoardParserTest {
                 ". . . bK"
         );
 
-        assertEquals(4, board.getWidth());
-        assertEquals(4, board.getHeight());
+        assertEquals(4, board.width());
+        assertEquals(4, board.height());
     }
 
     @Test
@@ -32,17 +32,17 @@ public class BoardParserTest {
                 ". wN bK"
         );
 
-        Optional<Piece> king = board.getPieceAt(new Position(0, 0));
+        Optional<Piece> king = board.pieceAt(new Position(0, 0));
         assertTrue(king.isPresent());
         assertEquals(Piece.Color.WHITE, king.get().color());
         assertEquals(Piece.Kind.KING, king.get().kind());
 
-        Optional<Piece> rook = board.getPieceAt(new Position(0, 2));
+        Optional<Piece> rook = board.pieceAt(new Position(0, 2));
         assertTrue(rook.isPresent());
         assertEquals(Piece.Color.BLACK, rook.get().color());
         assertEquals(Piece.Kind.ROOK, rook.get().kind());
 
-        assertTrue(board.getPieceAt(new Position(1, 1)).isEmpty());
+        assertTrue(board.pieceAt(new Position(1, 1)).isEmpty());
     }
 
     @Test
@@ -71,24 +71,24 @@ public class BoardParserTest {
     public void testAcceptsSingleCellBoard() {
         Board board = parser.parse("wK");
 
-        assertEquals(1, board.getWidth());
-        assertEquals(1, board.getHeight());
-        assertTrue(board.getPieceAt(new Position(0, 0)).isPresent());
+        assertEquals(1, board.width());
+        assertEquals(1, board.height());
+        assertTrue(board.pieceAt(new Position(0, 0)).isPresent());
     }
 
     @Test
     public void testAcceptsSingleRowBoard() {
         Board board = parser.parse("wK . . bK");
 
-        assertEquals(4, board.getWidth());
-        assertEquals(1, board.getHeight());
+        assertEquals(4, board.width());
+        assertEquals(1, board.height());
     }
 
     @Test
     public void testAcceptsSingleColumnBoard() {
         Board board = parser.parse("wK\n.\n.\nbK");
 
-        assertEquals(1, board.getWidth());
-        assertEquals(4, board.getHeight());
+        assertEquals(1, board.width());
+        assertEquals(4, board.height());
     }
 }

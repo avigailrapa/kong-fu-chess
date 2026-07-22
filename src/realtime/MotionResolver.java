@@ -11,7 +11,7 @@ public class MotionResolver {
     private final IBoard board;
 
     public ArrivalEvent resolve(Motion motion) {
-        Piece capturedPiece = board.getPieceAt(motion.destination()).orElse(null);
+        Piece capturedPiece = board.pieceAt(motion.destination()).orElse(null);
 
         if (capturedPiece != null && capturedPiece.color() == motion.piece().color()) {
             return resolveBounceBack(motion);
@@ -65,7 +65,7 @@ public class MotionResolver {
         if (piece.kind() != Piece.Kind.PAWN) {
             return false;
         }
-        int promotionRow = piece.color() == Piece.Color.WHITE ? 0 : board.getHeight() - 1;
+        int promotionRow = piece.color() == Piece.Color.WHITE ? 0 : board.height() - 1;
         return piece.cell().row() == promotionRow;
     }
 

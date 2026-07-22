@@ -72,7 +72,7 @@ public class GameEngine implements GameCommands {
         if (gameState.gameOver()) {
             return new MoveResult(false, "game_over");
         }
-        Piece pieceAtSource = board.isWithinBorder(source) ? board.getPieceAt(source).orElse(null) : null;
+        Piece pieceAtSource = board.isWithinBorder(source) ? board.pieceAt(source).orElse(null) : null;
         if (pieceAtSource != null && (arbiter.isMoving(pieceAtSource) || arbiter.isJumping(pieceAtSource))) {
             return new MoveResult(false, "motion_in_progress");
         }
@@ -85,7 +85,7 @@ public class GameEngine implements GameCommands {
             return new MoveResult(false, validation.reason());
         }
 
-        Piece piece = board.getPieceAt(source).orElseThrow();
+        Piece piece = board.pieceAt(source).orElseThrow();
         arbiter.startMotion(piece, source, destination);
         motionRequestTimestampMs.put(piece, gameClockMs);
         return new MoveResult(true, "ok");
@@ -96,7 +96,7 @@ public class GameEngine implements GameCommands {
     }
 
     public boolean isOccupied(Position position) {
-        return board.isWithinBorder(position) && board.getPieceAt(position).isPresent();
+        return board.isWithinBorder(position) && board.pieceAt(position).isPresent();
     }
 
     public boolean hasActivity() {
@@ -107,7 +107,7 @@ public class GameEngine implements GameCommands {
         if (gameState.gameOver()) {
             return;
         }
-        board.getPieceAt(cell).ifPresent(piece -> arbiter.startJump(piece, cell));
+        board.pieceAt(cell).ifPresent(piece -> arbiter.startJump(piece, cell));
     }
 
     public void resign(Piece.Color resigningColor) {
@@ -138,7 +138,7 @@ public class GameEngine implements GameCommands {
                 int points = getPieceValue(event.capturedPiece().kind());
                 if (points > 0) {
                     gameState.addScore(capturingColor, points);
-                    eventBus.publish(new ScoreChangedEvent(capturingColor, gameState.getScore(capturingColor), points));
+                    eventBus.publish(new ScoreChangedEvent(capturingColor, gameState.score(capturingColor), points));
                 }
             }
 
@@ -169,30 +169,30 @@ public class GameEngine implements GameCommands {
     }
 
     public GameSnapshot snapshot(Position selectedPosition, List<String> whiteMoveLog, List<String> blackMoveLog, double zoom) {
-        int width = board.getWidth();
-        int height = board.getHeight();
+        int width = board.width();
+        int height = board.height();
         PieceSnapshot[][] grid = new PieceSnapshot[height][width];
         for (Position position : board.occupiedPositions()) {
-            Piece piece = board.getPieceAt(position).orElseThrow();
+            Piece piece = board.pieceAt(position).orElseThrow();
             grid[position.row()][position.col()] = pieceSnapshotOf(piece, position, zoom);
         }
         Set<Position> legalDestinations = legalDestinationsFor(selectedPosition);
         List<SelectionSnapshot> selections = selectedPosition == null
                 ? List.of()
-                : board.getPieceAt(selectedPosition)
+                : board.pieceAt(selectedPosition)
                         .map(piece -> new SelectionSnapshot(piece.color(), selectedPosition))
                         .map(List::of)
                         .orElse(List.of());
         return new GameSnapshot(width, height, grid, selections, legalDestinations, gameState.gameOver(),
-                               gameState.winner(), gameState.getScore(Piece.Color.WHITE),
-                               gameState.getScore(Piece.Color.BLACK), whiteMoveLog, blackMoveLog, zoom);
+                               gameState.winner(), gameState.score(Piece.Color.WHITE),
+                               gameState.score(Piece.Color.BLACK), whiteMoveLog, blackMoveLog, zoom);
     }
 
     private Set<Position> legalDestinationsFor(Position selectedPosition) {
         if (selectedPosition == null) {
             return Set.of();
         }
-        Piece selectedPiece = board.getPieceAt(selectedPosition).orElse(null);
+        Piece selectedPiece = board.pieceAt(selectedPosition).orElse(null);
         if (selectedPiece == null) {
             return Set.of();
         }

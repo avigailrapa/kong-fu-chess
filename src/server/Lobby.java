@@ -461,8 +461,8 @@ public class Lobby {
 
     private String encodedState(Match match, Position selectedCell) {
         GameSnapshot snapshot = match.engine().snapshot(selectedCell,
-                match.moveLogger().getWhiteMoves().stream().map(MoveEvent::toString).toList(),
-                match.moveLogger().getBlackMoves().stream().map(MoveEvent::toString).toList());
+                match.moveLogger().whiteMoves().stream().map(MoveEvent::toString).toList(),
+                match.moveLogger().blackMoves().stream().map(MoveEvent::toString).toList());
         return Protocol.encode(new StateMessage(snapshot));
     }
 }
