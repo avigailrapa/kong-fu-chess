@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 import src.engine.MoveResult;
 import src.model.Piece;
 import src.model.Position;
-import src.net.NetworkGameProxy;
 import src.net.Protocol;
-import src.net.StateMessage;
+import src.net.client.NetworkGameProxy;
+import src.net.messages.StateMessage;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
 

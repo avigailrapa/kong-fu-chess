@@ -6,8 +6,6 @@ import java.util.function.Consumer;
 
 public class HomeScreen {
 
-    private static final Color BACKGROUND_COLOR = new Color(18, 18, 22);
-
     private final JFrame frame;
     private final JButton playButton;
     private final JButton cancelButton;
@@ -25,31 +23,50 @@ public class HomeScreen {
         this.onRoomJoin = onRoomJoin;
         this.frame = new JFrame("♟ Kung Fu Chess ♟");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().setBackground(BACKGROUND_COLOR);
+        frame.getContentPane().setBackground(Theme.BACKGROUND);
 
-        this.playButton = new JButton("Play");
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(Theme.BACKGROUND);
+        panel.setBorder(BorderFactory.createEmptyBorder(40, 56, 40, 56));
+
+        JLabel title = Theme.titleLabel("Kung Fu Chess");
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel subtitle = Theme.bodyLabel("Find an opponent or play in a private room");
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        this.playButton = Theme.primaryButton("Play");
+        playButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         playButton.addActionListener(e -> onPlayClicked.run());
 
-        this.roomButton = new JButton("Room");
+        this.roomButton = Theme.secondaryButton("Private room");
+        roomButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         roomButton.addActionListener(e -> openRoomDialog());
 
-        this.cancelButton = new JButton("Cancel");
+        this.cancelButton = Theme.secondaryButton("Cancel");
+        cancelButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         cancelButton.addActionListener(e -> onCancelClicked.run());
         cancelButton.setVisible(false);
 
-        this.statusLabel = new JLabel("");
-        statusLabel.setForeground(Color.WHITE);
+        this.statusLabel = Theme.bodyLabel(" ");
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         statusLabel.setVisible(false);
 
-        JPanel panel = new JPanel();
-        panel.setBackground(BACKGROUND_COLOR);
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(6));
+        panel.add(subtitle);
+        panel.add(Box.createVerticalStrut(28));
         panel.add(playButton);
+        panel.add(Box.createVerticalStrut(12));
         panel.add(roomButton);
+        panel.add(Box.createVerticalStrut(16));
         panel.add(statusLabel);
+        panel.add(Box.createVerticalStrut(8));
         panel.add(cancelButton);
 
         frame.add(panel);
-        frame.setSize(320, 160);
+        frame.pack();
+        frame.setMinimumSize(frame.getSize());
     }
 
     public void open() {
@@ -60,7 +77,7 @@ public class HomeScreen {
     public void showSearching() {
         playButton.setVisible(false);
         roomButton.setVisible(false);
-        statusLabel.setText("Searching for opponent...");
+        statusLabel.setText("Searching for an opponent...");
         statusLabel.setVisible(true);
         cancelButton.setVisible(true);
     }
@@ -79,34 +96,67 @@ public class HomeScreen {
     }
 
     private void openRoomDialog() {
-        roomDialog = new JDialog(frame, "Room", true);
-        roomDialog.setLayout(new GridLayout(0, 1));
+        roomDialog = new JDialog(frame, "Private room", true);
+        roomDialog.getContentPane().setBackground(Theme.BACKGROUND);
 
-        roomIdLabel = new JLabel(" ");
-        JTextField roomIdField = new JTextField();
-        JButton createButton = new JButton("Create room");
-        JButton joinButton = new JButton("Join room");
-        JButton closeButton = new JButton("Close");
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(Theme.BACKGROUND);
+        panel.setBorder(BorderFactory.createEmptyBorder(28, 36, 28, 36));
 
+        JButton createButton = Theme.primaryButton("Create room");
+        createButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         createButton.addActionListener(e -> onRoomCreate.run());
-        joinButton.addActionListener(e -> onRoomJoin.accept(roomIdField.getText().trim()));
+
+        this.roomIdLabel = Theme.emphasisLabel(" ");
+        roomIdLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JSeparator separator = new JSeparator();
+        separator.setMaximumSize(new Dimension(260, 1));
+        separator.setForeground(Theme.BORDER);
+
+        JLabel joinLabel = Theme.bodyLabel("Or join with a room ID");
+        joinLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JTextField roomIdField = Theme.textField();
+        roomIdField.setMaximumSize(new Dimension(240, 48));
+        roomIdField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        roomIdField.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JButton joinButton = Theme.secondaryButton("Join room");
+        joinButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        Runnable join = () -> onRoomJoin.accept(roomIdField.getText().trim());
+        joinButton.addActionListener(e -> join.run());
+        roomIdField.addActionListener(e -> join.run());
+
+        JButton closeButton = Theme.secondaryButton("Close");
+        closeButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         closeButton.addActionListener(e -> roomDialog.dispose());
 
-        roomDialog.add(roomIdLabel);
-        roomDialog.add(createButton);
-        roomDialog.add(new JLabel("Room ID:"));
-        roomDialog.add(roomIdField);
-        roomDialog.add(joinButton);
-        roomDialog.add(closeButton);
+        panel.add(createButton);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(roomIdLabel);
+        panel.add(Box.createVerticalStrut(22));
+        panel.add(separator);
+        panel.add(Box.createVerticalStrut(22));
+        panel.add(joinLabel);
+        panel.add(Box.createVerticalStrut(8));
+        panel.add(roomIdField);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(joinButton);
+        panel.add(Box.createVerticalStrut(20));
+        panel.add(closeButton);
 
-        roomDialog.setSize(280, 240);
+        roomDialog.add(panel);
+        roomDialog.pack();
+        roomDialog.setMinimumSize(roomDialog.getSize());
         roomDialog.setLocationRelativeTo(frame);
         roomDialog.setVisible(true);
     }
 
     public void showRoomId(String roomId) {
         if (roomIdLabel != null) {
-            roomIdLabel.setText("Room ID: " + roomId + " (waiting for opponent)");
+            roomIdLabel.setText("Room ID: " + roomId + " - waiting for opponent...");
         }
     }
 

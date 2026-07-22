@@ -1,21 +1,18 @@
 package src.input;
 
+import lombok.RequiredArgsConstructor;
 import src.model.Position;
 
 import java.util.Optional;
 
 import src.view.GameSnapshot;
 
+@RequiredArgsConstructor
 public class BoardMapper {
 
     private final int width;
     private final int height;
     private double zoom = GameSnapshot.DEFAULT_ZOOM;
-
-    public BoardMapper(int width, int height) {
-        this.width = width;
-        this.height = height;
-    }
 
     public void setZoom(double zoom) {
         this.zoom = zoom;

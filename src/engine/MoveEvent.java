@@ -4,7 +4,7 @@ import src.model.Piece;
 import src.model.Position;
 
 public record MoveEvent(Piece.Color color, Piece.Kind kind, Position from, Position to,
-                         boolean capture, boolean kingCapture, long requestTimestampMs) {
+                         boolean capture, boolean kingCapture, boolean promotion, long requestTimestampMs) {
 
     public String formattedRequestTime() {
         long totalMs = requestTimestampMs;

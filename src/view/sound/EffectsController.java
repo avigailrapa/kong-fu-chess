@@ -26,6 +26,14 @@ public class EffectsController {
         bannerRemainingMs = BANNER_DURATION_MS;
     }
 
+    public void announceIllegalMove() {
+        soundPlayer.play("illegal_move");
+    }
+
+    public void announceMoveAccepted() {
+        soundPlayer.play("move");
+    }
+
     public void tick(long ms) {
         if (ms < 0) {
             throw new IllegalArgumentException("ms must not be negative");
@@ -44,7 +52,9 @@ public class EffectsController {
     }
 
     private void onMove(MoveEvent event) {
-        if (event.capture()) {
+        if (event.promotion()) {
+            soundPlayer.play("promotion");
+        } else if (event.capture()) {
             soundPlayer.play("capture");
         }
     }

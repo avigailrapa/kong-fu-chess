@@ -27,7 +27,12 @@ public class EffectsControllerTest {
 
     private MoveEvent moveEvent(boolean capture) {
         return new MoveEvent(Piece.Color.WHITE, Piece.Kind.ROOK, new Position(7, 0), new Position(4, 0),
-                capture, false, 0L);
+                capture, false, false, 0L);
+    }
+
+    private MoveEvent promotionMoveEvent() {
+        return new MoveEvent(Piece.Color.WHITE, Piece.Kind.QUEEN, new Position(1, 0), new Position(0, 0),
+                false, false, true, 0L);
     }
 
     @Test
@@ -89,7 +94,7 @@ public class EffectsControllerTest {
     }
 
     @Test
-    public void testNonCapturingMoveEventDoesNotPlayCaptureSound() {
+    public void testNonCapturingMoveEventPlaysNoSound() {
         EventBus bus = new EventBus();
         FakeSoundPlayer soundPlayer = new FakeSoundPlayer();
         new EffectsController(bus, soundPlayer);
@@ -97,6 +102,37 @@ public class EffectsControllerTest {
         bus.publish(moveEvent(false));
 
         assertTrue(soundPlayer.played.isEmpty());
+    }
+
+    @Test
+    public void testPromotingMoveEventPlaysPromotionSoundInsteadOfCapture() {
+        EventBus bus = new EventBus();
+        FakeSoundPlayer soundPlayer = new FakeSoundPlayer();
+        new EffectsController(bus, soundPlayer);
+
+        bus.publish(promotionMoveEvent());
+
+        assertEquals(List.of("promotion"), soundPlayer.played);
+    }
+
+    @Test
+    public void testAnnounceIllegalMovePlaysSound() {
+        FakeSoundPlayer soundPlayer = new FakeSoundPlayer();
+        EffectsController effects = new EffectsController(new EventBus(), soundPlayer);
+
+        effects.announceIllegalMove();
+
+        assertEquals(List.of("illegal_move"), soundPlayer.played);
+    }
+
+    @Test
+    public void testAnnounceMoveAcceptedPlaysSound() {
+        FakeSoundPlayer soundPlayer = new FakeSoundPlayer();
+        EffectsController effects = new EffectsController(new EventBus(), soundPlayer);
+
+        effects.announceMoveAccepted();
+
+        assertEquals(List.of("move"), soundPlayer.played);
     }
 
     @Test

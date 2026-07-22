@@ -34,4 +34,25 @@ public record GameSnapshot(int width, int height, PieceSnapshot[][] board, List<
     public boolean isOccupied(Position position) {
         return pieceAt(position) != null;
     }
+
+    public GameSnapshot withZoom(double newZoom) {
+        if (newZoom == zoom) {
+            return this;
+        }
+        double scale = newZoom / zoom;
+        PieceSnapshot[][] rescaledBoard = new PieceSnapshot[height][width];
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                PieceSnapshot piece = board[row][col];
+                if (piece == null) {
+                    continue;
+                }
+                rescaledBoard[row][col] = new PieceSnapshot(piece.id(), piece.color(), piece.kind(), piece.state(),
+                        (int) Math.round(piece.pixelX() * scale), (int) Math.round(piece.pixelY() * scale),
+                        piece.elapsedMillis(), piece.restDurationMs());
+            }
+        }
+        return new GameSnapshot(width, height, rescaledBoard, selections, legalDestinations, gameOver, winner,
+                whiteScore, blackScore, whiteMoveLog, blackMoveLog, newZoom);
+    }
 }

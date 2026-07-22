@@ -1,5 +1,7 @@
 package src.server;
 
+import lombok.RequiredArgsConstructor;
+
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
@@ -7,6 +9,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+@RequiredArgsConstructor
 public class RoomRegistry {
 
     public enum JoinOutcome { SEATED_BLACK, SPECTATING, NOT_FOUND }
@@ -20,14 +23,6 @@ public class RoomRegistry {
     private final BiConsumer<Match, Session> addSpectator;
     private final SecureRandom random = new SecureRandom();
     private final Map<String, Match> matchByRoomId = new HashMap<>();
-
-    public RoomRegistry(Supplier<Match> matchFactory, BiConsumer<Match, Session> seatSession,
-                         Consumer<Match> onMatchReady, BiConsumer<Match, Session> addSpectator) {
-        this.matchFactory = matchFactory;
-        this.seatSession = seatSession;
-        this.onMatchReady = onMatchReady;
-        this.addSpectator = addSpectator;
-    }
 
     public synchronized String createRoom(Session creator) {
         Match match = matchFactory.get();

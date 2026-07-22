@@ -1,5 +1,7 @@
 package src.server;
 
+import lombok.RequiredArgsConstructor;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+@RequiredArgsConstructor
 public class MatchmakingQueue {
 
     private final BiConsumer<Session, Session> onPaired;
@@ -20,14 +23,6 @@ public class MatchmakingQueue {
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final List<Session> waiting = new ArrayList<>();
     private final Map<Session, ScheduledFuture<?>> timeoutTasks = new ConcurrentHashMap<>();
-
-    public MatchmakingQueue(BiConsumer<Session, Session> onPaired, Consumer<Session> onTimeout,
-                             long timeoutMs, int ratingWindow) {
-        this.onPaired = onPaired;
-        this.onTimeout = onTimeout;
-        this.timeoutMs = timeoutMs;
-        this.ratingWindow = ratingWindow;
-    }
 
     public synchronized void enqueue(Session session) {
         for (Session candidate : waiting) {

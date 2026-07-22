@@ -15,7 +15,6 @@ import java.util.function.Supplier;
 public class GameWindow {
 
     private static final int SCREEN_CHROME_ALLOWANCE_PX = 80;
-    private static final Color BACKGROUND_COLOR = new Color(18, 18, 22);
     private static final double ZOOM_STEP = 0.1;
 
     private final Supplier<GameComponents> gameFactory;
@@ -27,6 +26,9 @@ public class GameWindow {
     private final JFrame frame;
     private final ImagePanel panel;
     private final Timer timer;
+    private JButton zoomOutButton;
+    private JButton zoomInButton;
+    private JLabel zoomLabel;
     private boolean gameOverAnnounced = false;
     private double zoom = GameSnapshot.DEFAULT_ZOOM;
 
@@ -39,9 +41,10 @@ public class GameWindow {
         this.frame = new JFrame("♟ Kung Fu Chess ♟");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         JScrollPane scrollPane = new JScrollPane(new CenteringPanel(panel));
-        scrollPane.setBackground(BACKGROUND_COLOR);
-        scrollPane.getViewport().setBackground(BACKGROUND_COLOR);
-        frame.getContentPane().setBackground(BACKGROUND_COLOR);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBackground(Theme.BACKGROUND);
+        scrollPane.getViewport().setBackground(Theme.BACKGROUND);
+        frame.getContentPane().setBackground(Theme.BACKGROUND);
         frame.add(buildZoomToolbar(), BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
 
@@ -57,7 +60,13 @@ public class GameWindow {
                 if (SwingUtilities.isRightMouseButton(e)) {
                     clickHandler.jump(x, y);
                 } else {
-                    clickHandler.click(x, y);
+                    clickHandler.click(x, y).ifPresent(result -> {
+                        if (result.isAccepted()) {
+                            effects.announceMoveAccepted();
+                        } else {
+                            effects.announceIllegalMove();
+                        }
+                    });
                 }
                 repaint();
             }
@@ -76,15 +85,25 @@ public class GameWindow {
     }
 
     private JComponent buildZoomToolbar() {
-        JButton zoomOutButton = new JButton("-");
-        JButton zoomInButton = new JButton("+");
+        this.zoomOutButton = Theme.iconButton("−");
+        this.zoomInButton = Theme.iconButton("+");
         zoomOutButton.addActionListener(e -> changeZoom(-ZOOM_STEP));
         zoomInButton.addActionListener(e -> changeZoom(ZOOM_STEP));
 
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        toolbar.setBackground(BACKGROUND_COLOR);
+        this.zoomLabel = new JLabel(zoomPercentText(), SwingConstants.CENTER);
+        zoomLabel.setFont(Theme.LABEL_FONT);
+        zoomLabel.setForeground(Theme.TEXT_MUTED);
+        zoomLabel.setPreferredSize(new Dimension(52, 20));
+
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        toolbar.setBackground(Theme.BACKGROUND);
+        toolbar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER),
+                BorderFactory.createEmptyBorder(4, 12, 4, 12)));
         toolbar.add(zoomOutButton);
+        toolbar.add(zoomLabel);
         toolbar.add(zoomInButton);
+        updateZoomControls();
         return toolbar;
     }
 
@@ -95,7 +114,18 @@ public class GameWindow {
         }
         zoom = newZoom;
         clickHandler.setZoom(zoom);
+        updateZoomControls();
         repaint();
+    }
+
+    private void updateZoomControls() {
+        zoomLabel.setText(zoomPercentText());
+        zoomOutButton.setEnabled(zoom > GameSnapshot.MIN_ZOOM);
+        zoomInButton.setEnabled(zoom < GameSnapshot.MAX_ZOOM);
+    }
+
+    private String zoomPercentText() {
+        return Math.round(zoom * 100) + "%";
     }
 
     public void open() {
@@ -160,7 +190,7 @@ public class GameWindow {
         CenteringPanel(JComponent child) {
             super(new GridBagLayout());
             this.child = child;
-            setBackground(BACKGROUND_COLOR);
+            setBackground(Theme.BACKGROUND);
             add(child);
         }
 
@@ -194,7 +224,7 @@ public class GameWindow {
         private BufferedImage image;
 
         ImagePanel() {
-            setBackground(BACKGROUND_COLOR);
+            setBackground(Theme.BACKGROUND);
         }
 
         void setImage(BufferedImage image) {

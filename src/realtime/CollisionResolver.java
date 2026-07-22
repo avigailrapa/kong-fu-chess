@@ -1,5 +1,6 @@
 package src.realtime;
 
+import lombok.RequiredArgsConstructor;
 import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
@@ -9,17 +10,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+@RequiredArgsConstructor
 public class CollisionResolver {
 
     private final IBoard board;
     private final JumpResolver jumpResolver;
     private final MotionResolver motionResolver;
-
-    public CollisionResolver(IBoard board, JumpResolver jumpResolver, MotionResolver motionResolver) {
-        this.board = board;
-        this.jumpResolver = jumpResolver;
-        this.motionResolver = motionResolver;
-    }
 
     public Optional<Piece> findMotionLandingOnJumpCell(Position jumpCell, List<Piece> duePieces, Map<Piece, Motion> activeMotions) {
         for (Piece candidate : duePieces) {
@@ -51,7 +47,8 @@ public class CollisionResolver {
             boolean loserWasKing = loser.kind() == Piece.Kind.KING;
             loser.setState(Piece.State.CAPTURED);
             board.removePiece(loserMotion.source());
-            return new ArrivalEvent(winner, winnerMotion.source(), winnerMotion.destination(), loser, loserWasKing);
+            return new ArrivalEvent(winner, winnerMotion.source(), winnerMotion.destination(), loser, loserWasKing,
+                    false);
         }
         return motionResolver.resolveBounceBack(loserMotion);
     }
@@ -63,7 +60,7 @@ public class CollisionResolver {
         board.removePiece(attackerMotion.source());
 
         jumpResolver.markSurvivedJump(defender);
-        return new ArrivalEvent(defender, cell, cell, attacker, attackerWasKing);
+        return new ArrivalEvent(defender, cell, cell, attacker, attackerWasKing, false);
     }
 
     public boolean isPieceAlreadyCaptured(Motion motion) {

@@ -267,6 +267,7 @@ public class RealTimeArbiterTest {
         assertEquals(Piece.Color.WHITE, atDestination.color());
         assertEquals(Piece.Kind.QUEEN, event.movedPiece().kind());
         assertEquals("p1", atDestination.id());
+        assertTrue(event.promoted());
     }
 
     @Test
@@ -312,10 +313,11 @@ public class RealTimeArbiterTest {
         RealTimeArbiter arbiter = new RealTimeArbiter(board);
         arbiter.startMotion(pawn, new Position(2, 0), new Position(1, 0));
 
-        arbiter.advanceTime(1000);
+        ArrivalEvent event = arbiter.advanceTime(1000).get(0);
 
         Piece atDestination = board.getPieceAt(new Position(1, 0)).orElseThrow();
         assertEquals(Piece.Kind.PAWN, atDestination.kind());
+        assertFalse(event.promoted());
     }
 
     @Test
