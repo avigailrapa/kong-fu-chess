@@ -4,7 +4,7 @@ import src.engine.MoveEvent;
 import src.engine.MoveLogger;
 import src.engine.GameEngine;
 import src.input.BoardMapper;
-import src.input.Controller;
+import src.input.ClickHandler;
 import src.io.BoardParser;
 import src.model.Board;
 import src.view.GameLoop;
@@ -36,17 +36,17 @@ public class GuiMain {
         GameEngine engine = GameEngine.fromBoard(board);
         MoveLogger moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
-        Controller controller = new Controller(new BoardMapper(board.getWidth(), board.getHeight()), engine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(board.getWidth(), board.getHeight()), engine);
         Renderer renderer = new Renderer("assets/pieces");
         GameLoop gameLoop = new GameLoop(engine);
         EffectsController effects = new EffectsController(engine.eventBus(), new ClipSoundPlayer("assets"));
         effects.announceGameStart();
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> engine.snapshot(
-                controller.getSelectedCell().orElse(null),
+                clickHandler.getSelectedCell().orElse(null),
                 formatMoveLog(moveLogger.getWhiteMoves()),
                 formatMoveLog(moveLogger.getBlackMoves()),
                 zoom);
-        return new GameWindow.GameComponents(gameLoop::tick, snapshotSupplier, controller, renderer, effects);
+        return new GameWindow.GameComponents(gameLoop::tick, snapshotSupplier, clickHandler, renderer, effects);
     }
 
     private static List<String> formatMoveLog(List<MoveEvent> moves) {

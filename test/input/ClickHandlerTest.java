@@ -13,7 +13,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ControllerTest {
+public class ClickHandlerTest {
 
     private static class FakeGameEngine extends GameEngine {
         private Position lastSource;
@@ -54,30 +54,30 @@ public class ControllerTest {
     public void testFirstClickOnPieceSelectsCell() {
         FakeGameEngine fakeEngine = new FakeGameEngine();
         fakeEngine.occupiedCells = Set.of(new Position(1, 1));
-        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), fakeEngine);
 
-        controller.click(150, 150); 
+        clickHandler.click(150, 150);
 
-        assertEquals(new Position(1, 1), controller.getSelectedCell().orElseThrow());
+        assertEquals(new Position(1, 1), clickHandler.getSelectedCell().orElseThrow());
     }
 
     @Test
     public void testFirstClickOnEmptyCellLeavesSelectionEmpty() {
-        Controller controller = new Controller(new BoardMapper(8, 8), new FakeGameEngine());
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), new FakeGameEngine());
 
-        controller.click(150, 150);
+        clickHandler.click(150, 150);
 
-        assertTrue(controller.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.getSelectedCell().isEmpty());
     }
 
     @Test
     public void testOutsideClickWithNoSelectionDoesNothing() {
         FakeGameEngine fakeEngine = new FakeGameEngine();
-        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), fakeEngine);
 
-        controller.click(-50, 150);
+        clickHandler.click(-50, 150);
 
-        assertTrue(controller.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.getSelectedCell().isEmpty());
         assertEquals(0, fakeEngine.callCount);
     }
 
@@ -85,12 +85,12 @@ public class ControllerTest {
     public void testOutsideClickWithSelectedPieceCancelsSelectionWithoutCallingEngine() {
         FakeGameEngine fakeEngine = new FakeGameEngine();
         fakeEngine.occupiedCells = Set.of(new Position(1, 1));
-        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), fakeEngine);
 
-        controller.click(150, 150);
-        controller.click(-50, 150); 
+        clickHandler.click(150, 150);
+        clickHandler.click(-50, 150);
 
-        assertTrue(controller.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.getSelectedCell().isEmpty());
         assertEquals(0, fakeEngine.callCount);
     }
 
@@ -98,10 +98,10 @@ public class ControllerTest {
     public void testSecondClickSendsCorrectSourceAndDestinationToEngine() {
         FakeGameEngine fakeEngine = new FakeGameEngine();
         fakeEngine.occupiedCells = Set.of(new Position(1, 1));
-        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), fakeEngine);
 
-        controller.click(150, 150); 
-        controller.click(350, 150); 
+        clickHandler.click(150, 150);
+        clickHandler.click(350, 150);
 
         assertEquals(1, fakeEngine.callCount);
         assertEquals(new Position(1, 1), fakeEngine.lastSource);
@@ -113,12 +113,12 @@ public class ControllerTest {
         FakeGameEngine fakeEngine = new FakeGameEngine();
         fakeEngine.occupiedCells = Set.of(new Position(1, 1));
         fakeEngine.acceptNextMove = true;
-        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), fakeEngine);
 
-        controller.click(150, 150);
-        controller.click(350, 150);
+        clickHandler.click(150, 150);
+        clickHandler.click(350, 150);
 
-        assertTrue(controller.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.getSelectedCell().isEmpty());
     }
 
     @Test
@@ -126,25 +126,25 @@ public class ControllerTest {
         FakeGameEngine fakeEngine = new FakeGameEngine();
         fakeEngine.occupiedCells = Set.of(new Position(1, 1));
         fakeEngine.acceptNextMove = false;
-        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), fakeEngine);
 
-        controller.click(150, 150);
-        controller.click(350, 150);
+        clickHandler.click(150, 150);
+        clickHandler.click(350, 150);
 
-        assertTrue(controller.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.getSelectedCell().isEmpty());
     }
 
     @Test
     public void testThirdClickStartsFreshIndependentSelectionCycle() {
         FakeGameEngine fakeEngine = new FakeGameEngine();
         fakeEngine.occupiedCells = Set.of(new Position(1, 1), new Position(3, 3));
-        Controller controller = new Controller(new BoardMapper(8, 8), fakeEngine);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(8, 8), fakeEngine);
 
-        controller.click(150, 150); 
-        controller.click(350, 150); 
-        controller.click(350, 350); 
+        clickHandler.click(150, 150);
+        clickHandler.click(350, 150);
+        clickHandler.click(350, 350);
 
         assertEquals(1, fakeEngine.callCount);
-        assertEquals(new Position(3, 3), controller.getSelectedCell().orElseThrow());
+        assertEquals(new Position(3, 3), clickHandler.getSelectedCell().orElseThrow());
     }
 }

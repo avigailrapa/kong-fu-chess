@@ -28,10 +28,10 @@ class-level detail behind each box.
   give a decoupled way to react to completed moves without `GameEngine` knowing about rendering;
   `GameEngine.eventBus()` is the newer, more general alternative (see `src/bus/`). `GameCommands`
   is the 3-method interface (`isOccupied`, `requestMove`, `requestJump`) `GameEngine implements`,
-  extracted so `src/input/Controller` depends on the interface, not the concrete class.
+  extracted so `src/input/ClickHandler` depends on the interface, not the concrete class.
   `AlgebraicNotation` converts `Position` to/from a 2-char algebraic square string (`"e7"`) both
   ways; `MoveEvent.algebraicMove()` delegates to it.
-- **`src/input/`** — `Controller` (GUI path: pixel click → `BoardMapper.pixelToCell` →
+- **`src/input/`** — `ClickHandler` (GUI path: pixel click → `BoardMapper.pixelToCell` →
   `GameCommands` call, implemented by `GameEngine`) and `CommandParser`/`CommandRunner`/
   `ConsoleRunner` (text-DSL path, used by both `app/Main.java` and `test/integration/` — see
   text-dsl.md). Neither depends on `RuleEngine`/`RealTimeArbiter`/`Board` directly; both only call
@@ -114,7 +114,7 @@ class-level detail behind each box.
   pure snapshot-to-`BufferedImage` function and must never import anything from
   `src.engine`/`src.model`/`src.realtime` beyond value types like `Piece.Color`/`Position`.
   `GameWindow` is the Swing shell (JFrame + mouse input + repaint loop) and must never import
-  `GameEngine` either — it only holds a `Supplier<GameSnapshot>`, a `Controller`, a `Renderer`, a
+  `GameEngine` either — it only holds a `Supplier<GameSnapshot>`, a `ClickHandler`, a `Renderer`, a
   `GameLoop`, and an `EffectsController`. `GameLoop` and `EffectsController` are the two classes in
   `view` allowed to reach into `engine`. `GameLoop` holds a `GameEngine` reference directly; its
   only job is advancing simulated time each tick (`engine.waitMs`) and reporting whether anything
@@ -133,4 +133,4 @@ class-level detail behind each box.
   JSON library.
 
 Because `Renderer`/`GameWindow` only ever see `GameSnapshot`, a rendering bug can be reproduced/
-tested with a hand-built fake `GameSnapshot` — no real `Board`/`GameEngine`/`Controller` needed.
+tested with a hand-built fake `GameSnapshot` — no real `Board`/`GameEngine`/`ClickHandler` needed.

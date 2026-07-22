@@ -1,32 +1,29 @@
 package src.input;
 
+import lombok.RequiredArgsConstructor;
 import src.engine.GameCommands;
 import src.engine.MoveResult;
 import src.model.Position;
 
 import java.util.Optional;
 
-public class Controller {
+@RequiredArgsConstructor
+public class ClickHandler {
 
     private final BoardMapper boardMapper;
     private final GameCommands gameEngine;
     private Position selectedCell;
 
-    public Controller(BoardMapper boardMapper, GameCommands gameEngine) {
-        this.boardMapper = boardMapper;
-        this.gameEngine = gameEngine;
-    }
-
     public void setZoom(double zoom) {
         boardMapper.setZoom(zoom);
     }
 
-    public void click(int x, int y) {
+    public Optional<MoveResult> click(int x, int y) {
         Optional<Position> clicked = boardMapper.pixelToCell(x, y);
 
         if (clicked.isEmpty()) {
             selectedCell = null;
-            return;
+            return Optional.empty();
         }
 
         Position cell = clicked.get();
@@ -35,15 +32,16 @@ public class Controller {
             if (gameEngine.isOccupied(cell)) {
                 selectedCell = cell;
             }
-            return;
+            return Optional.empty();
         }
 
         MoveResult result = gameEngine.requestMove(selectedCell, cell);
         if (!result.isAccepted() && "friendly_destination".equals(result.reason())) {
             selectedCell = cell;
-            return;
+            return Optional.empty();
         }
         selectedCell = null;
+        return Optional.of(result);
     }
 
     public void jump(int x, int y) {

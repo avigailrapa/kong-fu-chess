@@ -1,6 +1,6 @@
 package src.view;
 
-import src.input.Controller;
+import src.input.ClickHandler;
 import src.view.sound.EffectsController;
 
 import javax.swing.*;
@@ -19,7 +19,7 @@ public class GameWindow {
     private static final double ZOOM_STEP = 0.1;
 
     private final Supplier<GameComponents> gameFactory;
-    private Controller controller;
+    private ClickHandler clickHandler;
     private Renderer renderer;
     private DoubleFunction<GameSnapshot> snapshotSupplier;
     private LongPredicate tickSource;
@@ -55,9 +55,9 @@ public class GameWindow {
                 int x = e.getX() - renderer.boardOffsetX();
                 int y = e.getY() - renderer.boardOffsetY();
                 if (SwingUtilities.isRightMouseButton(e)) {
-                    controller.jump(x, y);
+                    clickHandler.jump(x, y);
                 } else {
-                    controller.click(x, y);
+                    clickHandler.click(x, y);
                 }
                 repaint();
             }
@@ -67,12 +67,12 @@ public class GameWindow {
     }
 
     private void bindComponents(GameComponents components) {
-        this.controller = components.controller();
+        this.clickHandler = components.clickHandler();
         this.renderer = components.renderer();
         this.snapshotSupplier = components.snapshotSupplier();
         this.tickSource = components.tickSource();
         this.effects = components.effects();
-        this.controller.setZoom(zoom);
+        this.clickHandler.setZoom(zoom);
     }
 
     private JComponent buildZoomToolbar() {
@@ -94,7 +94,7 @@ public class GameWindow {
             return;
         }
         zoom = newZoom;
-        controller.setZoom(zoom);
+        clickHandler.setZoom(zoom);
         repaint();
     }
 
@@ -151,7 +151,7 @@ public class GameWindow {
     }
 
     public record GameComponents(LongPredicate tickSource, DoubleFunction<GameSnapshot> snapshotSupplier,
-                                  Controller controller, Renderer renderer, EffectsController effects) {
+                                  ClickHandler clickHandler, Renderer renderer, EffectsController effects) {
     }
 
     private static class CenteringPanel extends JPanel implements Scrollable {
