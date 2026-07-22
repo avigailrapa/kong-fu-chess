@@ -5,6 +5,7 @@ import lombok.experimental.Accessors;
 
 import java.util.Objects;
 
+@Getter
 @Accessors(fluent = true)
 public class Piece {
 
@@ -55,15 +56,10 @@ public class Piece {
         IDLE, MOVING, JUMPING, SHORT_REST, LONG_REST, CAPTURED
     }
 
-    @Getter
     private final String id;
-    @Getter
     private final Color color;
-    @Getter
     private final Kind kind;
-    @Getter
     private Position cell;
-    @Getter
     private State state;
 
     public Piece(String id, Color color, Kind kind, Position cell) {

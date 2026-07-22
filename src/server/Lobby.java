@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class Lobby {
 
@@ -107,8 +108,12 @@ public class Lobby {
     }
 
     private Match newMatch() {
+        return new Match(freshEngine(), tickIntervalMs);
+    }
+
+    private GameEngine freshEngine() {
         Board board = new BoardParser().parse(BoardParser.STANDARD_STARTING_POSITION);
-        return new Match(GameEngine.fromBoard(board), tickIntervalMs);
+        return GameEngine.fromBoard(board);
     }
 
     private void onPaired(Session a, Session b) {
@@ -235,68 +240,51 @@ public class Lobby {
             case NewGameCommand ng -> handleNewGame(conn, ng);
             case RoomCreateCommand r -> handleRoomCreate(conn, r);
             case RoomJoinCommand r -> handleRoomJoin(conn, r);
-            case MoveAccepted _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case MoveRejected _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case StateMessage _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case Welcome _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case MoveOccurred _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case GameOverMessage _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case RatingChanged _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case MatchFound _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case MatchTimeout _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case DisconnectCountdown _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case RoomId _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case Spectating _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case WelcomeBack _ -> Protocol.encode(new MoveRejected("unexpected_message"));
-            case OpponentReconnected _ -> Protocol.encode(new MoveRejected("unexpected_message"));
+            default -> Protocol.encode(new MoveRejected("unexpected_message"));
         };
     }
 
     private String handleRoomCreate(WebSocket conn, RoomCreateCommand r) {
-        Session session = sessionsByConnection.get(conn);
-        if (session == null) {
-            return Protocol.encode(new MoveRejected("not_logged_in"));
-        }
-        if (matchBySession.containsKey(session)) {
-            return Protocol.encode(new MoveRejected("already_in_match"));
-        }
-        String roomId = roomRegistry.createRoom(session);
-        activityLog.log(session.username() + " created room " + roomId);
-        return Protocol.encode(new RoomId(roomId));
+        return requireSeatableSession(conn, session -> {
+            String roomId = roomRegistry.createRoom(session);
+            activityLog.log(session.username() + " created room " + roomId);
+            return Protocol.encode(new RoomId(roomId));
+        });
     }
 
     private String handleRoomJoin(WebSocket conn, RoomJoinCommand r) {
-        Session session = sessionsByConnection.get(conn);
-        if (session == null) {
-            return Protocol.encode(new MoveRejected("not_logged_in"));
-        }
-        if (matchBySession.containsKey(session)) {
-            return Protocol.encode(new MoveRejected("already_in_match"));
-        }
-        RoomRegistry.JoinOutcome outcome = roomRegistry.joinRoom(r.roomId(), session);
-        return switch (outcome) {
-            case SEATED_BLACK -> {
-                activityLog.log(session.username() + " joined room " + r.roomId() + " as black");
-                yield Protocol.encode(new RoomId(r.roomId()));
-            }
-            case SPECTATING -> {
-                activityLog.log(session.username() + " is spectating room " + r.roomId());
-                yield Protocol.encode(new Spectating());
-            }
-            case NOT_FOUND -> Protocol.encode(new MoveRejected("room_not_found"));
-        };
+        return requireSeatableSession(conn, session -> {
+            RoomRegistry.JoinOutcome outcome = roomRegistry.joinRoom(r.roomId(), session);
+            return switch (outcome) {
+                case SEATED_BLACK -> {
+                    activityLog.log(session.username() + " joined room " + r.roomId() + " as black");
+                    yield Protocol.encode(new RoomId(r.roomId()));
+                }
+                case SPECTATING -> {
+                    activityLog.log(session.username() + " is spectating room " + r.roomId());
+                    yield Protocol.encode(new Spectating());
+                }
+                case NOT_FOUND -> Protocol.encode(new MoveRejected("room_not_found"));
+            };
+        });
     }
 
     private String handlePlay(WebSocket conn, PlayCommand p) {
+        return requireSeatableSession(conn, session -> {
+            matchmakingQueue.enqueue(session);
+            return Protocol.encode(new MoveAccepted());
+        });
+    }
+
+    private String requireSeatableSession(WebSocket conn, Function<Session, String> onEligible) {
+        return requireSession(conn, session -> matchBySession.containsKey(session)
+                ? Protocol.encode(new MoveRejected("already_in_match"))
+                : onEligible.apply(session));
+    }
+
+    private String requireSession(WebSocket conn, Function<Session, String> onPresent) {
         Session session = sessionsByConnection.get(conn);
-        if (session == null) {
-            return Protocol.encode(new MoveRejected("not_logged_in"));
-        }
-        if (matchBySession.containsKey(session)) {
-            return Protocol.encode(new MoveRejected("already_in_match"));
-        }
-        matchmakingQueue.enqueue(session);
-        return Protocol.encode(new MoveAccepted());
+        return session == null ? Protocol.encode(new MoveRejected("not_logged_in")) : onPresent.apply(session);
     }
 
     private String handleCancelPlay(WebSocket conn, CancelPlayCommand c) {
@@ -316,23 +304,20 @@ public class Lobby {
     }
 
     private String handleNewGame(WebSocket conn, NewGameCommand ng) {
-        Session session = sessionsByConnection.get(conn);
-        if (session == null) {
-            return Protocol.encode(new MoveRejected("not_logged_in"));
-        }
-        if (session.role() == Session.Role.SPECTATOR) {
-            return Protocol.encode(new MoveRejected("spectator"));
-        }
-        Match match = matchBySession.get(session);
-        if (match == null) {
-            return Protocol.encode(new MoveRejected("not_in_match"));
-        }
-        if (!match.engine().snapshot(null).gameOver()) {
-            return Protocol.encode(new MoveRejected("game_in_progress"));
-        }
-        Board board = new BoardParser().parse(BoardParser.STANDARD_STARTING_POSITION);
-        match.newGame(GameEngine.fromBoard(board));
-        return Protocol.encode(new MoveAccepted());
+        return requireSession(conn, session -> {
+            if (session.role() == Session.Role.SPECTATOR) {
+                return Protocol.encode(new MoveRejected("spectator"));
+            }
+            Match match = matchBySession.get(session);
+            if (match == null) {
+                return Protocol.encode(new MoveRejected("not_in_match"));
+            }
+            if (!match.engine().snapshot(null).gameOver()) {
+                return Protocol.encode(new MoveRejected("game_in_progress"));
+            }
+            match.newGame(freshEngine());
+            return Protocol.encode(new MoveAccepted());
+        });
     }
 
     private String handleLogin(WebSocket conn, LoginCommand l) {
@@ -376,35 +361,37 @@ public class Lobby {
     }
 
     private String handleMove(WebSocket conn, MoveCommand m) {
-        if (isSpectator(conn)) {
-            return Protocol.encode(new MoveRejected("spectator"));
+        String rejection = validateSeatedAction(conn, m.color(), m.kind(), m.from());
+        if (rejection != null) {
+            return Protocol.encode(new MoveRejected(rejection));
         }
-        Match match = matchFor(conn);
-        if (match == null || !ownsColor(conn, m.color())) {
-            return Protocol.encode(new MoveRejected("not_your_piece"));
-        }
-        if (!declaredTokenMatchesBoard(match, m.from(), m.color(), m.kind())) {
-            return Protocol.encode(new MoveRejected("token_mismatch"));
-        }
-        MoveResult result = match.engine().requestMove(m.from(), m.to());
+        MoveResult result = matchFor(conn).engine().requestMove(m.from(), m.to());
         return result.isAccepted()
                 ? Protocol.encode(new MoveAccepted())
                 : Protocol.encode(new MoveRejected(result.reason()));
     }
 
     private String handleJump(WebSocket conn, JumpCommand j) {
+        String rejection = validateSeatedAction(conn, j.color(), j.kind(), j.at());
+        if (rejection != null) {
+            return Protocol.encode(new MoveRejected(rejection));
+        }
+        matchFor(conn).engine().requestJump(j.at());
+        return Protocol.encode(new MoveAccepted());
+    }
+
+    private String validateSeatedAction(WebSocket conn, Piece.Color color, Piece.Kind kind, Position position) {
         if (isSpectator(conn)) {
-            return Protocol.encode(new MoveRejected("spectator"));
+            return "spectator";
         }
         Match match = matchFor(conn);
-        if (match == null || !ownsColor(conn, j.color())) {
-            return Protocol.encode(new MoveRejected("not_your_piece"));
+        if (match == null || !ownsColor(conn, color)) {
+            return "not_your_piece";
         }
-        if (!declaredTokenMatchesBoard(match, j.at(), j.color(), j.kind())) {
-            return Protocol.encode(new MoveRejected("token_mismatch"));
+        if (!declaredTokenMatchesBoard(match, position, color, kind)) {
+            return "token_mismatch";
         }
-        match.engine().requestJump(j.at());
-        return Protocol.encode(new MoveAccepted());
+        return null;
     }
 
     private boolean ownsColor(WebSocket conn, Piece.Color declaredColor) {

@@ -45,6 +45,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class NetworkGameProxy extends WebSocketClient implements GameCommands {
 
@@ -259,17 +260,21 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         }
     }
 
-    private MoveResult awaitMoveReply(CompletableFuture<WireMessage> reply) {
+    private <T> T awaitReply(CompletableFuture<WireMessage> reply, Function<WireMessage, T> onSuccess, Function<String, T> onFailure) {
         try {
-            return toMoveResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
+            return onSuccess.apply(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
         } catch (TimeoutException e) {
-            return new MoveResult(false, "timeout");
+            return onFailure.apply("timeout");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return new MoveResult(false, "interrupted");
+            return onFailure.apply("interrupted");
         } catch (ExecutionException e) {
-            return new MoveResult(false, "error");
+            return onFailure.apply("error");
         }
+    }
+
+    private MoveResult awaitMoveReply(CompletableFuture<WireMessage> reply) {
+        return awaitReply(reply, this::toMoveResult, reason -> new MoveResult(false, reason));
     }
 
     private MoveResult toMoveResult(WireMessage message) {
@@ -281,16 +286,7 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     }
 
     private LoginResult awaitLoginReply(CompletableFuture<WireMessage> reply) {
-        try {
-            return toLoginResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
-        } catch (TimeoutException e) {
-            return new LoginResult(false, 0, "timeout");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return new LoginResult(false, 0, "interrupted");
-        } catch (ExecutionException e) {
-            return new LoginResult(false, 0, "error");
-        }
+        return awaitReply(reply, this::toLoginResult, reason -> new LoginResult(false, 0, reason));
     }
 
     private LoginResult toLoginResult(WireMessage message) {
@@ -303,16 +299,7 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     }
 
     private RoomCreateResult awaitRoomCreateReply(CompletableFuture<WireMessage> reply) {
-        try {
-            return toRoomCreateResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
-        } catch (TimeoutException e) {
-            return new RoomCreateResult(false, null, "timeout");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return new RoomCreateResult(false, null, "interrupted");
-        } catch (ExecutionException e) {
-            return new RoomCreateResult(false, null, "error");
-        }
+        return awaitReply(reply, this::toRoomCreateResult, reason -> new RoomCreateResult(false, null, reason));
     }
 
     private RoomCreateResult toRoomCreateResult(WireMessage message) {
@@ -324,16 +311,7 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     }
 
     private RoomJoinResult awaitRoomJoinReply(CompletableFuture<WireMessage> reply) {
-        try {
-            return toRoomJoinResult(reply.get(requestTimeoutMs, TimeUnit.MILLISECONDS));
-        } catch (TimeoutException e) {
-            return new RoomJoinResult(false, false, "timeout");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return new RoomJoinResult(false, false, "interrupted");
-        } catch (ExecutionException e) {
-            return new RoomJoinResult(false, false, "error");
-        }
+        return awaitReply(reply, this::toRoomJoinResult, reason -> new RoomJoinResult(false, false, reason));
     }
 
     private RoomJoinResult toRoomJoinResult(WireMessage message) {

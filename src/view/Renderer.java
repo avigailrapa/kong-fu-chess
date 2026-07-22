@@ -9,6 +9,7 @@ import src.view.snapshot.SelectionSnapshot;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.HashMap;
@@ -59,6 +60,8 @@ public class Renderer {
     private static final int SCORE_TO_LOG_GAP_PX = 40;
     private static final int COORD_LABEL_CENTER_OFFSET_PX = 6;
     private static final int COORD_LABEL_MARGIN_PX = 10;
+    private static final Color PANEL_HEADER_TEXT_COLOR = new Color(240, 240, 240);
+    private static final Color LIGHT_TEXT_COLOR = new Color(220, 220, 220);
 
     private final String piecesRoot;
     private final Map<String, BufferedImage> imageCache = new HashMap<>();
@@ -169,13 +172,13 @@ public class Renderer {
 
         int textX = panelX + PANEL_PADDING;
         int y = PANEL_PADDING + SCORE_LABEL_TOP_OFFSET_PX;
-        canvas.putText(label + ": " + score, textX, y, SCORE_FONT_SIZE, new Color(240, 240, 240), 0);
+        canvas.putText(label + ": " + score, textX, y, SCORE_FONT_SIZE, PANEL_HEADER_TEXT_COLOR, 0);
         y += SCORE_TO_LOG_GAP_PX;
 
         int maxVisibleRows = Math.max(0, (fullHeight - y - PANEL_PADDING) / LOG_LINE_HEIGHT);
         int firstVisible = Math.max(0, moves.size() - maxVisibleRows);
         for (int i = firstVisible; i < moves.size(); i++) {
-            canvas.putText(moves.get(i), textX, y, LOG_FONT_SIZE, new Color(220, 220, 220), 0);
+            canvas.putText(moves.get(i), textX, y, LOG_FONT_SIZE, LIGHT_TEXT_COLOR, 0);
             y += LOG_LINE_HEIGHT;
         }
     }
@@ -185,37 +188,37 @@ public class Renderer {
         for (int col = 0; col < cols; col++) {
             int x = boardOffsetX + (int) Math.round(col * cellWidth + cellWidth / 2.0) - COORD_LABEL_CENTER_OFFSET_PX;
             int y = boardOffsetY - COORD_LABEL_MARGIN_PX;
-            canvas.putText(String.valueOf((char) ('a' + col)), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
+            canvas.putText(String.valueOf((char) ('a' + col)), x, y, COORD_FONT_SIZE, LIGHT_TEXT_COLOR, 0);
         }
 
         for (int row = 0; row < rows; row++) {
             int x = boardOffsetX - ROW_LABEL_WIDTH + COORD_LABEL_MARGIN_PX;
             int y = boardOffsetY + (int) Math.round(row * cellHeight + cellHeight / 2.0) + COORD_LABEL_CENTER_OFFSET_PX;
-            canvas.putText(String.valueOf(rows - row), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
+            canvas.putText(String.valueOf(rows - row), x, y, COORD_FONT_SIZE, LIGHT_TEXT_COLOR, 0);
         }
+    }
+
+    private Rectangle cellRect(int row, int col, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight) {
+        int x = boardOffsetX + (int) Math.round(col * cellWidth);
+        int y = boardOffsetY + (int) Math.round(row * cellHeight);
+        int width = (int) Math.round(cellWidth);
+        int height = (int) Math.round(cellHeight);
+        return new Rectangle(x, y, width, height);
     }
 
     private void drawSelection(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight) {
         for (SelectionSnapshot selection : snapshot.selections()) {
             Position selected = selection.position();
-            int x = boardOffsetX + (int) Math.round(selected.col() * cellWidth);
-            int y = boardOffsetY + (int) Math.round(selected.row() * cellHeight);
-            int width = (int) Math.round(cellWidth);
-            int height = (int) Math.round(cellHeight);
-
-            canvas.drawRect(x, y, width, height, SELECTION_BORDER_COLOR, SELECTION_BORDER_WIDTH_PX);
+            Rectangle rect = cellRect(selected.row(), selected.col(), boardOffsetX, boardOffsetY, cellWidth, cellHeight);
+            canvas.drawRect(rect.x, rect.y, rect.width, rect.height, SELECTION_BORDER_COLOR, SELECTION_BORDER_WIDTH_PX);
         }
     }
 
     private void drawLegalMoves(Img canvas, GameSnapshot snapshot, int boardOffsetX, int boardOffsetY, double cellWidthD, double cellHeightD) {
-        int cellWidth = (int) Math.round(cellWidthD);
-        int cellHeight = (int) Math.round(cellHeightD);
-
         for (Position destination : snapshot.legalDestinations()) {
-            int x = boardOffsetX + (int) Math.round(destination.col() * cellWidthD);
-            int y = boardOffsetY + (int) Math.round(destination.row() * cellHeightD);
+            Rectangle rect = cellRect(destination.row(), destination.col(), boardOffsetX, boardOffsetY, cellWidthD, cellHeightD);
             Color markerColor = snapshot.isOccupied(destination) ? LEGAL_CAPTURE_MARKER_COLOR : LEGAL_MOVE_MARKER_COLOR;
-            canvas.fillRect(x, y, cellWidth, cellHeight, markerColor);
+            canvas.fillRect(rect.x, rect.y, rect.width, rect.height, markerColor);
         }
     }
 
@@ -231,16 +234,13 @@ public class Renderer {
             return;
         }
 
-        int x = boardOffsetX + (int) Math.round(col * cellWidthD);
-        int y = boardOffsetY + (int) Math.round(row * cellHeightD);
-        int width = (int) Math.round(cellWidthD);
-        int height = (int) Math.round(cellHeightD);
-        int fillHeight = (int) Math.round(height * remainingFraction);
-        int fillY = y + (height - fillHeight);
+        Rectangle rect = cellRect(row, col, boardOffsetX, boardOffsetY, cellWidthD, cellHeightD);
+        int fillHeight = (int) Math.round(rect.height * remainingFraction);
+        int fillY = rect.y + (rect.height - fillHeight);
 
         Color fillColor = new Color(REST_COOLDOWN_COLOR.getRed(), REST_COOLDOWN_COLOR.getGreen(),
                 REST_COOLDOWN_COLOR.getBlue(), REST_COOLDOWN_MAX_ALPHA);
-        canvas.fillRect(x, fillY, width, fillHeight, fillColor);
+        canvas.fillRect(rect.x, fillY, rect.width, fillHeight, fillColor);
     }
 
     private void drawPiece(PieceSnapshot piece, Img canvas, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight) {

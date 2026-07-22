@@ -7,6 +7,8 @@ import java.awt.event.MouseEvent;
 
 final class Theme {
 
+    static final String APP_TITLE = "♟ Kung Fu Chess ♟";
+
     static final Color BACKGROUND = new Color(18, 18, 22);
     static final Color PANEL_BACKGROUND = new Color(26, 26, 32);
     static final Color FIELD_BACKGROUND = new Color(40, 40, 48);
@@ -33,19 +35,7 @@ final class Theme {
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(14, 34, 14, 34));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                if (button.isEnabled()) {
-                    button.setBackground(ACCENT_HOVER);
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(ACCENT);
-            }
-        });
+        addHoverEffect(button, ACCENT, ACCENT_HOVER);
         return button;
     }
 
@@ -59,19 +49,7 @@ final class Theme {
                 BorderFactory.createLineBorder(BORDER, 1),
                 BorderFactory.createEmptyBorder(13, 32, 13, 32)));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                if (button.isEnabled()) {
-                    button.setBackground(BORDER);
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(PANEL_BACKGROUND);
-            }
-        });
+        addHoverEffect(button, PANEL_BACKGROUND, BORDER);
         return button;
     }
 
@@ -84,20 +62,24 @@ final class Theme {
         button.setBorder(BorderFactory.createLineBorder(BORDER, 1));
         button.setPreferredSize(new Dimension(34, 34));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        addHoverEffect(button, PANEL_BACKGROUND, BORDER);
+        return button;
+    }
+
+    private static void addHoverEffect(JButton button, Color normal, Color hover) {
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 if (button.isEnabled()) {
-                    button.setBackground(BORDER);
+                    button.setBackground(hover);
                 }
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                button.setBackground(PANEL_BACKGROUND);
+                button.setBackground(normal);
             }
         });
-        return button;
     }
 
     static JTextField textField() {
@@ -141,5 +123,30 @@ final class Theme {
         label.setFont(FIELD_FONT);
         label.setForeground(TEXT);
         return label;
+    }
+
+    record ScreenFrame(JFrame frame, JPanel panel) {
+    }
+
+    static ScreenFrame newScreenFrame(String subtitleText) {
+        JFrame frame = new JFrame(APP_TITLE);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.getContentPane().setBackground(BACKGROUND);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(BACKGROUND);
+        panel.setBorder(BorderFactory.createEmptyBorder(40, 56, 40, 56));
+
+        JLabel title = titleLabel("Kung Fu Chess");
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel subtitle = bodyLabel(subtitleText);
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(6));
+        panel.add(subtitle);
+
+        frame.add(panel);
+        return new ScreenFrame(frame, panel);
     }
 }

@@ -27,8 +27,8 @@ public class PathCrossingResolver {
 
                 Motion motionA = activeMotions.get(pieceA);
                 Motion motionB = activeMotions.get(pieceB);
-                List<Position> pathA = intermediateCells(motionA);
-                List<Position> pathB = intermediateCells(motionB);
+                List<Position> pathA = motionA.intermediateCells();
+                List<Position> pathB = motionB.intermediateCells();
 
                 Position crossing = firstSharedCell(pathA, pathB);
                 if (crossing == null) {
@@ -78,7 +78,7 @@ public class PathCrossingResolver {
     }
 
     private Motion truncateBeforeStep(Motion motion, int crossingIndex, double perCellDurationMs) {
-        Position newDestination = cellAtDistance(motion, crossingIndex);
+        Position newDestination = motion.cellAtDistance(crossingIndex);
         long newDurationMs = Math.round(crossingIndex * perCellDurationMs);
         return new Motion(motion.piece(), motion.source(), newDestination, newDurationMs);
     }
@@ -95,36 +95,6 @@ public class PathCrossingResolver {
     private double perCellDurationMs(Motion motion, List<Position> intermediateCells) {
         int totalCells = intermediateCells.size() + 1;  
         return (double) motion.durationMs() / totalCells;
-    }
-
-  
-    private List<Position> intermediateCells(Motion motion) {
-        List<Position> cells = new ArrayList<>();
-        int deltaRow = motion.destination().row() - motion.source().row();
-        int deltaCol = motion.destination().col() - motion.source().col();
-        boolean isStraightLine = deltaRow == 0 || deltaCol == 0 || Math.abs(deltaRow) == Math.abs(deltaCol);
-        if (!isStraightLine) {
-            return cells;
-        }
-
-        int rowStep = Integer.signum(deltaRow);
-        int colStep = Integer.signum(deltaCol);
-        Position current = motion.source();
-
-        while (!current.equals(motion.destination())) {
-            current = new Position(current.row() + rowStep, current.col() + colStep);
-            if (current.equals(motion.destination())) {
-                break;
-            }
-            cells.add(current);
-        }
-        return cells;
-    }
-
-    private Position cellAtDistance(Motion motion, int distance) {
-        int rowStep = Integer.signum(motion.destination().row() - motion.source().row());
-        int colStep = Integer.signum(motion.destination().col() - motion.source().col());
-        return new Position(motion.source().row() + rowStep * distance, motion.source().col() + colStep * distance);
     }
 
     private boolean isSliding(Piece.Kind kind) {

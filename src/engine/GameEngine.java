@@ -202,7 +202,7 @@ public class GameEngine implements GameCommands {
         if (selectedPiece == null) {
             return Set.of();
         }
-        if (arbiter.isMoving(selectedPiece) || arbiter.isResting(selectedPiece) || arbiter.isJumping(selectedPiece)) {
+        if (arbiter.isBusy(selectedPiece)) {
             return Set.of();
         }
         return ruleEngine.legalDestinations(board, selectedPosition);
