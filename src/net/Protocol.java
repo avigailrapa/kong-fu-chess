@@ -22,10 +22,12 @@ import src.net.messages.RatingChanged;
 import src.net.messages.RoomCreateCommand;
 import src.net.messages.RoomId;
 import src.net.messages.RoomJoinCommand;
+import src.net.messages.OpponentReconnected;
 import src.net.messages.SelectCommand;
 import src.net.messages.Spectating;
 import src.net.messages.StateMessage;
 import src.net.messages.Welcome;
+import src.net.messages.WelcomeBack;
 import src.net.messages.WireMessage;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
@@ -44,6 +46,7 @@ public final class Protocol {
     private static final Pattern JUMP_PATTERN = Pattern.compile("^JUMP ([WB])([KQRBNP])([a-h][1-8])$");
     private static final Pattern LOGIN_PATTERN = Pattern.compile("^LOGIN (\\S+) (\\S+)$");
     private static final Pattern WELCOME_PATTERN = Pattern.compile("^WELCOME (-?\\d+)$");
+    private static final Pattern WELCOME_BACK_PATTERN = Pattern.compile("^WELCOME_BACK (-?\\d+)$");
     private static final Pattern SELECT_COMMAND_PATTERN = Pattern.compile("^SELECT (-|[a-h][1-8])$");
     private static final Pattern MOVE_EVENT_PATTERN = Pattern.compile(
             "^EVENT_MOVE ([WB])([KQRBNP])([a-h][1-8])([a-h][1-8]) ([01]) ([01]) ([01]) (\\d+)$");
@@ -77,6 +80,10 @@ public final class Protocol {
         Matcher loginMatcher = LOGIN_PATTERN.matcher(frameBody);
         if (loginMatcher.matches()) {
             return new LoginCommand(loginMatcher.group(1), loginMatcher.group(2));
+        }
+        Matcher welcomeBackMatcher = WELCOME_BACK_PATTERN.matcher(frameBody);
+        if (welcomeBackMatcher.matches()) {
+            return new WelcomeBack(Integer.parseInt(welcomeBackMatcher.group(1)));
         }
         Matcher welcomeMatcher = WELCOME_PATTERN.matcher(frameBody);
         if (welcomeMatcher.matches()) {
@@ -138,6 +145,9 @@ public final class Protocol {
         if (frameBody.equals("SPECTATING")) {
             return new Spectating();
         }
+        if (frameBody.equals("OPPONENT_RECONNECTED")) {
+            return new OpponentReconnected();
+        }
         if (frameBody.startsWith(REJECT_PREFIX)) {
             String reason = frameBody.substring(REJECT_PREFIX.length());
             if (reason.isBlank()) {
@@ -178,6 +188,8 @@ public final class Protocol {
             case RoomJoinCommand rj -> "ROOM_JOIN " + rj.roomId();
             case RoomId ri -> "ROOM_ID " + ri.roomId();
             case Spectating _ -> "SPECTATING";
+            case WelcomeBack w -> "WELCOME_BACK " + w.rating();
+            case OpponentReconnected _ -> "OPPONENT_RECONNECTED";
         };
     }
 

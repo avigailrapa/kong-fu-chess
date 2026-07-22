@@ -11,6 +11,7 @@ import src.net.client.RoomJoinResult;
 import src.net.messages.DisconnectCountdown;
 import src.net.messages.MatchFound;
 import src.net.messages.MatchTimeout;
+import src.net.messages.OpponentReconnected;
 import src.net.messages.RatingChanged;
 import src.view.GameSnapshot;
 import src.view.GameWindow;
@@ -46,7 +47,7 @@ public class ClientMain {
         new File(DATA_DIR).mkdirs();
         ClientActivityLog activityLog = new ClientActivityLog(DATA_DIR + "/activity.log");
 
-        NetworkGameProxy proxy = new NetworkGameProxy(URI.create(serverUrl), REQUEST_TIMEOUT_MS);
+        NetworkGameProxy proxy = new NetworkGameProxy(URI.create(serverUrl), REQUEST_TIMEOUT_MS, activityLog);
         try {
             if (!proxy.connectBlocking(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 System.err.println("Could not connect to server at " + serverUrl);
@@ -79,7 +80,13 @@ public class ClientMain {
             activityLog.log(username + " logged in (rating " + result.rating() + ")");
             System.out.println("Welcome, " + username + " (rating " + result.rating() + ")");
             loginScreenRef.get().close();
-            openHomeScreen(proxy, activityLog);
+            if ("reconnected".equals(result.reason())) {
+                activityLog.log(username + " reconnected to an active match");
+                System.out.println("Reconnected to your active match");
+                enterGameWindow(proxy);
+            } else {
+                openHomeScreen(proxy, activityLog);
+            }
         });
         loginScreenRef.set(loginScreen);
         loginScreen.open();
@@ -154,12 +161,17 @@ public class ClientMain {
         activityLog.log("match found vs " + matchFound.opponentUsername());
         System.out.println("Match found vs " + matchFound.opponentUsername() + " (rating "
                 + matchFound.opponentRating() + "), playing as " + matchFound.assignedColor());
+        enterGameWindow(proxy);
+    }
 
+    private static void enterGameWindow(NetworkGameProxy proxy) {
         Supplier<GameWindow.GameComponents> gameFactory = () -> createGame(proxy);
         GameWindow window = new GameWindow(gameFactory);
         proxy.eventBus().subscribe(DisconnectCountdown.class, disconnectCountdown -> SwingUtilities.invokeLater(
                 () -> window.setStatusMessage("Opponent disconnected - resigning in "
                         + disconnectCountdown.secondsRemaining() + "s")));
+        proxy.eventBus().subscribe(OpponentReconnected.class, reconnected -> SwingUtilities.invokeLater(
+                () -> window.setStatusMessage("♟ Kung Fu Chess ♟")));
 
         try {
             waitForInitialState(proxy);

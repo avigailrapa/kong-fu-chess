@@ -23,6 +23,7 @@ import src.net.messages.MoveCommand;
 import src.net.messages.MoveOccurred;
 import src.net.messages.MoveRejected;
 import src.net.messages.NewGameCommand;
+import src.net.messages.OpponentReconnected;
 import src.net.messages.PlayCommand;
 import src.net.messages.RatingChanged;
 import src.net.messages.RoomCreateCommand;
@@ -32,6 +33,7 @@ import src.net.messages.SelectCommand;
 import src.net.messages.Spectating;
 import src.net.messages.StateMessage;
 import src.net.messages.Welcome;
+import src.net.messages.WelcomeBack;
 import src.net.messages.WireMessage;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
@@ -42,6 +44,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 public class NetworkGameProxy extends WebSocketClient implements GameCommands {
 
@@ -58,9 +61,28 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     @Accessors(fluent = true)
     private volatile int latestRating;
 
+    private final ClientActivityLog activityLog;
+
     public NetworkGameProxy(URI serverUri, long requestTimeoutMs) {
+        this(serverUri, requestTimeoutMs, null);
+    }
+
+    public NetworkGameProxy(URI serverUri, long requestTimeoutMs, ClientActivityLog activityLog) {
         super(serverUri);
         this.requestTimeoutMs = requestTimeoutMs;
+        this.activityLog = activityLog;
+    }
+
+    @Override
+    public void send(String text) {
+        logDirection("CLIENT_TO_SERVER", text);
+        super.send(text);
+    }
+
+    private void logDirection(String direction, String text) {
+        if (activityLog != null && !text.startsWith("STATE ")) {
+            activityLog.log(direction + " " + text);
+        }
     }
 
     @Override
@@ -69,6 +91,7 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
 
     @Override
     public void onMessage(String message) {
+        logDirection("SERVER_TO_CLIENT", message);
         WireMessage parsed;
         try {
             parsed = Protocol.parse(message);
@@ -83,6 +106,11 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
                 latestRating = w.rating();
                 completeOldestPendingReply(w);
             }
+            case WelcomeBack w -> {
+                latestRating = w.rating();
+                completeOldestPendingReply(w);
+            }
+            case OpponentReconnected r -> eventBus.publish(r);
             case MoveOccurred mo -> eventBus.publish(mo.event());
             case GameOverMessage go -> eventBus.publish(go.event());
             case RatingChanged r -> {
@@ -129,7 +157,6 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         return latestSnapshot != null && latestSnapshot.isOccupied(position);
     }
 
-    @Override
     public MoveResult requestMove(Position source, Position destination) {
         PieceSnapshot piece = pieceAt(source);
         if (piece == null) {
@@ -138,6 +165,29 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         CompletableFuture<WireMessage> reply = enqueuePendingReply();
         send(Protocol.encode(new MoveCommand(piece.color(), piece.kind(), source, destination)));
         return awaitMoveReply(reply);
+    }
+
+    @Override
+    public void requestMove(Position source, Position destination, Consumer<MoveResult> onResult) {
+        PieceSnapshot piece = pieceAt(source);
+        if (piece == null) {
+            onResult.accept(new MoveResult(false, "empty_source"));
+            return;
+        }
+        CompletableFuture<WireMessage> reply = enqueuePendingReply();
+        send(Protocol.encode(new MoveCommand(piece.color(), piece.kind(), source, destination)));
+        reply.orTimeout(requestTimeoutMs, TimeUnit.MILLISECONDS)
+                .whenComplete((message, error) -> onResult.accept(toAsyncMoveResult(message, error)));
+    }
+
+    private MoveResult toAsyncMoveResult(WireMessage message, Throwable error) {
+        if (error instanceof TimeoutException) {
+            return new MoveResult(false, "timeout");
+        }
+        if (error != null) {
+            return new MoveResult(false, "error");
+        }
+        return toMoveResult(message);
     }
 
     @Override
@@ -246,6 +296,7 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     private LoginResult toLoginResult(WireMessage message) {
         return switch (message) {
             case Welcome w -> new LoginResult(true, w.rating(), "ok");
+            case WelcomeBack w -> new LoginResult(true, w.rating(), "reconnected");
             case MoveRejected r -> new LoginResult(false, 0, r.reason());
             default -> new LoginResult(false, 0, "unexpected_message");
         };

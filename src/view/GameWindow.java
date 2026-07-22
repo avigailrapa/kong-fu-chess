@@ -60,13 +60,14 @@ public class GameWindow {
                 if (SwingUtilities.isRightMouseButton(e)) {
                     clickHandler.jump(x, y);
                 } else {
-                    clickHandler.click(x, y).ifPresent(result -> {
+                    clickHandler.click(x, y, result -> SwingUtilities.invokeLater(() -> {
                         if (result.isAccepted()) {
                             effects.announceMoveAccepted();
                         } else {
                             effects.announceIllegalMove();
                         }
-                    });
+                        repaint();
+                    }));
                 }
                 repaint();
             }
@@ -229,8 +230,11 @@ public class GameWindow {
 
         void setImage(BufferedImage image) {
             this.image = image;
-            setPreferredSize(new Dimension(image.getWidth(), image.getHeight()));
-            revalidate();
+            Dimension newSize = new Dimension(image.getWidth(), image.getHeight());
+            if (!newSize.equals(getPreferredSize())) {
+                setPreferredSize(newSize);
+                revalidate();
+            }
             repaint();
         }
 

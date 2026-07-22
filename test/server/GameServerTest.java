@@ -454,4 +454,72 @@ public class GameServerTest {
     private String roomIdFrom(String roomIdReply) {
         return roomIdReply.substring("ROOM_ID ".length());
     }
+
+    @Test
+    public void testReconnectWithinCountdownCancelsAutoResignAndResumesMatch() throws InterruptedException {
+        ActivityLog activityLog = tempActivityLog();
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
+                new UserStore("jdbc:sqlite::memory:"), 1000, 2, activityLog);
+        WebSocket whiteConn = new FakeWebSocket();
+        WebSocket blackConn = new FakeWebSocket();
+        login(server, whiteConn, "alice");
+        login(server, blackConn, "bob");
+        server.handleMessage(whiteConn, "PLAY");
+        server.handleMessage(blackConn, "PLAY");
+        Match match = server.matchFor(whiteConn);
+
+        server.onClose(whiteConn, 1000, "test", false);
+        WebSocket reconnectConn = new FakeWebSocket();
+        String reply = server.handleMessage(reconnectConn, "LOGIN alice pw");
+
+        assertEquals("WELCOME_BACK 1200", reply);
+        assertSame(match, server.matchFor(reconnectConn));
+
+        Thread.sleep(2500);
+        assertFalse(match.engine().snapshot(null).gameOver());
+    }
+
+    @Test
+    public void testReconnectWithWrongPasswordIsRejectedAndCountdownContinues() throws InterruptedException {
+        ActivityLog activityLog = tempActivityLog();
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
+                new UserStore("jdbc:sqlite::memory:"), 1000, 1, activityLog);
+        WebSocket whiteConn = new FakeWebSocket();
+        WebSocket blackConn = new FakeWebSocket();
+        login(server, whiteConn, "alice");
+        login(server, blackConn, "bob");
+        server.handleMessage(whiteConn, "PLAY");
+        server.handleMessage(blackConn, "PLAY");
+        Match match = server.matchFor(whiteConn);
+
+        server.onClose(whiteConn, 1000, "test", false);
+        String reply = server.handleMessage(new FakeWebSocket(), "LOGIN alice wrongpw");
+
+        assertEquals("REJECT bad_credentials", reply);
+
+        Thread.sleep(1500);
+        assertTrue(match.engine().snapshot(null).gameOver());
+    }
+
+    @Test
+    public void testDisconnectedSpectatorDoesNotStartResignCountdown() throws InterruptedException {
+        ActivityLog activityLog = tempActivityLog();
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
+                new UserStore("jdbc:sqlite::memory:"), 1000, 1, activityLog);
+        WebSocket creatorConn = new FakeWebSocket();
+        WebSocket joinerConn = new FakeWebSocket();
+        WebSocket spectatorConn = new FakeWebSocket();
+        login(server, creatorConn, "alice");
+        login(server, joinerConn, "bob");
+        login(server, spectatorConn, "carol");
+        String roomId = roomIdFrom(server.handleMessage(creatorConn, "ROOM_CREATE"));
+        server.handleMessage(joinerConn, "ROOM_JOIN " + roomId);
+        server.handleMessage(spectatorConn, "ROOM_JOIN " + roomId);
+        Match match = server.matchFor(creatorConn);
+
+        server.onClose(spectatorConn, 1000, "test", false);
+        Thread.sleep(1500);
+
+        assertFalse(match.engine().snapshot(null).gameOver());
+    }
 }
