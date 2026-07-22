@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.ToLongFunction;
 
 public class RealTimeArbiter {
 
@@ -72,6 +73,10 @@ public class RealTimeArbiter {
 
     public boolean isResting(Piece piece) {
         return isLongResting(piece) || isShortResting(piece);
+    }
+
+    public boolean isBusy(Piece piece) {
+        return isMoving(piece) || isJumping(piece) || isResting(piece);
     }
 
     public boolean isLongResting(Piece piece) {
@@ -152,12 +157,7 @@ public class RealTimeArbiter {
     }
 
     private void resolveRestTicks(Map<Piece, Long> elapsedByPiece, long durationMs) {
-        List<Piece> duePieces = new ArrayList<>();
-        for (Map.Entry<Piece, Long> entry : elapsedByPiece.entrySet()) {
-            if (entry.getValue() >= durationMs) {
-                duePieces.add(entry.getKey());
-            }
-        }
+        List<Piece> duePieces = piecesAtOrPast(elapsedByPiece, piece -> durationMs);
         for (Piece piece : duePieces) {
             elapsedByPiece.remove(piece);
             if (piece.state() != Piece.State.CAPTURED) {
@@ -167,19 +167,17 @@ public class RealTimeArbiter {
     }
 
     private List<Piece> dueMotionPieces() {
-        List<Piece> duePieces = new ArrayList<>();
-        for (Map.Entry<Piece, Motion> entry : activeMotions.entrySet()) {
-            if (motionElapsedMs.get(entry.getKey()) >= entry.getValue().durationMs()) {
-                duePieces.add(entry.getKey());
-            }
-        }
-        return duePieces;
+        return piecesAtOrPast(motionElapsedMs, piece -> activeMotions.get(piece).durationMs());
     }
 
     private List<Piece> dueJumpPieces() {
+        return piecesAtOrPast(jumpElapsedMs, piece -> JUMP_DURATION_MS);
+    }
+
+    private List<Piece> piecesAtOrPast(Map<Piece, Long> elapsedMs, ToLongFunction<Piece> durationMs) {
         List<Piece> duePieces = new ArrayList<>();
-        for (Map.Entry<Piece, Position> entry : activeJumps.entrySet()) {
-            if (jumpElapsedMs.get(entry.getKey()) >= JUMP_DURATION_MS) {
+        for (Map.Entry<Piece, Long> entry : elapsedMs.entrySet()) {
+            if (entry.getValue() >= durationMs.applyAsLong(entry.getKey())) {
                 duePieces.add(entry.getKey());
             }
         }

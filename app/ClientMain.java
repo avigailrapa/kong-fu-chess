@@ -18,7 +18,6 @@ import src.view.screens.GameWindow;
 import src.view.screens.HomeScreen;
 import src.view.screens.LoginScreen;
 import src.view.Renderer;
-import src.view.sound.ClipSoundPlayer;
 import src.view.sound.EffectsController;
 
 import javax.swing.*;
@@ -62,8 +61,7 @@ public class ClientMain {
             System.exit(1);
         }
 
-        System.setProperty("sun.java2d.uiScale", "1");
-        System.setProperty("sun.java2d.dpiaware", "true");
+        AppSupport.disableHiDpiScaling();
 
         SwingUtilities.invokeLater(() -> openLoginScreen(proxy, activityLog));
     }
@@ -172,15 +170,8 @@ public class ClientMain {
                 () -> window.setStatusMessage("Opponent disconnected - resigning in "
                         + disconnectCountdown.secondsRemaining() + "s")));
         proxy.eventBus().subscribe(OpponentReconnected.class, reconnected -> SwingUtilities.invokeLater(
-                () -> window.setStatusMessage("♟ Kung Fu Chess ♟")));
-
-        try {
-            waitForInitialState(proxy);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
-        window.open();
+                window::clearStatusMessage));
+        openWindow(proxy, window);
     }
 
     private static void startSpectating(NetworkGameProxy proxy, ClientActivityLog activityLog) {
@@ -190,7 +181,10 @@ public class ClientMain {
 
         Supplier<GameWindow.GameComponents> gameFactory = () -> createGame(proxy);
         GameWindow window = new GameWindow(gameFactory);
+        openWindow(proxy, window);
+    }
 
+    private static void openWindow(NetworkGameProxy proxy, GameWindow window) {
         try {
             waitForInitialState(proxy);
         } catch (InterruptedException e) {
@@ -219,8 +213,7 @@ public class ClientMain {
         };
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> proxy.latestSnapshot().withZoom(zoom);
         proxy.eventBus().subscribe(RatingChanged.class, r -> System.out.println("New rating: " + r.newRating()));
-        EffectsController effects = new EffectsController(proxy.eventBus(), new ClipSoundPlayer("assets"));
-        effects.announceGameStart();
+        EffectsController effects = AppSupport.startEffects(proxy.eventBus());
         return new GameWindow.GameComponents(tickSource, snapshotSupplier, clickHandler, renderer, effects);
     }
 
@@ -228,7 +221,7 @@ public class ClientMain {
         long deadline = System.currentTimeMillis() + NEW_GAME_CONFIRM_TIMEOUT_MS;
         while (proxy.latestSnapshot().gameOver() && System.currentTimeMillis() < deadline) {
             try {
-                Thread.sleep(20);
+                Thread.sleep(POLL_INTERVAL_MS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
@@ -239,7 +232,7 @@ public class ClientMain {
     private static void waitForInitialState(NetworkGameProxy proxy) throws InterruptedException {
         long deadline = System.currentTimeMillis() + INITIAL_STATE_TIMEOUT_MS;
         while (proxy.latestSnapshot() == null && System.currentTimeMillis() < deadline) {
-            Thread.sleep(20);
+            Thread.sleep(POLL_INTERVAL_MS);
         }
         if (proxy.latestSnapshot() == null) {
             throw new IllegalStateException(

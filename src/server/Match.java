@@ -31,11 +31,9 @@ public class Match {
     private ScheduledFuture<?> tickTask;
 
     public Match(GameEngine engine, long tickIntervalMs) {
-        this.engine = engine;
         this.tickIntervalMs = tickIntervalMs;
-        this.moveLogger = new MoveLogger();
-        engine.addMoveObserver(moveLogger);
         this.executor = Executors.newSingleThreadScheduledExecutor();
+        rewire(engine);
     }
 
     public void onNewGame(Runnable listener) {
@@ -43,10 +41,14 @@ public class Match {
     }
 
     public void newGame(GameEngine engine) {
+        rewire(engine);
+        onNewGame.run();
+    }
+
+    private void rewire(GameEngine engine) {
         this.engine = engine;
         this.moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
-        onNewGame.run();
     }
 
     public void start(Runnable onTick) {

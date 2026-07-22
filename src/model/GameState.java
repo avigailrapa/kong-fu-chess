@@ -33,6 +33,6 @@ public class GameState {
     }
 
     public void endGame() {
-        this.gameOver = true;
+        endGame(null);
     }
 }

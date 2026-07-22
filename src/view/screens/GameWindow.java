@@ -43,7 +43,7 @@ public class GameWindow {
         bindComponents(gameFactory.get());
 
         this.panel = new ImagePanel();
-        this.frame = new JFrame("♟ Kung Fu Chess ♟");
+        this.frame = new JFrame(Theme.APP_TITLE);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         JScrollPane scrollPane = new JScrollPane(new CenteringPanel(panel));
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -163,10 +163,14 @@ public class GameWindow {
         frame.setTitle(message);
     }
 
+    public void clearStatusMessage() {
+        frame.setTitle(Theme.APP_TITLE);
+    }
+
     private void restart() {
         bindComponents(gameFactory.get());
         this.gameOverAnnounced = false;
-        frame.setTitle("♟ Kung Fu Chess ♟");
+        frame.setTitle(Theme.APP_TITLE);
         if (!timer.isRunning()) {
             timer.start();
         }

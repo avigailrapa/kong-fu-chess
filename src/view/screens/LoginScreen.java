@@ -14,19 +14,9 @@ public class LoginScreen {
     private final JLabel statusLabel;
 
     public LoginScreen(BiConsumer<String, String> onLoginClicked) {
-        this.frame = new JFrame("♟ Kung Fu Chess ♟");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().setBackground(Theme.BACKGROUND);
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(Theme.BACKGROUND);
-        panel.setBorder(BorderFactory.createEmptyBorder(40, 56, 40, 56));
-
-        JLabel title = Theme.titleLabel("Kung Fu Chess");
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JLabel subtitle = Theme.bodyLabel("New usernames are registered automatically");
-        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        Theme.ScreenFrame screenFrame = Theme.newScreenFrame("New usernames are registered automatically");
+        this.frame = screenFrame.frame();
+        JPanel panel = screenFrame.panel();
 
         JLabel usernameLabel = Theme.bodyLabel("Username");
         usernameLabel.setHorizontalAlignment(SwingConstants.LEFT);
@@ -62,9 +52,6 @@ public class LoginScreen {
         loginButton.addActionListener(submit);
         passwordField.addActionListener(submit);
 
-        panel.add(title);
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(subtitle);
         panel.add(Box.createVerticalStrut(26));
         panel.add(usernameLabel);
         panel.add(Box.createVerticalStrut(4));

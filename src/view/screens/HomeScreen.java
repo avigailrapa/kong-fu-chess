@@ -21,19 +21,9 @@ public class HomeScreen {
                        Consumer<String> onRoomJoin) {
         this.onRoomCreate = onRoomCreate;
         this.onRoomJoin = onRoomJoin;
-        this.frame = new JFrame("♟ Kung Fu Chess ♟");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().setBackground(Theme.BACKGROUND);
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(Theme.BACKGROUND);
-        panel.setBorder(BorderFactory.createEmptyBorder(40, 56, 40, 56));
-
-        JLabel title = Theme.titleLabel("Kung Fu Chess");
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JLabel subtitle = Theme.bodyLabel("Find an opponent or play in a private room");
-        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        Theme.ScreenFrame screenFrame = Theme.newScreenFrame("Find an opponent or play in a private room");
+        this.frame = screenFrame.frame();
+        JPanel panel = screenFrame.panel();
 
         this.playButton = Theme.primaryButton("Play");
         playButton.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -52,9 +42,6 @@ public class HomeScreen {
         statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         statusLabel.setVisible(false);
 
-        panel.add(title);
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(subtitle);
         panel.add(Box.createVerticalStrut(28));
         panel.add(playButton);
         panel.add(Box.createVerticalStrut(12));

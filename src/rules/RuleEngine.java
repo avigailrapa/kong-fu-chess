@@ -23,11 +23,7 @@ public class RuleEngine {
             return Set.of();
         }
 
-        PieceRules pieceRules = rulesByKind.get(movingPiece.kind());
-        if (pieceRules == null) {
-            throw new IllegalStateException("No movement rule configured for " + movingPiece.kind());
-        }
-        return pieceRules.legalDestinations(board, movingPiece);
+        return rulesFor(movingPiece.kind()).legalDestinations(board, movingPiece);
     }
 
     public MoveValidation validateMove(IBoard board, Position source, Position destination) {
@@ -45,15 +41,19 @@ public class RuleEngine {
             return MoveValidation.invalid("friendly_destination");
         }
 
-        PieceRules pieceRules = rulesByKind.get(movingPiece.kind());
-        if (pieceRules == null) {
-            throw new IllegalStateException("No movement rule configured for " + movingPiece.kind());
-        }
-        Set<Position> legalDestinations = pieceRules.legalDestinations(board, movingPiece);
+        Set<Position> legalDestinations = rulesFor(movingPiece.kind()).legalDestinations(board, movingPiece);
         if (!legalDestinations.contains(destination)) {
             return MoveValidation.invalid("illegal_piece_move");
         }
 
         return MoveValidation.ok();
+    }
+
+    private PieceRules rulesFor(Piece.Kind kind) {
+        PieceRules pieceRules = rulesByKind.get(kind);
+        if (pieceRules == null) {
+            throw new IllegalStateException("No movement rule configured for " + kind);
+        }
+        return pieceRules;
     }
 }
