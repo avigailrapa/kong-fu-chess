@@ -4,6 +4,7 @@ import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 import src.view.AnimationConfig;
+import src.view.Renderer;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -34,7 +35,7 @@ public class RealTimeArbiter {
     private final Map<Piece, Long> shortRestElapsedMs = new LinkedHashMap<>();
 
     public RealTimeArbiter(IBoard board) {
-        this(board, "assets/pieces");
+        this(board, Renderer.DEFAULT_PIECES_ROOT);
     }
 
     public RealTimeArbiter(IBoard board, String piecesRoot) {

@@ -16,6 +16,9 @@ public class GameWindow {
 
     private static final int SCREEN_CHROME_ALLOWANCE_PX = 80;
     private static final double ZOOM_STEP = 0.1;
+    private static final int TICK_INTERVAL_MS = 16;
+    private static final Dimension ZOOM_LABEL_SIZE = new Dimension(52, 20);
+    private static final int PERCENT_SCALE = 100;
 
     private final Supplier<GameComponents> gameFactory;
     private ClickHandler clickHandler;
@@ -73,7 +76,7 @@ public class GameWindow {
             }
         });
 
-        this.timer = new Timer(16, e -> tick(16));
+        this.timer = new Timer(TICK_INTERVAL_MS, e -> tick(TICK_INTERVAL_MS));
     }
 
     private void bindComponents(GameComponents components) {
@@ -94,7 +97,7 @@ public class GameWindow {
         this.zoomLabel = new JLabel(zoomPercentText(), SwingConstants.CENTER);
         zoomLabel.setFont(Theme.LABEL_FONT);
         zoomLabel.setForeground(Theme.TEXT_MUTED);
-        zoomLabel.setPreferredSize(new Dimension(52, 20));
+        zoomLabel.setPreferredSize(ZOOM_LABEL_SIZE);
 
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         toolbar.setBackground(Theme.BACKGROUND);
@@ -126,7 +129,7 @@ public class GameWindow {
     }
 
     private String zoomPercentText() {
-        return Math.round(zoom * 100) + "%";
+        return Math.round(zoom * PERCENT_SCALE) + "%";
     }
 
     public void open() {
@@ -186,6 +189,9 @@ public class GameWindow {
     }
 
     private static class CenteringPanel extends JPanel implements Scrollable {
+        private static final int SCROLL_UNIT_INCREMENT_PX = 16;
+        private static final int SCROLL_BLOCK_INCREMENT_PX = 100;
+
         private final JComponent child;
 
         CenteringPanel(JComponent child) {
@@ -202,12 +208,12 @@ public class GameWindow {
 
         @Override
         public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 16;
+            return SCROLL_UNIT_INCREMENT_PX;
         }
 
         @Override
         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 100;
+            return SCROLL_BLOCK_INCREMENT_PX;
         }
 
         @Override

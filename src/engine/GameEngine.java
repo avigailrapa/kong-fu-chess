@@ -21,6 +21,12 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class GameEngine implements GameCommands {
 
+    private static final int PAWN_VALUE = 1;
+    private static final int MINOR_PIECE_VALUE = 3;
+    private static final int ROOK_VALUE = 5;
+    private static final int QUEEN_VALUE = 9;
+    private static final int KING_VALUE = 0;
+
     private final Board board;
     private final GameState gameState;
     private final RuleEngine ruleEngine;
@@ -151,11 +157,11 @@ public class GameEngine implements GameCommands {
 
     private int getPieceValue(Piece.Kind kind) {
         return switch (kind) {
-            case PAWN -> 1;
-            case KNIGHT, BISHOP -> 3;
-            case ROOK -> 5;
-            case QUEEN -> 9;
-            case KING -> 0;
+            case PAWN -> PAWN_VALUE;
+            case KNIGHT, BISHOP -> MINOR_PIECE_VALUE;
+            case ROOK -> ROOK_VALUE;
+            case QUEEN -> QUEEN_VALUE;
+            case KING -> KING_VALUE;
         };
     }
 
