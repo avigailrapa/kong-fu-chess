@@ -3,7 +3,7 @@ package integration;
 import org.junit.jupiter.api.Test;
 import src.server.ActivityLog;
 import src.server.GameServer;
-import src.server.UserStore;
+import src.server.auth.UserStore;
 
 import java.io.File;
 import java.net.InetSocketAddress;

@@ -11,8 +11,8 @@ import src.net.client.RoomJoinResult;
 import src.net.messages.MatchFound;
 import src.server.ActivityLog;
 import src.server.GameServer;
-import src.server.UserStore;
-import src.view.GameSnapshot;
+import src.server.auth.UserStore;
+import src.view.snapshot.GameSnapshot;
 
 import java.io.File;
 import java.net.InetSocketAddress;

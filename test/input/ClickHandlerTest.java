@@ -4,7 +4,7 @@ import src.model.*;
 import src.rules.*;
 import src.input.*;
 import src.realtime.*;
-import src.view.*;
+import src.view.snapshot.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

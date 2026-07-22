@@ -3,6 +3,7 @@ package src.server;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import src.server.auth.UserStore;
 
 import java.net.InetSocketAddress;
 

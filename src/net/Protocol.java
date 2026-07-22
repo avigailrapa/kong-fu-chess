@@ -29,9 +29,9 @@ import src.net.messages.StateMessage;
 import src.net.messages.Welcome;
 import src.net.messages.WelcomeBack;
 import src.net.messages.WireMessage;
-import src.view.GameSnapshot;
-import src.view.PieceSnapshot;
-import src.view.SelectionSnapshot;
+import src.view.snapshot.GameSnapshot;
+import src.view.snapshot.PieceSnapshot;
+import src.view.snapshot.SelectionSnapshot;
 
 import java.util.ArrayList;
 import java.util.HashSet;

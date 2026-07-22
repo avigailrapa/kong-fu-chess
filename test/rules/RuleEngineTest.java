@@ -1,6 +1,7 @@
 package rules;
 import src.model.*;
 import src.rules.*;
+import src.rules.pieces.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -8,8 +8,8 @@ import src.net.Protocol;
 import src.net.client.NetworkGameProxy;
 import src.net.messages.RatingChanged;
 import src.net.messages.StateMessage;
-import src.view.GameSnapshot;
-import src.view.PieceSnapshot;
+import src.view.snapshot.GameSnapshot;
+import src.view.snapshot.PieceSnapshot;
 
 import java.net.URI;
 import java.util.List;
