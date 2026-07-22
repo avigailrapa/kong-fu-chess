@@ -17,6 +17,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class Renderer {
 
+    public static final String DEFAULT_PIECES_ROOT = "assets/pieces";
+
     private static final int PANEL_WIDTH = 320;
     private static final int PANEL_PADDING = 16;
     private static final int LOG_LINE_HEIGHT = 34;
@@ -36,13 +38,24 @@ public class Renderer {
     private static final Color GAME_OVER_BACKGROUND_COLOR = new Color(0, 0, 0, 140);
     private static final int GAME_OVER_BAND_HEIGHT = 100;
     private static final Color LEGAL_CAPTURE_MARKER_COLOR = new Color(220, 40, 40, 160);
-    private static final Color REST_COOLDOWN_COLOR = new Color(255, 215, 0);
+    private static final Color GOLD_ACCENT_COLOR = new Color(255, 215, 0);
+    private static final Color REST_COOLDOWN_COLOR = GOLD_ACCENT_COLOR;
     private static final int REST_COOLDOWN_MAX_ALPHA = 180;
     private static final String BOARD_IMAGE_FILENAME = "board.png";
-    private static final Color BANNER_TEXT_COLOR = new Color(255, 215, 0);
+    private static final Color BANNER_TEXT_COLOR = GOLD_ACCENT_COLOR;
     private static final Color BANNER_BACKGROUND_COLOR = new Color(0, 0, 0, 160);
     private static final float BANNER_FONT_SIZE = 2.4f;
     private static final int BANNER_HEIGHT = 60;
+    private static final Color SELECTION_BORDER_COLOR = GOLD_ACCENT_COLOR;
+    private static final int SELECTION_BORDER_WIDTH_PX = 4;
+    private static final int CAPTION_CHAR_WIDTH_ESTIMATE_PX = 11;
+    private static final int CAPTION_VERTICAL_OFFSET_PX = 14;
+    private static final int TITLE_CHAR_WIDTH_ESTIMATE_PX = 8;
+    private static final int TITLE_VERTICAL_INSET_PX = 12;
+    private static final int SCORE_LABEL_TOP_OFFSET_PX = 18;
+    private static final int SCORE_TO_LOG_GAP_PX = 40;
+    private static final int COORD_LABEL_CENTER_OFFSET_PX = 6;
+    private static final int COORD_LABEL_MARGIN_PX = 10;
 
     private final String piecesRoot;
     private final Map<String, BufferedImage> imageCache = new HashMap<>();
@@ -68,8 +81,8 @@ public class Renderer {
         int bandY = boardOffsetY();
         canvas.fillRect(boardOffsetX, bandY, boardWidth, BANNER_HEIGHT, BANNER_BACKGROUND_COLOR);
 
-        int textX = boardOffsetX + boardWidth / 2 - (text.length() * 11);
-        int textY = bandY + BANNER_HEIGHT / 2 + 14;
+        int textX = boardOffsetX + boardWidth / 2 - (text.length() * CAPTION_CHAR_WIDTH_ESTIMATE_PX);
+        int textY = bandY + BANNER_HEIGHT / 2 + CAPTION_VERTICAL_OFFSET_PX;
         canvas.putText(text, textX, textY, BANNER_FONT_SIZE, BANNER_TEXT_COLOR, 0);
     }
 
@@ -90,7 +103,7 @@ public class Renderer {
         drawTitle(canvas, boardOffsetX, boardWidth);
         drawBoardBackground(canvas, boardOffsetX, boardOffsetY, boardWidth, boardHeight);
         canvas.drawRect(boardOffsetX - 4, boardOffsetY - 4, boardWidth + 8, boardHeight + 8, BOARD_BORDER_COLOR, 4);
-        drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, cellWidth, cellHeight);
+        drawBoardCoordinates(canvas, boardOffsetX, boardOffsetY, cellWidth, cellHeight, snapshot.width(), snapshot.height());
 
         drawSidePanel(canvas, 0, fullHeight, "Black", snapshot.blackScore(), snapshot.blackMoveLog());
         drawSidePanel(canvas, boardOffsetX + boardWidth, fullHeight, "White", snapshot.whiteScore(), snapshot.whiteMoveLog());
@@ -121,14 +134,14 @@ public class Renderer {
         int bandY = boardOffsetY + boardHeight / 2 - GAME_OVER_BAND_HEIGHT / 2;
         canvas.fillRect(boardOffsetX, bandY, boardWidth, GAME_OVER_BAND_HEIGHT, GAME_OVER_BACKGROUND_COLOR);
 
-        int textX = boardOffsetX + boardWidth / 2 - (caption.length() * 11);
-        int textY = bandY + GAME_OVER_BAND_HEIGHT / 2 + 14;
+        int textX = boardOffsetX + boardWidth / 2 - (caption.length() * CAPTION_CHAR_WIDTH_ESTIMATE_PX);
+        int textY = bandY + GAME_OVER_BAND_HEIGHT / 2 + CAPTION_VERTICAL_OFFSET_PX;
         canvas.putText(caption, textX, textY, GAME_OVER_FONT_SIZE, GAME_OVER_TEXT_COLOR, 0);
     }
 
     private void drawTitle(Img canvas, int boardOffsetX, int boardWidth) {
-        int textX = boardOffsetX + boardWidth / 2 - (TITLE_TEXT.length() * 8);
-        int textY = TITLE_HEIGHT - 12;
+        int textX = boardOffsetX + boardWidth / 2 - (TITLE_TEXT.length() * TITLE_CHAR_WIDTH_ESTIMATE_PX);
+        int textY = TITLE_HEIGHT - TITLE_VERTICAL_INSET_PX;
         canvas.putText(TITLE_TEXT, textX, textY, TITLE_FONT_SIZE, TITLE_COLOR, 0);
     }
 
@@ -152,9 +165,9 @@ public class Renderer {
         canvas.fillRect(panelX, 0, PANEL_WIDTH, fullHeight, new Color(28, 28, 34));
 
         int textX = panelX + PANEL_PADDING;
-        int y = PANEL_PADDING + 18;
+        int y = PANEL_PADDING + SCORE_LABEL_TOP_OFFSET_PX;
         canvas.putText(label + ": " + score, textX, y, SCORE_FONT_SIZE, new Color(240, 240, 240), 0);
-        y += 40;
+        y += SCORE_TO_LOG_GAP_PX;
 
         int maxVisibleRows = Math.max(0, (fullHeight - y - PANEL_PADDING) / LOG_LINE_HEIGHT);
         int firstVisible = Math.max(0, moves.size() - maxVisibleRows);
@@ -164,17 +177,18 @@ public class Renderer {
         }
     }
 
-    private void drawBoardCoordinates(Img canvas, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight) {
-        for (int col = 0; col < 8; col++) {
-            int x = boardOffsetX + (int) Math.round(col * cellWidth + cellWidth / 2.0) - 6;
-            int y = boardOffsetY - 10;
+    private void drawBoardCoordinates(Img canvas, int boardOffsetX, int boardOffsetY, double cellWidth, double cellHeight,
+                                       int cols, int rows) {
+        for (int col = 0; col < cols; col++) {
+            int x = boardOffsetX + (int) Math.round(col * cellWidth + cellWidth / 2.0) - COORD_LABEL_CENTER_OFFSET_PX;
+            int y = boardOffsetY - COORD_LABEL_MARGIN_PX;
             canvas.putText(String.valueOf((char) ('a' + col)), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
         }
 
-        for (int row = 0; row < 8; row++) {
-            int x = boardOffsetX - ROW_LABEL_WIDTH + 10;
-            int y = boardOffsetY + (int) Math.round(row * cellHeight + cellHeight / 2.0) + 6;
-            canvas.putText(String.valueOf(8 - row), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
+        for (int row = 0; row < rows; row++) {
+            int x = boardOffsetX - ROW_LABEL_WIDTH + COORD_LABEL_MARGIN_PX;
+            int y = boardOffsetY + (int) Math.round(row * cellHeight + cellHeight / 2.0) + COORD_LABEL_CENTER_OFFSET_PX;
+            canvas.putText(String.valueOf(rows - row), x, y, COORD_FONT_SIZE, new Color(220, 220, 220), 0);
         }
     }
 
@@ -186,7 +200,7 @@ public class Renderer {
             int width = (int) Math.round(cellWidth);
             int height = (int) Math.round(cellHeight);
 
-            canvas.drawRect(x, y, width, height, new Color(255, 215, 0), 4);
+            canvas.drawRect(x, y, width, height, SELECTION_BORDER_COLOR, SELECTION_BORDER_WIDTH_PX);
         }
     }
 

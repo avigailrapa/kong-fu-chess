@@ -28,8 +28,11 @@ public record GameSnapshot(int width, int height, PieceSnapshot[][] board, List<
     }
 
     private static final double BOARD_SCALE = 0.9;
-    public static final double CELL_WIDTH = 822.0 * BOARD_SCALE / 8;
-    public static final double CELL_HEIGHT = 828.0 * BOARD_SCALE / 8;
+    private static final double BOARD_IMAGE_WIDTH_PX = 822.0;
+    private static final double BOARD_IMAGE_HEIGHT_PX = 828.0;
+    private static final int STANDARD_BOARD_DIMENSION = 8;
+    public static final double CELL_WIDTH = BOARD_IMAGE_WIDTH_PX * BOARD_SCALE / STANDARD_BOARD_DIMENSION;
+    public static final double CELL_HEIGHT = BOARD_IMAGE_HEIGHT_PX * BOARD_SCALE / STANDARD_BOARD_DIMENSION;
 
     public static final double MIN_ZOOM = 0.5;
     public static final double MAX_ZOOM = 2.0;

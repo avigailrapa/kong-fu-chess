@@ -338,8 +338,8 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
 
     private RoomJoinResult toRoomJoinResult(WireMessage message) {
         return switch (message) {
-            case RoomId r -> new RoomJoinResult(true, false, "ok");
-            case Spectating s -> new RoomJoinResult(true, true, "ok");
+            case RoomId _ -> new RoomJoinResult(true, false, "ok");
+            case Spectating _ -> new RoomJoinResult(true, true, "ok");
             case MoveRejected r -> new RoomJoinResult(false, false, r.reason());
             default -> new RoomJoinResult(false, false, "unexpected_message");
         };

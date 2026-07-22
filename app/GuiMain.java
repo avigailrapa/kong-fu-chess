@@ -37,9 +37,10 @@ public class GuiMain {
         MoveLogger moveLogger = new MoveLogger();
         engine.addMoveObserver(moveLogger);
         ClickHandler clickHandler = new ClickHandler(new BoardMapper(board.width(), board.height()), engine);
-        Renderer renderer = new Renderer("assets/pieces");
+        Renderer renderer = new Renderer(Renderer.DEFAULT_PIECES_ROOT);
         GameLoop gameLoop = new GameLoop(engine);
-        EffectsController effects = new EffectsController(engine.eventBus(), new ClipSoundPlayer("assets"));
+        EffectsController effects = new EffectsController(engine.eventBus(),
+                new ClipSoundPlayer(ClipSoundPlayer.DEFAULT_SOUNDS_ROOT));
         effects.announceGameStart();
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> engine.snapshot(
                 clickHandler.selectedCell().orElse(null),

@@ -7,6 +7,8 @@ import java.time.Instant;
 
 public class ActivityLog {
 
+    public static final String DEFAULT_FILENAME = "activity.log";
+
     private final PrintWriter writer;
 
     public ActivityLog(String filePath) {
