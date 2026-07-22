@@ -28,3 +28,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Runtime data ###
+server-data/kongfu.db
+server-data/activity.log
+client-data/
