@@ -8,6 +8,7 @@ import src.net.client.LoginResult;
 import src.net.client.NetworkGameProxy;
 import src.net.client.RoomCreateResult;
 import src.net.client.RoomJoinResult;
+import src.net.messages.MatchFound;
 import src.server.ActivityLog;
 import src.server.GameServer;
 import src.server.UserStore;
@@ -17,6 +18,7 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,30 +35,39 @@ public class NetworkPlayThroughTest {
         server.start();
 
         int port = waitForBoundPort(server);
-        NetworkGameProxy white = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
-        NetworkGameProxy black = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        NetworkGameProxy alice = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
+        NetworkGameProxy bob = new NetworkGameProxy(URI.create("ws://localhost:" + port), 5000);
         try {
-            assertTrue(white.connectBlocking(5, TimeUnit.SECONDS));
-            assertTrue(black.connectBlocking(5, TimeUnit.SECONDS));
+            assertTrue(alice.connectBlocking(5, TimeUnit.SECONDS));
+            assertTrue(bob.connectBlocking(5, TimeUnit.SECONDS));
 
-            LoginResult whiteLogin = white.login("alice", "pw");
-            LoginResult blackLogin = black.login("bob", "pw");
-            assertTrue(whiteLogin.accepted(), "expected login to be accepted: " + whiteLogin.reason());
-            assertTrue(blackLogin.accepted(), "expected login to be accepted: " + blackLogin.reason());
+            LoginResult aliceLogin = alice.login("alice", "pw");
+            LoginResult bobLogin = bob.login("bob", "pw");
+            assertTrue(aliceLogin.accepted(), "expected login to be accepted: " + aliceLogin.reason());
+            assertTrue(bobLogin.accepted(), "expected login to be accepted: " + bobLogin.reason());
 
-            white.play();
-            black.play();
-            waitUntil(() -> white.latestSnapshot() != null && black.latestSnapshot() != null,
+            AtomicReference<Piece.Color> aliceColor = new AtomicReference<>();
+            AtomicReference<Piece.Color> bobColor = new AtomicReference<>();
+            alice.eventBus().subscribe(MatchFound.class, matchFound -> aliceColor.set(matchFound.assignedColor()));
+            bob.eventBus().subscribe(MatchFound.class, matchFound -> bobColor.set(matchFound.assignedColor()));
+
+            alice.play();
+            bob.play();
+            waitUntil(() -> alice.latestSnapshot() != null && bob.latestSnapshot() != null,
                     "both clients to receive an initial STATE after pairing");
-            assertTrue(white.isOccupied(new Position(7, 1)));
+            waitUntil(() -> aliceColor.get() != null && bobColor.get() != null,
+                    "both clients to learn their assigned color");
 
-            MoveResult result = white.requestMove(new Position(7, 1), new Position(5, 2));
+            NetworkGameProxy whitePlayer = aliceColor.get() == Piece.Color.WHITE ? alice : bob;
+            assertTrue(whitePlayer.isOccupied(new Position(7, 1)));
+
+            MoveResult result = whitePlayer.requestMove(new Position(7, 1), new Position(5, 2));
 
             assertTrue(result.isAccepted(), "expected the move to be accepted: " + result.reason());
-            waitUntil(() -> pieceHasArrived(white, new Position(5, 2)), "the piece to arrive at its destination");
+            waitUntil(() -> pieceHasArrived(whitePlayer, new Position(5, 2)), "the piece to arrive at its destination");
         } finally {
-            white.closeBlocking();
-            black.closeBlocking();
+            alice.closeBlocking();
+            bob.closeBlocking();
             server.stop();
         }
     }

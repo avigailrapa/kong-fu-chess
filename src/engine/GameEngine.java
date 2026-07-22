@@ -138,7 +138,6 @@ public class GameEngine implements GameCommands {
                 int points = getPieceValue(event.capturedPiece().kind());
                 if (points > 0) {
                     gameState.addScore(capturingColor, points);
-                    eventBus.publish(new ScoreChangedEvent(capturingColor, gameState.score(capturingColor), points));
                 }
             }
 

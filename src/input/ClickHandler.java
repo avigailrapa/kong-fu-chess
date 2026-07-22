@@ -54,7 +54,7 @@ public class ClickHandler {
         boardMapper.pixelToCell(x, y).ifPresent(gameEngine::requestJump);
     }
 
-    public Optional<Position> getSelectedCell() {
+    public Optional<Position> selectedCell() {
         return Optional.ofNullable(selectedCell);
     }
 }

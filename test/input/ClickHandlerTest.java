@@ -58,7 +58,7 @@ public class ClickHandlerTest {
 
         clickHandler.click(150, 150);
 
-        assertEquals(new Position(1, 1), clickHandler.getSelectedCell().orElseThrow());
+        assertEquals(new Position(1, 1), clickHandler.selectedCell().orElseThrow());
     }
 
     @Test
@@ -67,7 +67,7 @@ public class ClickHandlerTest {
 
         clickHandler.click(150, 150);
 
-        assertTrue(clickHandler.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.selectedCell().isEmpty());
     }
 
     @Test
@@ -77,7 +77,7 @@ public class ClickHandlerTest {
 
         clickHandler.click(-50, 150);
 
-        assertTrue(clickHandler.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.selectedCell().isEmpty());
         assertEquals(0, fakeEngine.callCount);
     }
 
@@ -90,7 +90,7 @@ public class ClickHandlerTest {
         clickHandler.click(150, 150);
         clickHandler.click(-50, 150);
 
-        assertTrue(clickHandler.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.selectedCell().isEmpty());
         assertEquals(0, fakeEngine.callCount);
     }
 
@@ -118,7 +118,7 @@ public class ClickHandlerTest {
         clickHandler.click(150, 150);
         clickHandler.click(350, 150);
 
-        assertTrue(clickHandler.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.selectedCell().isEmpty());
     }
 
     @Test
@@ -131,7 +131,7 @@ public class ClickHandlerTest {
         clickHandler.click(150, 150);
         clickHandler.click(350, 150);
 
-        assertTrue(clickHandler.getSelectedCell().isEmpty());
+        assertTrue(clickHandler.selectedCell().isEmpty());
     }
 
     @Test
@@ -145,6 +145,6 @@ public class ClickHandlerTest {
         clickHandler.click(350, 350);
 
         assertEquals(1, fakeEngine.callCount);
-        assertEquals(new Position(3, 3), clickHandler.getSelectedCell().orElseThrow());
+        assertEquals(new Position(3, 3), clickHandler.selectedCell().orElseThrow());
     }
 }

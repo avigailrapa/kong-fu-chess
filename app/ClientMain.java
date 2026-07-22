@@ -209,7 +209,7 @@ public class ClientMain {
         Renderer renderer = new Renderer("assets/pieces");
         AtomicReference<Position> lastSentSelection = new AtomicReference<>();
         LongPredicate tickSource = ms -> {
-            Position selection = clickHandler.getSelectedCell().orElse(null);
+            Position selection = clickHandler.selectedCell().orElse(null);
             if (!Objects.equals(selection, lastSentSelection.get())) {
                 lastSentSelection.set(selection);
                 proxy.updateSelection(selection);

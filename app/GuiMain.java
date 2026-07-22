@@ -42,7 +42,7 @@ public class GuiMain {
         EffectsController effects = new EffectsController(engine.eventBus(), new ClipSoundPlayer("assets"));
         effects.announceGameStart();
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> engine.snapshot(
-                clickHandler.getSelectedCell().orElse(null),
+                clickHandler.selectedCell().orElse(null),
                 formatMoveLog(moveLogger.whiteMoves()),
                 formatMoveLog(moveLogger.blackMoves()),
                 zoom);

@@ -37,16 +37,10 @@ import src.net.messages.WireMessage;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 public class Lobby {
 
@@ -55,26 +49,21 @@ public class Lobby {
 
     private final UserStore userStore;
     private final long tickIntervalMs;
-    private final int disconnectCountdownSeconds;
     private final ActivityLog activityLog;
     private final MatchmakingQueue matchmakingQueue;
     private final RoomRegistry roomRegistry;
-    private final ScheduledExecutorService disconnectTimers = Executors.newSingleThreadScheduledExecutor();
+    private final ReconnectManager reconnectManager;
     private final Map<WebSocket, Session> sessionsByConnection = new HashMap<>();
     private final Map<Session, Match> matchBySession = new HashMap<>();
-    private final Map<String, PendingReconnect> pendingReconnects = new ConcurrentHashMap<>();
-
-    private record PendingReconnect(Session session, Match match, List<ScheduledFuture<?>> countdownTasks) {
-    }
 
     public Lobby(UserStore userStore, long tickIntervalMs, int disconnectCountdownSeconds, ActivityLog activityLog) {
         this.userStore = userStore;
         this.tickIntervalMs = tickIntervalMs;
-        this.disconnectCountdownSeconds = disconnectCountdownSeconds;
         this.activityLog = activityLog;
         this.matchmakingQueue = new MatchmakingQueue(this::onPaired, this::onMatchTimeout,
                 MATCHMAKING_TIMEOUT_MS, RATING_WINDOW);
         this.roomRegistry = new RoomRegistry(this::newMatch, this::seat, this::wireAndStartMatch, this::addSpectator);
+        this.reconnectManager = new ReconnectManager(disconnectCountdownSeconds);
     }
 
     public Match matchFor(WebSocket conn) {
@@ -215,22 +204,13 @@ public class Lobby {
         if (opponent == null) {
             return;
         }
-        activityLog.log(disconnected.username() + " disconnected - starting "
-                + disconnectCountdownSeconds + "s resign countdown");
-        List<ScheduledFuture<?>> countdownTasks = new ArrayList<>();
-        for (int elapsed = 1; elapsed <= disconnectCountdownSeconds; elapsed++) {
-            int secondsRemaining = disconnectCountdownSeconds - elapsed;
-            countdownTasks.add(disconnectTimers.schedule(() -> {
-                if (secondsRemaining > 0) {
-                    sendQuietly(opponent, Protocol.encode(new DisconnectCountdown(secondsRemaining)));
-                } else {
-                    pendingReconnects.remove(disconnected.username());
+        activityLog.log(disconnected.username() + " disconnected - starting resign countdown");
+        reconnectManager.startCountdown(match, disconnected,
+                secondsRemaining -> sendQuietly(opponent, Protocol.encode(new DisconnectCountdown(secondsRemaining))),
+                () -> {
                     activityLog.log(disconnected.username() + " did not reconnect - auto-resigning");
                     match.submit(() -> match.engine().resign(disconnected.assignedColor()));
-                }
-            }, elapsed, TimeUnit.SECONDS));
-        }
-        pendingReconnects.put(disconnected.username(), new PendingReconnect(disconnected, match, countdownTasks));
+                });
     }
 
     public String handleMessage(WebSocket conn, String message) {
@@ -351,14 +331,14 @@ public class Lobby {
     }
 
     private String handleLogin(WebSocket conn, LoginCommand l) {
-        PendingReconnect pending = pendingReconnects.get(l.username());
-        if (pending != null) {
+        Optional<ReconnectManager.Pending> pending = reconnectManager.pendingFor(l.username());
+        if (pending.isPresent()) {
             if (!userStore.checkPassword(l.username(), l.password())) {
                 activityLog.log(l.username() + " login rejected: bad_credentials");
                 return Protocol.encode(new MoveRejected("bad_credentials"));
             }
-            pendingReconnects.remove(l.username());
-            return reconnectSession(conn, pending);
+            reconnectManager.cancelCountdown(l.username());
+            return reconnectSession(conn, pending.get());
         }
 
         Optional<UserRecord> existing = userStore.find(l.username());
@@ -378,10 +358,7 @@ public class Lobby {
         return Protocol.encode(new Welcome(user.rating()));
     }
 
-    private String reconnectSession(WebSocket conn, PendingReconnect pending) {
-        for (ScheduledFuture<?> task : pending.countdownTasks()) {
-            task.cancel(false);
-        }
+    private String reconnectSession(WebSocket conn, ReconnectManager.Pending pending) {
         Session session = pending.session();
         session.connection(conn::send);
         sessionsByConnection.put(conn, session);
