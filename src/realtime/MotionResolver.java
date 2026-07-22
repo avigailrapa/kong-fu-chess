@@ -1,16 +1,14 @@
 package src.realtime;
 
+import lombok.RequiredArgsConstructor;
 import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 
+@RequiredArgsConstructor
 public class MotionResolver {
 
     private final IBoard board;
-
-    public MotionResolver(IBoard board) {
-        this.board = board;
-    }
 
     public ArrivalEvent resolve(Motion motion) {
         Piece capturedPiece = board.getPieceAt(motion.destination()).orElse(null);
@@ -26,9 +24,10 @@ public class MotionResolver {
         }
 
         board.movePiece(motion.source(), motion.destination());
-        Piece arrivedPiece = arriveAndMaybePromote(motion);
+        ArrivalResult arrival = arriveAndMaybePromote(motion);
 
-        return new ArrivalEvent(arrivedPiece, motion.source(), motion.destination(), capturedPiece, kingCaptured);
+        return new ArrivalEvent(arrival.piece(), motion.source(), motion.destination(), capturedPiece, kingCaptured,
+                arrival.promoted());
     }
 
     public ArrivalEvent resolveBounceBack(Motion motion) {
@@ -38,23 +37,28 @@ public class MotionResolver {
             board.movePiece(motion.source(), stoppedAt);
         }
         piece.setState(Piece.State.IDLE);
-        return new ArrivalEvent(piece, motion.source(), stoppedAt, null, false);
+        return new ArrivalEvent(piece, motion.source(), stoppedAt, null, false, false);
     }
 
     public ArrivalEvent resolveWithoutCapture(Motion motion) {
         board.movePiece(motion.source(), motion.destination());
-        Piece arrivedPiece = arriveAndMaybePromote(motion);
+        ArrivalResult arrival = arriveAndMaybePromote(motion);
 
-        return new ArrivalEvent(arrivedPiece, motion.source(), motion.destination(), null, false);
+        return new ArrivalEvent(arrival.piece(), motion.source(), motion.destination(), null, false,
+                arrival.promoted());
     }
 
-    private Piece arriveAndMaybePromote(Motion motion) {
+    private record ArrivalResult(Piece piece, boolean promoted) {
+    }
+
+    private ArrivalResult arriveAndMaybePromote(Motion motion) {
         Piece arrivedPiece = motion.piece();
         arrivedPiece.setState(Piece.State.IDLE);
-        if (isPromotion(arrivedPiece)) {
+        boolean promoted = isPromotion(arrivedPiece);
+        if (promoted) {
             arrivedPiece = promoteToQueen(arrivedPiece);
         }
-        return arrivedPiece;
+        return new ArrivalResult(arrivedPiece, promoted);
     }
 
     private boolean isPromotion(Piece piece) {

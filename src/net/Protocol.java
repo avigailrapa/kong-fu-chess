@@ -5,6 +5,28 @@ import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
 import src.model.Piece;
 import src.model.Position;
+import src.net.messages.CancelPlayCommand;
+import src.net.messages.DisconnectCountdown;
+import src.net.messages.GameOverMessage;
+import src.net.messages.JumpCommand;
+import src.net.messages.LoginCommand;
+import src.net.messages.MatchFound;
+import src.net.messages.MatchTimeout;
+import src.net.messages.MoveAccepted;
+import src.net.messages.MoveCommand;
+import src.net.messages.MoveOccurred;
+import src.net.messages.MoveRejected;
+import src.net.messages.NewGameCommand;
+import src.net.messages.PlayCommand;
+import src.net.messages.RatingChanged;
+import src.net.messages.RoomCreateCommand;
+import src.net.messages.RoomId;
+import src.net.messages.RoomJoinCommand;
+import src.net.messages.SelectCommand;
+import src.net.messages.Spectating;
+import src.net.messages.StateMessage;
+import src.net.messages.Welcome;
+import src.net.messages.WireMessage;
 import src.view.GameSnapshot;
 import src.view.PieceSnapshot;
 import src.view.SelectionSnapshot;
@@ -24,7 +46,7 @@ public final class Protocol {
     private static final Pattern WELCOME_PATTERN = Pattern.compile("^WELCOME (-?\\d+)$");
     private static final Pattern SELECT_COMMAND_PATTERN = Pattern.compile("^SELECT (-|[a-h][1-8])$");
     private static final Pattern MOVE_EVENT_PATTERN = Pattern.compile(
-            "^EVENT_MOVE ([WB])([KQRBNP])([a-h][1-8])([a-h][1-8]) ([01]) ([01]) (\\d+)$");
+            "^EVENT_MOVE ([WB])([KQRBNP])([a-h][1-8])([a-h][1-8]) ([01]) ([01]) ([01]) (\\d+)$");
     private static final Pattern GAME_OVER_PATTERN = Pattern.compile("^EVENT_GAMEOVER ([WB]|-)$");
     private static final Pattern RATING_PATTERN = Pattern.compile("^RATING (-?\\d+)$");
     private static final Pattern MATCH_FOUND_PATTERN = Pattern.compile("^MATCH_FOUND (\\S+) ([WB]) (-?\\d+)$");
@@ -163,7 +185,7 @@ public final class Protocol {
         return "EVENT_MOVE " + event.color().letter() + event.kind().letter()
                 + AlgebraicNotation.toSquare(event.from()) + AlgebraicNotation.toSquare(event.to())
                 + ' ' + (event.capture() ? '1' : '0') + ' ' + (event.kingCapture() ? '1' : '0')
-                + ' ' + event.requestTimestampMs();
+                + ' ' + (event.promotion() ? '1' : '0') + ' ' + event.requestTimestampMs();
     }
 
     private static String encodeState(StateMessage message) {
@@ -299,8 +321,9 @@ public final class Protocol {
             Position to = AlgebraicNotation.toPosition(moveEventMatcher.group(4));
             boolean capture = moveEventMatcher.group(5).equals("1");
             boolean kingCapture = moveEventMatcher.group(6).equals("1");
-            long requestTimestampMs = Long.parseLong(moveEventMatcher.group(7));
-            return new MoveOccurred(new MoveEvent(color, kind, from, to, capture, kingCapture, requestTimestampMs));
+            boolean promotion = moveEventMatcher.group(7).equals("1");
+            long requestTimestampMs = Long.parseLong(moveEventMatcher.group(8));
+            return new MoveOccurred(new MoveEvent(color, kind, from, to, capture, kingCapture, promotion, requestTimestampMs));
         } catch (IllegalArgumentException e) {
             throw new MalformedMessageException("malformed move event: " + moveEventMatcher.group(), e);
         }

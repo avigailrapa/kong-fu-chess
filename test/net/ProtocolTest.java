@@ -6,29 +6,29 @@ import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
 import src.model.Piece;
 import src.model.Position;
-import src.net.CancelPlayCommand;
-import src.net.DisconnectCountdown;
-import src.net.GameOverMessage;
-import src.net.JumpCommand;
 import src.net.MalformedMessageException;
-import src.net.MatchFound;
-import src.net.MatchTimeout;
-import src.net.MoveAccepted;
-import src.net.MoveCommand;
-import src.net.MoveOccurred;
-import src.net.LoginCommand;
-import src.net.MoveRejected;
-import src.net.NewGameCommand;
-import src.net.PlayCommand;
 import src.net.Protocol;
-import src.net.RatingChanged;
-import src.net.RoomCreateCommand;
-import src.net.RoomId;
-import src.net.RoomJoinCommand;
-import src.net.SelectCommand;
-import src.net.Spectating;
-import src.net.Welcome;
-import src.net.WireMessage;
+import src.net.messages.CancelPlayCommand;
+import src.net.messages.DisconnectCountdown;
+import src.net.messages.GameOverMessage;
+import src.net.messages.JumpCommand;
+import src.net.messages.MatchFound;
+import src.net.messages.MatchTimeout;
+import src.net.messages.MoveAccepted;
+import src.net.messages.MoveCommand;
+import src.net.messages.MoveOccurred;
+import src.net.messages.LoginCommand;
+import src.net.messages.MoveRejected;
+import src.net.messages.NewGameCommand;
+import src.net.messages.PlayCommand;
+import src.net.messages.RatingChanged;
+import src.net.messages.RoomCreateCommand;
+import src.net.messages.RoomId;
+import src.net.messages.RoomJoinCommand;
+import src.net.messages.SelectCommand;
+import src.net.messages.Spectating;
+import src.net.messages.Welcome;
+import src.net.messages.WireMessage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -225,28 +225,39 @@ public class ProtocolTest {
     @Test
     public void testMoveOccurredRoundTrips() {
         MoveOccurred original = new MoveOccurred(new MoveEvent(Piece.Color.WHITE, Piece.Kind.PAWN,
-                AlgebraicNotation.toPosition("e2"), AlgebraicNotation.toPosition("e4"), true, false, 1234));
+                AlgebraicNotation.toPosition("e2"), AlgebraicNotation.toPosition("e4"), true, false, false, 1234));
 
         String encoded = Protocol.encode(original);
 
-        assertEquals("EVENT_MOVE WPe2e4 1 0 1234", encoded);
+        assertEquals("EVENT_MOVE WPe2e4 1 0 0 1234", encoded);
         assertEquals(original, Protocol.parse(encoded));
     }
 
     @Test
     public void testMoveOccurredWithKingCaptureRoundTrips() {
         MoveOccurred original = new MoveOccurred(new MoveEvent(Piece.Color.BLACK, Piece.Kind.QUEEN,
-                AlgebraicNotation.toPosition("d8"), AlgebraicNotation.toPosition("d1"), true, true, 5000));
+                AlgebraicNotation.toPosition("d8"), AlgebraicNotation.toPosition("d1"), true, true, false, 5000));
 
         String encoded = Protocol.encode(original);
 
-        assertEquals("EVENT_MOVE BQd8d1 1 1 5000", encoded);
+        assertEquals("EVENT_MOVE BQd8d1 1 1 0 5000", encoded);
+        assertEquals(original, Protocol.parse(encoded));
+    }
+
+    @Test
+    public void testMoveOccurredWithPromotionRoundTrips() {
+        MoveOccurred original = new MoveOccurred(new MoveEvent(Piece.Color.WHITE, Piece.Kind.QUEEN,
+                AlgebraicNotation.toPosition("e7"), AlgebraicNotation.toPosition("e8"), false, false, true, 4321));
+
+        String encoded = Protocol.encode(original);
+
+        assertEquals("EVENT_MOVE WQe7e8 0 0 1 4321", encoded);
         assertEquals(original, Protocol.parse(encoded));
     }
 
     @Test
     public void testParseRejectsMalformedMoveEvent() {
-        assertThrows(MalformedMessageException.class, () -> Protocol.parse("EVENT_MOVE WPe2e4 2 0 1234"));
+        assertThrows(MalformedMessageException.class, () -> Protocol.parse("EVENT_MOVE WPe2e4 2 0 0 1234"));
     }
 
     @Test

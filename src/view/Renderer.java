@@ -1,5 +1,6 @@
 package src.view;
 
+import lombok.RequiredArgsConstructor;
 import src.model.Piece;
 import src.model.Position;
 
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@RequiredArgsConstructor
 public class Renderer {
 
     private static final int PANEL_WIDTH = 320;
@@ -50,10 +52,6 @@ public class Renderer {
     private BufferedImage boardBackgroundImage;
     private int boardBackgroundImageWidth = -1;
     private int boardBackgroundImageHeight = -1;
-
-    public Renderer(String piecesRoot) {
-        this.piecesRoot = piecesRoot;
-    }
 
     public int boardOffsetX() {
         return PANEL_WIDTH + ROW_LABEL_WIDTH;

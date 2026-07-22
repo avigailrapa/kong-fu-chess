@@ -3,28 +3,27 @@ package app;
 import src.input.BoardMapper;
 import src.input.ClickHandler;
 import src.model.Position;
-import src.net.ClientActivityLog;
-import src.net.DisconnectCountdown;
-import src.net.LoginResult;
-import src.net.MatchFound;
-import src.net.MatchTimeout;
-import src.net.NetworkGameProxy;
-import src.net.RatingChanged;
-import src.net.RoomCreateResult;
-import src.net.RoomJoinResult;
+import src.net.client.ClientActivityLog;
+import src.net.client.LoginResult;
+import src.net.client.NetworkGameProxy;
+import src.net.client.RoomCreateResult;
+import src.net.client.RoomJoinResult;
+import src.net.messages.DisconnectCountdown;
+import src.net.messages.MatchFound;
+import src.net.messages.MatchTimeout;
+import src.net.messages.RatingChanged;
 import src.view.GameSnapshot;
 import src.view.GameWindow;
 import src.view.HomeScreen;
+import src.view.LoginScreen;
 import src.view.Renderer;
 import src.view.sound.ClipSoundPlayer;
 import src.view.sound.EffectsController;
 
 import javax.swing.*;
-import java.io.Console;
 import java.io.File;
 import java.net.URI;
 import java.util.Objects;
-import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleFunction;
@@ -55,7 +54,6 @@ public class ClientMain {
                 System.exit(1);
             }
             activityLog.log("connected to " + serverUrl);
-            login(proxy, activityLog);
         } catch (Exception e) {
             System.err.println("Failed to connect to server at " + serverUrl + ": " + e.getMessage());
             proxy.close();
@@ -65,33 +63,34 @@ public class ClientMain {
         System.setProperty("sun.java2d.uiScale", "1");
         System.setProperty("sun.java2d.dpiaware", "true");
 
-        SwingUtilities.invokeLater(() -> openHomeScreen(proxy, activityLog));
+        SwingUtilities.invokeLater(() -> openLoginScreen(proxy, activityLog));
     }
 
-    private static void login(NetworkGameProxy proxy, ClientActivityLog activityLog) {
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Username: ");
-        String username = scanner.nextLine();
-        String password = readPassword(scanner);
-
-        LoginResult result = proxy.login(username, password);
-        if (!result.accepted()) {
-            activityLog.log("login rejected: " + result.reason());
-            System.err.println("Login rejected: " + result.reason());
-            proxy.close();
-            System.exit(1);
-        }
-        activityLog.log(username + " logged in (rating " + result.rating() + ")");
-        System.out.println("Welcome, " + username + " (rating " + result.rating() + ")");
+    private static void openLoginScreen(NetworkGameProxy proxy, ClientActivityLog activityLog) {
+        AtomicReference<LoginScreen> loginScreenRef = new AtomicReference<>();
+        LoginScreen loginScreen = new LoginScreen((username, password) -> {
+            loginScreenRef.get().setBusy(true);
+            LoginResult result = proxy.login(username, password);
+            if (!result.accepted()) {
+                activityLog.log("login rejected: " + result.reason());
+                loginScreenRef.get().showError(describeLoginRejection(result.reason()));
+                return;
+            }
+            activityLog.log(username + " logged in (rating " + result.rating() + ")");
+            System.out.println("Welcome, " + username + " (rating " + result.rating() + ")");
+            loginScreenRef.get().close();
+            openHomeScreen(proxy, activityLog);
+        });
+        loginScreenRef.set(loginScreen);
+        loginScreen.open();
     }
 
-    private static String readPassword(Scanner scanner) {
-        Console console = System.console();
-        if (console != null) {
-            return new String(console.readPassword("Password: "));
-        }
-        System.out.print("Password: ");
-        return scanner.nextLine();
+    private static String describeLoginRejection(String reason) {
+        return switch (reason) {
+            case "bad_credentials" -> "Incorrect password for that username";
+            case "timeout" -> "The server did not respond in time";
+            default -> "Login failed: " + reason;
+        };
     }
 
     private static void openHomeScreen(NetworkGameProxy proxy, ClientActivityLog activityLog) {
@@ -205,7 +204,7 @@ public class ClientMain {
             }
             return true;
         };
-        DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> proxy.latestSnapshot();
+        DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> proxy.latestSnapshot().withZoom(zoom);
         proxy.eventBus().subscribe(RatingChanged.class, r -> System.out.println("New rating: " + r.newRating()));
         EffectsController effects = new EffectsController(proxy.eventBus(), new ClipSoundPlayer("assets"));
         effects.announceGameStart();

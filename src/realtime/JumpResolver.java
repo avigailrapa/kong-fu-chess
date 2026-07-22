@@ -1,18 +1,16 @@
 package src.realtime;
 
+import lombok.RequiredArgsConstructor;
 import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 
 import java.util.Optional;
 
+@RequiredArgsConstructor
 public class JumpResolver {
 
     private final IBoard board;
-
-    public JumpResolver(IBoard board) {
-        this.board = board;
-    }
 
     public Optional<ArrivalEvent> resolveLanding(Piece jumper, Position cell) {
         Piece occupant = board.getPieceAt(cell).orElse(null);
@@ -27,7 +25,7 @@ public class JumpResolver {
         board.removePiece(cell);
         board.addPiece(jumper, cell);
         markSurvivedJump(jumper);
-        return Optional.of(new ArrivalEvent(jumper, cell, cell, occupant, occupantWasKing));
+        return Optional.of(new ArrivalEvent(jumper, cell, cell, occupant, occupantWasKing, false));
     }
 
     public void markSurvivedJump(Piece jumper) {

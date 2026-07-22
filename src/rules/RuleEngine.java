@@ -1,5 +1,6 @@
 package src.rules;
 
+import lombok.RequiredArgsConstructor;
 import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
@@ -7,13 +8,10 @@ import src.model.Position;
 import java.util.Map;
 import java.util.Set;
 
+@RequiredArgsConstructor
 public class RuleEngine {
 
     private final Map<Piece.Kind, PieceRules> rulesByKind;
-
-    public RuleEngine(Map<Piece.Kind, PieceRules> rulesByKind) {
-        this.rulesByKind = rulesByKind;
-    }
 
     public Set<Position> legalDestinations(IBoard board, Position source) {
         if (!board.isWithinBorder(source)) {

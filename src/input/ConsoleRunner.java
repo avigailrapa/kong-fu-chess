@@ -1,16 +1,14 @@
 package src.input;
 
+import lombok.RequiredArgsConstructor;
+
 import java.util.Scanner;
 
+@RequiredArgsConstructor
 public class ConsoleRunner {
 
     private final CommandParser parser;
     private final CommandRunner runner;
-
-    public ConsoleRunner(CommandParser parser, CommandRunner runner) {
-        this.parser = parser;
-        this.runner = runner;
-    }
 
     public void run(String input) {
         try {

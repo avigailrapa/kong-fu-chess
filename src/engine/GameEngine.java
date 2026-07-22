@@ -59,8 +59,8 @@ public class GameEngine implements GameCommands {
         }
     }
 
-    private void fireMoveEvent(Piece piece, Position source, Position destination, boolean capture, boolean kingCapture, long requestTimestampMs) {
-        MoveEvent event = new MoveEvent(piece.color(), piece.kind(), source, destination, capture, kingCapture, requestTimestampMs);
+    private void fireMoveEvent(Piece piece, Position source, Position destination, boolean capture, boolean kingCapture, boolean promotion, long requestTimestampMs) {
+        MoveEvent event = new MoveEvent(piece.color(), piece.kind(), source, destination, capture, kingCapture, promotion, requestTimestampMs);
         eventBus.publish(event);
         if (!moveObservers.isEmpty()) {
             notifyMoveObservers(event);
@@ -140,7 +140,7 @@ public class GameEngine implements GameCommands {
             if (event.movedPiece() != null) {
                 Long requestTimestamp = motionRequestTimestampMs.remove(event.movedPiece());
                 long effectiveTimestamp = requestTimestamp != null ? requestTimestamp : gameClockMs;
-                fireMoveEvent(event.movedPiece(), event.from(), event.to(), event.capturedPiece() != null, event.kingCaptured(), effectiveTimestamp);
+                fireMoveEvent(event.movedPiece(), event.from(), event.to(), event.capturedPiece() != null, event.kingCaptured(), event.promoted(), effectiveTimestamp);
             }
         }
     }
