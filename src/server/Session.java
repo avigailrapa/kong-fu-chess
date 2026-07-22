@@ -10,7 +10,8 @@ import src.model.Position;
 @Getter
 public class Session {
 
-    private final ClientConnection connection;
+    @Setter
+    private ClientConnection connection;
     private final String username;
     @Setter
     private int rating;

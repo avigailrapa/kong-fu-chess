@@ -11,6 +11,22 @@ public record GameSnapshot(int width, int height, PieceSnapshot[][] board, List<
                             boolean gameOver, Piece.Color winner, int whiteScore, int blackScore,
                             List<String> whiteMoveLog, List<String> blackMoveLog, double zoom) {
 
+    public GameSnapshot {
+        board = copyBoard(board, height, width);
+        selections = List.copyOf(selections);
+        legalDestinations = Set.copyOf(legalDestinations);
+        whiteMoveLog = List.copyOf(whiteMoveLog);
+        blackMoveLog = List.copyOf(blackMoveLog);
+    }
+
+    private static PieceSnapshot[][] copyBoard(PieceSnapshot[][] board, int height, int width) {
+        PieceSnapshot[][] copy = new PieceSnapshot[height][width];
+        for (int row = 0; row < height; row++) {
+            System.arraycopy(board[row], 0, copy[row], 0, width);
+        }
+        return copy;
+    }
+
     private static final double BOARD_SCALE = 0.9;
     public static final double CELL_WIDTH = 822.0 * BOARD_SCALE / 8;
     public static final double CELL_HEIGHT = 828.0 * BOARD_SCALE / 8;

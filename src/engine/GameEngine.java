@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @RequiredArgsConstructor
 public class GameEngine implements GameCommands {
@@ -88,6 +89,10 @@ public class GameEngine implements GameCommands {
         arbiter.startMotion(piece, source, destination);
         motionRequestTimestampMs.put(piece, gameClockMs);
         return new MoveResult(true, "ok");
+    }
+
+    public void requestMove(Position source, Position destination, Consumer<MoveResult> onResult) {
+        onResult.accept(requestMove(source, destination));
     }
 
     public boolean isOccupied(Position position) {
@@ -211,7 +216,7 @@ public class GameEngine implements GameCommands {
             Motion m = motion.get();
             elapsedMillis = arbiter.motionElapsedMs(piece);
 
-            double progress = Math.min(1.0, (double) elapsedMillis / m.durationMs());
+            double progress = easeInOut(Math.min(1.0, (double) elapsedMillis / m.durationMs()));
             pixelX = (int) Math.round(interpolate(m.source().col(), m.destination().col(), progress) * cellWidth);
             pixelY = (int) Math.round(interpolate(m.source().row(), m.destination().row(), progress) * cellHeight);
         } else if (state == Piece.State.JUMPING) {
@@ -230,7 +235,11 @@ public class GameEngine implements GameCommands {
                 pixelX, pixelY, elapsedMillis, restDurationMs);
     }
 
-    private static int interpolate(int from, int to, double progress) {
-        return (int) Math.round(from + (to - from) * progress);
+    private static double interpolate(int from, int to, double progress) {
+        return from + (to - from) * progress;
+    }
+
+    private static double easeInOut(double t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
 }

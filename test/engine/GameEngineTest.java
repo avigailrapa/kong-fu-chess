@@ -443,7 +443,9 @@ public class GameEngineTest {
 
         PieceSnapshot snapshot = engine.snapshot(null).pieceAt(new Position(7, 0));
         assertNotNull(snapshot);
-        int expectedPartialPixelY = (int) Math.round(Math.round(7 + (4 - 7) * (1.0 / 3.0)) * GameSnapshot.CELL_HEIGHT);
+        double progress = 1.0 / 3.0;
+        double eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+        int expectedPartialPixelY = (int) Math.round((7 + (4 - 7) * eased) * GameSnapshot.CELL_HEIGHT);
         int destinationPixelY = (int) Math.round(4 * GameSnapshot.CELL_HEIGHT);
         assertEquals(expectedPartialPixelY, snapshot.pixelY());
         assertNotEquals(destinationPixelY, snapshot.pixelY(),

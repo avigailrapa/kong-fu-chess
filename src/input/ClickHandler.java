@@ -6,6 +6,7 @@ import src.engine.MoveResult;
 import src.model.Position;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 
 @RequiredArgsConstructor
 public class ClickHandler {
@@ -18,12 +19,16 @@ public class ClickHandler {
         boardMapper.setZoom(zoom);
     }
 
-    public Optional<MoveResult> click(int x, int y) {
+    public void click(int x, int y) {
+        click(x, y, result -> { });
+    }
+
+    public void click(int x, int y, Consumer<MoveResult> onResult) {
         Optional<Position> clicked = boardMapper.pixelToCell(x, y);
 
         if (clicked.isEmpty()) {
             selectedCell = null;
-            return Optional.empty();
+            return;
         }
 
         Position cell = clicked.get();
@@ -32,16 +37,17 @@ public class ClickHandler {
             if (gameEngine.isOccupied(cell)) {
                 selectedCell = cell;
             }
-            return Optional.empty();
+            return;
         }
 
-        MoveResult result = gameEngine.requestMove(selectedCell, cell);
-        if (!result.isAccepted() && "friendly_destination".equals(result.reason())) {
-            selectedCell = cell;
-            return Optional.empty();
-        }
-        selectedCell = null;
-        return Optional.of(result);
+        gameEngine.requestMove(selectedCell, cell, result -> {
+            if (!result.isAccepted() && "friendly_destination".equals(result.reason())) {
+                selectedCell = cell;
+            } else {
+                selectedCell = null;
+            }
+            onResult.accept(result);
+        });
     }
 
     public void jump(int x, int y) {
