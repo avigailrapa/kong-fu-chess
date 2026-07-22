@@ -12,20 +12,20 @@ public class CommandRunner {
 
     private Board board;
     private GameEngine engine;
-    private Controller controller;
+    private ClickHandler clickHandler;
 
     public void initialize(String boardText) {
         board = boardParser.parse(boardText);
         engine = GameEngine.fromBoard(board);
         BoardMapper mapper = new BoardMapper(board.getWidth(), board.getHeight());
-        controller = new Controller(mapper, engine);
+        clickHandler = new ClickHandler(mapper, engine);
     }
 
     public void run(CommandParser.Command command) {
         switch (command) {
-            case CommandParser.ClickCommand click -> controller.click(click.x(), click.y());
+            case CommandParser.ClickCommand click -> clickHandler.click(click.x(), click.y());
             case CommandParser.WaitCommand wait -> engine.waitMs(wait.milliseconds());
-            case CommandParser.JumpCommand jump -> controller.jump(jump.x(), jump.y());
+            case CommandParser.JumpCommand jump -> clickHandler.jump(jump.x(), jump.y());
             case CommandParser.PrintBoardCommand _ -> System.out.println(boardPrinter.print(board));
             default -> throw new IllegalArgumentException("Unknown command: " + command);
         }

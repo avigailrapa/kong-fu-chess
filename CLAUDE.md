@@ -67,7 +67,7 @@ depends only on the ones below it, never sideways or up. Full per-class contract
 ```
 model  →  rules  →  realtime  →  engine  →  view (DTOs only)
                                    ↑  ↑  ↑
-                                bus │  │  input (Controller / CommandParser+Runner)
+                                bus │  │  input (ClickHandler / CommandParser+Runner)
                                     │  net (wire protocol, NetworkGameProxy) / server (GameServer, Match)
                                     engine also publishes to bus; view/sound subscribes
 ```

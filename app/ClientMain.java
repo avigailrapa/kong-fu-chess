@@ -1,7 +1,7 @@
 package app;
 
 import src.input.BoardMapper;
-import src.input.Controller;
+import src.input.ClickHandler;
 import src.model.Position;
 import src.net.ClientActivityLog;
 import src.net.DisconnectCountdown;
@@ -194,11 +194,11 @@ public class ClientMain {
             proxy.newGame();
             awaitNewGameConfirmed(proxy);
         }
-        Controller controller = new Controller(new BoardMapper(BOARD_WIDTH, BOARD_HEIGHT), proxy);
+        ClickHandler clickHandler = new ClickHandler(new BoardMapper(BOARD_WIDTH, BOARD_HEIGHT), proxy);
         Renderer renderer = new Renderer("assets/pieces");
         AtomicReference<Position> lastSentSelection = new AtomicReference<>();
         LongPredicate tickSource = ms -> {
-            Position selection = controller.getSelectedCell().orElse(null);
+            Position selection = clickHandler.getSelectedCell().orElse(null);
             if (!Objects.equals(selection, lastSentSelection.get())) {
                 lastSentSelection.set(selection);
                 proxy.updateSelection(selection);
@@ -209,7 +209,7 @@ public class ClientMain {
         proxy.eventBus().subscribe(RatingChanged.class, r -> System.out.println("New rating: " + r.newRating()));
         EffectsController effects = new EffectsController(proxy.eventBus(), new ClipSoundPlayer("assets"));
         effects.announceGameStart();
-        return new GameWindow.GameComponents(tickSource, snapshotSupplier, controller, renderer, effects);
+        return new GameWindow.GameComponents(tickSource, snapshotSupplier, clickHandler, renderer, effects);
     }
 
     private static void awaitNewGameConfirmed(NetworkGameProxy proxy) {
