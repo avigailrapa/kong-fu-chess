@@ -17,15 +17,16 @@ public class GameNodeMain {
     private static final String DEFAULT_NATS_URL = "nats://localhost:4222";
     private static final String DEFAULT_POSTGRES_URL =
             "jdbc:postgresql://localhost:5432/kongfu?user=kongfu&password=kongfu";
-    private static final String DEFAULT_DATA_DIR = "server-data";
+    private static final String DEFAULT_DATA_DIR = "data/server";
 
     public static void main(String[] args) throws Exception {
-        String natsUrl = env("NATS_URL", DEFAULT_NATS_URL);
-        String postgresUrl = env("POSTGRES_URL", DEFAULT_POSTGRES_URL);
-        String dataDir = env("DATA_DIR", DEFAULT_DATA_DIR);
-        long tickIntervalMs = Long.parseLong(env("TICK_INTERVAL_MS", String.valueOf(DEFAULT_TICK_INTERVAL_MS)));
+        String natsUrl = AppSupport.env("NATS_URL", DEFAULT_NATS_URL);
+        String postgresUrl = AppSupport.env("POSTGRES_URL", DEFAULT_POSTGRES_URL);
+        String dataDir = AppSupport.env("DATA_DIR", DEFAULT_DATA_DIR);
+        long tickIntervalMs = Long.parseLong(
+                AppSupport.env("TICK_INTERVAL_MS", String.valueOf(DEFAULT_TICK_INTERVAL_MS)));
         int disconnectCountdownSeconds = Integer.parseInt(
-                env("DISCONNECT_COUNTDOWN_SECONDS", String.valueOf(DEFAULT_DISCONNECT_COUNTDOWN_SECONDS)));
+                AppSupport.env("DISCONNECT_COUNTDOWN_SECONDS", String.valueOf(DEFAULT_DISCONNECT_COUNTDOWN_SECONDS)));
 
         new File(dataDir).mkdirs();
         UserStore userStore = new UserStore(postgresUrl);
@@ -38,10 +39,5 @@ public class GameNodeMain {
 
         System.out.println("KongFu game-node connected to NATS at " + natsUrl);
         Thread.currentThread().join();
-    }
-
-    private static String env(String name, String defaultValue) {
-        String value = System.getenv(name);
-        return value == null ? defaultValue : value;
     }
 }

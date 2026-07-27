@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 
 public class ClientMain {
 
-    private static final String DEFAULT_SERVER_URL = "ws://localhost:8887";
+    private static final String DEFAULT_SERVER_URL = "ws://localhost:" + WsGatewayMain.DEFAULT_PORT;
     private static final long REQUEST_TIMEOUT_MS = 2000;
     private static final long CONNECT_TIMEOUT_SECONDS = 5;
     private static final long INITIAL_STATE_TIMEOUT_MS = 5000;
@@ -40,7 +40,7 @@ public class ClientMain {
     private static final long POLL_INTERVAL_MS = 20;
     private static final int BOARD_WIDTH = 8;
     private static final int BOARD_HEIGHT = 8;
-    private static final String DATA_DIR = "client-data";
+    private static final String DATA_DIR = "data/client";
 
     public static void main(String[] args) throws Exception {
         String serverUrl = args.length > 0 ? args[0] : DEFAULT_SERVER_URL;

@@ -20,4 +20,9 @@ final class AppSupport {
         effects.announceGameStart();
         return effects;
     }
+
+    static String env(String name, String defaultValue) {
+        String value = System.getenv(name);
+        return value == null ? defaultValue : value;
+    }
 }

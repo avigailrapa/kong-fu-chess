@@ -25,7 +25,12 @@ public class GameNodeBridge {
     private void onMessage(io.nats.client.Message message) {
         String subject = message.getSubject();
         if (subject.equals(ClusterProtocol.INBOUND_SUBJECT)) {
-            ClusterProtocol.Envelope envelope = ClusterProtocol.decodeInbound(message.getData());
+            ClusterProtocol.Envelope envelope;
+            try {
+                envelope = ClusterProtocol.decodeInbound(message.getData());
+            } catch (IllegalArgumentException e) {
+                return;
+            }
             lobby.receive(envelope.connectionId(), envelope.message());
         } else if (subject.equals(ClusterProtocol.DISCONNECT_SUBJECT)) {
             lobby.disconnect(new String(message.getData(), StandardCharsets.UTF_8));

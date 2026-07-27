@@ -28,8 +28,12 @@ public class WsGateway extends WebSocketServer {
     private void onOutbound(io.nats.client.Message message) {
         String connectionId = ClusterProtocol.connectionIdFromOutboundSubject(message.getSubject());
         WebSocket conn = connsByConnectionId.get(connectionId);
-        if (conn != null && conn.isOpen()) {
+        if (conn == null || !conn.isOpen()) {
+            return;
+        }
+        try {
             conn.send(new String(message.getData(), StandardCharsets.UTF_8));
+        } catch (RuntimeException e) {
         }
     }
 

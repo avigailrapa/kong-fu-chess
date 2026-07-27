@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class ClipSoundPlayer implements SoundPlayer {
 
-    public static final String DEFAULT_SOUNDS_ROOT = "assets";
+    public static final String DEFAULT_SOUNDS_ROOT = "assets/sounds";
 
     private final String soundsRoot;
     private final Map<String, Clip> clips = new ConcurrentHashMap<>();

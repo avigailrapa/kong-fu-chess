@@ -20,6 +20,9 @@ public class ClusterProtocol {
     public static Envelope decodeInbound(byte[] payload) {
         String text = new String(payload, StandardCharsets.UTF_8);
         int index = text.indexOf(DELIMITER);
+        if (index < 0) {
+            throw new IllegalArgumentException("malformed inbound envelope: missing delimiter");
+        }
         return new Envelope(text.substring(0, index), text.substring(index + 1));
     }
 

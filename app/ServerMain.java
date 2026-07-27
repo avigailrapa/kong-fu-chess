@@ -18,14 +18,18 @@ public class ServerMain {
     private static final String CONFIG_FILE = "server.properties";
     private static final int DISCONNECT_COUNTDOWN_SECONDS = 20;
 
-    public static void main(String[] args) throws InterruptedException, IOException {
+    public static void main(String[] args) throws InterruptedException {
         Properties config = new Properties();
         try (FileInputStream in = new FileInputStream(CONFIG_FILE)) {
             config.load(in);
+        } catch (IOException e) {
+            System.err.println("Could not read " + CONFIG_FILE + ": " + e.getMessage());
+            System.exit(1);
+            return;
         }
-        int port = Integer.parseInt(config.getProperty("port"));
-        String dataDir = config.getProperty("dataDir");
-        String databaseFilename = config.getProperty("databaseFilename");
+        int port = Integer.parseInt(requireProperty(config, "port"));
+        String dataDir = requireProperty(config, "dataDir");
+        String databaseFilename = requireProperty(config, "databaseFilename");
 
         new File(dataDir).mkdirs();
         UserStore userStore = new UserStore("jdbc:sqlite:" + dataDir + "/" + databaseFilename);
@@ -39,6 +43,15 @@ public class ServerMain {
             System.exit(1);
         }
         System.out.println("KongFu Chess server listening on port " + port);
+    }
+
+    private static String requireProperty(Properties config, String key) {
+        String value = config.getProperty(key);
+        if (value == null) {
+            System.err.println(CONFIG_FILE + " is missing required property \"" + key + "\"");
+            System.exit(1);
+        }
+        return value;
     }
 
     private static boolean waitForBoundPort(GameServer server) throws InterruptedException {

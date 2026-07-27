@@ -18,9 +18,9 @@ services:
     environment:
       NATS_URL: nats://nats:4222
       POSTGRES_URL: jdbc:postgresql://postgres:5432/kongfu?user=kongfu&password=kongfu
-      DATA_DIR: /kongfu/server-data
+      DATA_DIR: /kongfu/data/server
     volumes:
-      - ./server-data:/kongfu/server-data
+      - ./data/server:/kongfu/data/server
     depends_on:
       - nats
       - postgres

@@ -78,12 +78,17 @@ public class Lobby {
         return session == null ? null : matchBySession.get(session);
     }
 
+    private ClientConnection connectionFor(Object conn) {
+        Session session = sessionsByConnection.get(conn);
+        return session != null ? session.connection() : connectionResolver.apply(conn);
+    }
+
     public void receive(Object conn, String message) {
         activityLog.log("CLIENT_TO_SERVER " + message);
         Match match = matchFor(conn);
         Runnable task = () -> {
             String reply = handleMessage(conn, message);
-            connectionResolver.apply(conn).send(reply);
+            connectionFor(conn).send(reply);
             activityLog.log("SERVER_TO_CLIENT " + reply);
             if (match != null) {
                 broadcastState(match);
