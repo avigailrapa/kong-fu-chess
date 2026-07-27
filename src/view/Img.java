@@ -24,7 +24,7 @@ public class Img {
     public Img read(String path,
                     Dimension targetSize,
                     boolean keepAspect,
-                    Object interpolation /*ignored*/) {
+                    Object interpolation) {
 
         try {
             img = ImageIO.read(new File(path));
@@ -75,7 +75,7 @@ public class Img {
     }
 
     public void putText(String txt, int x, int y, float fontSize,
-                        Color color, int thickness /*unused in Java2D*/) {
+                        Color color, int thickness) {
 
         if (img == null) throw new IllegalStateException("Image not loaded.");
 

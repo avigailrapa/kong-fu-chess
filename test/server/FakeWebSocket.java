@@ -11,12 +11,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
-/**
- * A connection identity for tests that exercise {@code GameServer.handleMessage(WebSocket, String)}
- * directly, without a real socket. Every method throws except the ones needed to behave as a plain
- * Map key (identity equals/hashCode, inherited from Object) - GameServer.handleMessage never calls
- * back into the connection itself, only GameServer.onMessage does, which these tests bypass.
- */
+
 public class FakeWebSocket implements WebSocket {
     @Override
     public void close(int code, String message) {

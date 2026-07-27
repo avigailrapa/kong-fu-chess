@@ -23,11 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class NetworkGameProxyReplyOrderingTest {
 
-    /**
-     * Accepts one live connection and never replies to anything, so NetworkGameProxy.send() has a real
-     * socket to write to (it throws on an unconnected client) while the test drives every reply itself,
-     * deterministically, via direct onMessage(...) calls.
-     */
+    
     private static class SilentServer extends WebSocketServer {
         SilentServer(InetSocketAddress address) {
             super(address);

@@ -5,8 +5,6 @@ import org.junit.jupiter.api.Test;
 import src.engine.GameOverEvent;
 import src.model.Piece;
 import src.model.Position;
-import src.net.client.RoomCreateResult;
-import src.net.client.RoomJoinResult;
 import src.server.ActivityLog;
 import src.server.GameServer;
 import src.server.Match;

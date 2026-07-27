@@ -46,7 +46,8 @@ class-level detail behind each box.
   `MoveRejected`/`StateMessage`/`LoginCommand`/`Welcome`/`SelectCommand`/`MoveOccurred`/
   `GameOverMessage`/`NewGameCommand`/`RatingChanged`/`PlayCommand`/`CancelPlayCommand`/
   `MatchFound`/`MatchTimeout`/`DisconnectCountdown`/`RoomCreateCommand`/`RoomJoinCommand`/
-  `RoomId`/`Spectating`). `Protocol.parse(String)`/`encode(WireMessage)` convert to/from the text
+  `RoomId`/`Spectating`/`WelcomeBack`/`OpponentReconnected`). `Protocol.parse(String)`/
+  `encode(WireMessage)` convert to/from the text
   sent over a WebSocket text frame: a bare 6-char move token (e.g. `WQe2e5`, no verb prefix),
   `JUMP <token>`, `OK`, `REJECT <reason>`, `NEWGAME` (client asks the server for a fresh game —
   only accepted once the current one is over), `PLAY`/`CANCEL_PLAY` (join/leave the matchmaking
@@ -56,12 +57,16 @@ class-level detail behind each box.
   <color><kind><from><to> <capture:0/1> <kingCapture:0/1> <promotion:0/1> <requestTimestampMs>` /
   `EVENT_GAMEOVER <color|->` / `RATING <newRating>` / `MATCH_FOUND <opponentUsername> <color>
   <opponentRating>` / `MATCH_TIMEOUT` / `DISCONNECT_COUNTDOWN <secondsRemaining>` / `ROOM_ID
-  <roomId>` / `SPECTATING` — the first two wrap the engine's own `MoveEvent`/`GameOverEvent`
-  records, same pattern `StateMessage` uses for `GameSnapshot`; `RatingChanged` is sent to one
-  connection at a time, not broadcast, since the two players' post-game ratings differ. `LOGIN
-  <username> <password>` / `WELCOME <rating>` round out the login exchange — `WELCOME` carries no
-  color because login no longer seats a player (see `src/server/` below); color is only learned
-  once `MATCH_FOUND` arrives, whether pairing came from matchmaking or a filled room. Rejection
+  <roomId>` / `SPECTATING` / `WELCOME_BACK <rating>` / `OPPONENT_RECONNECTED` — the first two wrap
+  the engine's own `MoveEvent`/`GameOverEvent` records, same pattern `StateMessage` uses for
+  `GameSnapshot`; `RatingChanged` is sent to one connection at a time, not broadcast, since the two
+  players' post-game ratings differ. `LOGIN <username> <password>` / `WELCOME <rating>` round out
+  the ordinary login exchange — `WELCOME` carries no color because login no longer seats a player
+  (see `src/server/` below); color is only learned once `MATCH_FOUND` arrives, whether pairing came
+  from matchmaking or a filled room. If the same username has a pending disconnect countdown (see
+  `ReconnectManager` below), `LOGIN` resolves to `WELCOME_BACK <rating>` instead and the
+  *opponent's* connection gets an unsolicited `OPPONENT_RECONNECTED` so its client can clear any
+  "waiting for reconnect" UI. Rejection
   reasons beyond the engine's own (`game_over`/`motion_in_progress`/etc.) include
   `not_your_piece`/`not_logged_in`/`already_in_match`/`bad_credentials`/`token_mismatch`/
   `not_in_match`/`game_in_progress`/`room_not_found`/`spectator` (the last one specifically for a
@@ -73,7 +78,8 @@ class-level detail behind each box.
   block the calling thread on a `CompletableFuture` up to a timeout, matched to its reply via a
   FIFO queue (not a single shared slot) so a late reply to an abandoned/timed-out request can't be
   misdelivered — relies on one WebSocket connection delivering frames in send order both ways, and
-  `GameServer` replying to a connection's messages in the order received. `requestJump`/`newGame`/
+  the server (`GameServer` delegating to `Lobby`, see `src/server/` below) replying to a
+  connection's messages in the order received. `requestJump`/`newGame`/
   `play`/`cancelPlay`/`updateSelection` stay fire-and-forget, matching `GameCommands`' existing
   asymmetry. `NetworkGameProxy` also owns its own `EventBus` (`eventBus()`) — `onMessage`
   republishes `MoveEvent`/`GameOverEvent` unwrapped from `MoveOccurred`/`GameOverMessage`, plus
@@ -100,14 +106,33 @@ class-level detail behind each box.
   broadcasts go to both. `Session` carries `assignedColor` (nullable until seated),
   `role` (`Role.WHITE`/`BLACK`/`SPECTATOR`, nullable until seated or registered as a spectator),
   `rating`, and `selectedCell`, all mutable — a `Session` is created once at login and reused
-  across matchmaking/room flows, never rebuilt. `GameServer extends
-  org.java_websocket.server.WebSocketServer`, composing one `UserStore`, one `ActivityLog`, one
-  `MatchmakingQueue`, one `RoomRegistry`, and `Protocol` — unlike Level 2-3, it does **not** own a
-  single `Match`; instead `Map<Session, Match> matchBySession` (plus `Map<WebSocket, Session>
-  sessionsByConnection`) lets arbitrarily many matches run concurrently, each ticking on its own
-  executor. `handleLogin` only authenticates/creates the `UserStore` record and constructs a
-  `Session` — it no longer seats anyone or assigns a color, so `WELCOME <rating>` is all it can
-  report at that point. Pairing happens two ways, both funneling into the same private
+  across matchmaking/room flows, never rebuilt. `Session.connection()` is typed as
+  `ClientConnection` (a one-method `send(String)` interface), not the raw WebSocket `WebSocket` —
+  the indirection exists so `reconnectSession` can swap a session's underlying transport
+  (`session.connection(conn::send)`) when a player's client opens a *new* socket after a drop,
+  and so tests can hand a `Session` a fake sink without a real socket. `GameServer extends
+  org.java_websocket.server.WebSocketServer` is now a thin adapter: its `onOpen`/`onClose`/
+  `onMessage`/`onError` overrides do nothing but delegate to one composed `Lobby`
+  (`onClose` → `lobby.disconnect(conn)`, `onMessage` → `lobby.receive(conn, message)`); it holds no
+  session/match state itself.
+
+  `Lobby` is where the composition unlike Level 2-3 actually lives: it owns the single `UserStore`,
+  `ActivityLog`, `MatchmakingQueue`, `RoomRegistry`, and `ReconnectManager`, plus
+  `Map<WebSocket, Session> sessionsByConnection` and `Map<Session, Match> matchBySession` — the
+  latter is what lets arbitrarily many matches run concurrently, each ticking on its own executor.
+  `Lobby.receive` logs the raw inbound text, resolves the connection's current `Match` (if any) via
+  `matchFor`, and routes the actual `handleMessage` dispatch through `match.submit(...)` when one
+  exists so `GameEngine`/`RealTimeArbiter` are never touched concurrently, or runs it inline
+  otherwise (still-in-matchmaking, or the very `PLAY`/`ROOM_JOIN` message about to create the
+  match); it calls `broadcastState(match)` afterward only if a match existed *before* the message
+  was handled — a freshly-paired/freshly-joined match gets its first `STATE` from the next
+  scheduled tick, not synchronously. `handleLogin` only authenticates/creates the `UserStore`
+  record and constructs a `Session` — it no longer seats anyone or assigns a color, so
+  `WELCOME <rating>` is all it can report at that point — *unless* `ReconnectManager.pendingFor`
+  finds a live disconnect countdown for that username, in which case it re-validates the password,
+  cancels the countdown, and calls `reconnectSession` (rebinds `session.connection()` to the new
+  socket, notifies the opponent with `OpponentReconnected`, replies `WelcomeBack`) instead of
+  creating a fresh `Session`. Pairing happens two ways, both funneling into the same private
   `wireAndStartMatch(Match)` (subscribes `MoveEvent`/`GameOverEvent` via
   `subscribeToEngineEvents()`, calls `match.start(() -> broadcastState(match))`, logs "`<white> vs
   <black> - match started`", sends each seated player their own `MatchFound` with the *opponent's*
@@ -130,23 +155,25 @@ class-level detail behind each box.
   run (mirrors the existing `not_your_piece` pattern) — `broadcastState`/`broadcastToMatch` still
   send every seated player's *and* every spectator's connection its own `StateMessage`/
   `MoveOccurred`/`GameOverMessage`, just with spectators always getting a `null` selection (no
-  legal-move highlighting, since they own no color). `onClose` (a connection dropping) looks up the
-  disconnected session's match and, if it's a seated player (not a spectator — the countdown only
-  fires when `match.seated()` contains them), starts a per-second `DisconnectCountdown` broadcast
-  to the opponent via a dedicated `disconnectTimers` executor, ending in
-  `engine.resign(disconnectedColor)` (submitted through the match's own executor, never called
-  directly) if the countdown reaches zero; a `GameOverEvent` subscriber,
+  legal-move highlighting, since they own no color). `Lobby.disconnect` (called from `onClose`)
+  looks up the disconnected session's match and, if it's a seated player (not a spectator — the
+  countdown only fires when `match.seated()` contains them), calls
+  `startDisconnectCountdown`, which delegates the actual timing to `ReconnectManager.startCountdown`
+  — a small standalone class (its own single-thread `ScheduledExecutorService`, keyed by
+  username in a `Map<String, Entry>`) that schedules one callback per elapsed second up to the
+  configured countdown length: `onTick` broadcasts `DisconnectCountdown` to the opponent each
+  second, and `onExpire` fires once with no remaining reconnect window. `Lobby` wires `onExpire` to
+  `match.submit(() -> match.engine().resign(disconnectedColor))` (never called directly, always
+  through the match's own executor); if the same username logs back in before expiry,
+  `ReconnectManager.cancelCountdown` cancels every remaining scheduled tick and the reconnect path
+  above runs instead of a resignation. `ReconnectManager` knows nothing about `WireMessage`/
+  `Protocol` — `Lobby` is the only place that translates its ticks/expiry into wire messages, so
+  the countdown logic itself stays unit-testable without a socket. A `GameOverEvent` subscriber,
   `updateRatingsAfterGameOver`, looks up both seated `Session`s, runs `EloCalculator.updatedRating`
   for each (K=32, draws split 0.5/0.5 when `GameOverEvent.winner()` is `null`), persists both via
   `UserStore.updateRating`, updates each in-memory `Session.rating()` in place (so a same-session
   rematch after `NEWGAME` starts from the just-updated rating), and sends each player their own
-  `RatingChanged`. `onMessage` funnels the request through `match.submit(...)` when the connection
-  is already in a match (`null` `matchFor(conn)` — e.g. still in matchmaking, or the very `PLAY`/
-  `ROOM_JOIN` message that's about to create the match — just runs inline instead), cross-checks a
-  move/jump's declared color+kind against the board before forwarding to `GameEngine` (rejecting a
-  mismatch with `REJECT token_mismatch`), then calls `broadcastState()` if a match existed *before*
-  the message was handled — a freshly-paired/freshly-joined match gets its first `STATE` from the
-  next scheduled tick, not synchronously, same as the existing matchmaking behavior. `handleNewGame`
+  `RatingChanged`. `handleNewGame`
   requires an existing session (`not_logged_in` otherwise), rejects spectators, and requires the
   match to actually be over (`game_in_progress` otherwise). `ActivityLog` (`log(String)` — appends
   an ISO-8601-timestamped line to a file and echoes it to stdout, one `PrintWriter` held open for
