@@ -1,0 +1,47 @@
+package app;
+
+import io.nats.client.Connection;
+import io.nats.client.Nats;
+import src.server.ActivityLog;
+import src.server.Lobby;
+import src.server.auth.UserStore;
+import src.server.cluster.GameNodeBridge;
+import src.server.cluster.NatsClientConnection;
+
+import java.io.File;
+
+public class GameNodeMain {
+
+    private static final long DEFAULT_TICK_INTERVAL_MS = 16;
+    private static final int DEFAULT_DISCONNECT_COUNTDOWN_SECONDS = 20;
+    private static final String DEFAULT_NATS_URL = "nats://localhost:4222";
+    private static final String DEFAULT_POSTGRES_URL =
+            "jdbc:postgresql://localhost:5432/kongfu?user=kongfu&password=kongfu";
+    private static final String DEFAULT_DATA_DIR = "server-data";
+
+    public static void main(String[] args) throws Exception {
+        String natsUrl = env("NATS_URL", DEFAULT_NATS_URL);
+        String postgresUrl = env("POSTGRES_URL", DEFAULT_POSTGRES_URL);
+        String dataDir = env("DATA_DIR", DEFAULT_DATA_DIR);
+        long tickIntervalMs = Long.parseLong(env("TICK_INTERVAL_MS", String.valueOf(DEFAULT_TICK_INTERVAL_MS)));
+        int disconnectCountdownSeconds = Integer.parseInt(
+                env("DISCONNECT_COUNTDOWN_SECONDS", String.valueOf(DEFAULT_DISCONNECT_COUNTDOWN_SECONDS)));
+
+        new File(dataDir).mkdirs();
+        UserStore userStore = new UserStore(postgresUrl);
+        ActivityLog activityLog = new ActivityLog(dataDir + "/" + ActivityLog.DEFAULT_FILENAME);
+
+        Connection nats = Nats.connect(natsUrl);
+        Lobby lobby = new Lobby(userStore, tickIntervalMs, disconnectCountdownSeconds, activityLog,
+                connId -> new NatsClientConnection(nats, (String) connId));
+        new GameNodeBridge(lobby, nats).start();
+
+        System.out.println("KongFu game-node connected to NATS at " + natsUrl);
+        Thread.currentThread().join();
+    }
+
+    private static String env(String name, String defaultValue) {
+        String value = System.getenv(name);
+        return value == null ? defaultValue : value;
+    }
+}

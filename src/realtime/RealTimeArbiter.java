@@ -4,7 +4,6 @@ import src.model.IBoard;
 import src.model.Piece;
 import src.model.Position;
 import src.view.AnimationConfig;
-import src.view.Renderer;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -19,6 +18,7 @@ public class RealTimeArbiter {
     private static final long JUMP_DURATION_MS = 1000;
     public static final long LONG_REST_MS = 2000;
     public static final long SHORT_REST_MS = 500;
+    private static final String DEFAULT_PIECES_ROOT = "assets/pieces";
 
     private final String piecesRoot;
     private final MotionResolver motionResolver;
@@ -36,7 +36,7 @@ public class RealTimeArbiter {
     private final Map<Piece, Long> shortRestElapsedMs = new LinkedHashMap<>();
 
     public RealTimeArbiter(IBoard board) {
-        this(board, Renderer.DEFAULT_PIECES_ROOT);
+        this(board, DEFAULT_PIECES_ROOT);
     }
 
     public RealTimeArbiter(IBoard board, String piecesRoot) {

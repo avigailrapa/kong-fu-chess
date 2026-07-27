@@ -1,0 +1,43 @@
+services:
+  nats:
+    image: nats:2-alpine
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: kongfu
+      POSTGRES_USER: kongfu
+      POSTGRES_PASSWORD: kongfu
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  game-node:
+    build: .
+    image: kongfu-app
+    command: ["java", "-cp", "out:lib/*", "app.GameNodeMain"]
+    environment:
+      NATS_URL: nats://nats:4222
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/kongfu?user=kongfu&password=kongfu
+      DATA_DIR: /kongfu/server-data
+    volumes:
+      - ./server-data:/kongfu/server-data
+    depends_on:
+      - nats
+      - postgres
+    restart: on-failure
+
+  ws-gateway:
+    build: .
+    image: kongfu-app
+    command: ["java", "-cp", "out:lib/*", "app.WsGatewayMain"]
+    environment:
+      NATS_URL: nats://nats:4222
+      WS_PORT: 8887
+    ports:
+      - "8887:8887"
+    depends_on:
+      - nats
+    restart: on-failure
+
+volumes:
+  postgres-data:

@@ -1,7 +1,5 @@
 package src.server;
 
-import org.java_websocket.WebSocket;
-
 import src.model.*;
 import src.engine.GameEngine;
 import src.engine.GameOverEvent;
@@ -59,30 +57,33 @@ public class Lobby {
     private final MatchmakingQueue matchmakingQueue;
     private final RoomRegistry roomRegistry;
     private final ReconnectManager reconnectManager;
-    private final Map<WebSocket, Session> sessionsByConnection = new HashMap<>();
+    private final Function<Object, ClientConnection> connectionResolver;
+    private final Map<Object, Session> sessionsByConnection = new HashMap<>();
     private final Map<Session, Match> matchBySession = new HashMap<>();
 
-    public Lobby(UserStore userStore, long tickIntervalMs, int disconnectCountdownSeconds, ActivityLog activityLog) {
+    public Lobby(UserStore userStore, long tickIntervalMs, int disconnectCountdownSeconds, ActivityLog activityLog,
+                 Function<Object, ClientConnection> connectionResolver) {
         this.userStore = userStore;
         this.tickIntervalMs = tickIntervalMs;
         this.activityLog = activityLog;
+        this.connectionResolver = connectionResolver;
         this.matchmakingQueue = new MatchmakingQueue(this::onPaired, this::onMatchTimeout,
                 MATCHMAKING_TIMEOUT_MS, RATING_WINDOW);
         this.roomRegistry = new RoomRegistry(this::newMatch, this::seat, this::wireAndStartMatch, this::addSpectator);
         this.reconnectManager = new ReconnectManager(disconnectCountdownSeconds);
     }
 
-    public Match matchFor(WebSocket conn) {
+    public Match matchFor(Object conn) {
         Session session = sessionsByConnection.get(conn);
         return session == null ? null : matchBySession.get(session);
     }
 
-    public void receive(WebSocket conn, String message) {
+    public void receive(Object conn, String message) {
         activityLog.log("CLIENT_TO_SERVER " + message);
         Match match = matchFor(conn);
         Runnable task = () -> {
             String reply = handleMessage(conn, message);
-            conn.send(reply);
+            connectionResolver.apply(conn).send(reply);
             activityLog.log("SERVER_TO_CLIENT " + reply);
             if (match != null) {
                 broadcastState(match);
@@ -95,7 +96,7 @@ public class Lobby {
         }
     }
 
-    public void disconnect(WebSocket conn) {
+    public void disconnect(Object conn) {
         Session session = sessionsByConnection.remove(conn);
         if (session == null) {
             return;
@@ -223,7 +224,7 @@ public class Lobby {
                 });
     }
 
-    public String handleMessage(WebSocket conn, String message) {
+    public String handleMessage(Object conn, String message) {
         WireMessage parsed;
         try {
             parsed = Protocol.parse(message);
@@ -244,7 +245,7 @@ public class Lobby {
         };
     }
 
-    private String handleRoomCreate(WebSocket conn, RoomCreateCommand r) {
+    private String handleRoomCreate(Object conn, RoomCreateCommand r) {
         return requireSeatableSession(conn, session -> {
             String roomId = roomRegistry.createRoom(session);
             activityLog.log(session.username() + " created room " + roomId);
@@ -252,7 +253,7 @@ public class Lobby {
         });
     }
 
-    private String handleRoomJoin(WebSocket conn, RoomJoinCommand r) {
+    private String handleRoomJoin(Object conn, RoomJoinCommand r) {
         return requireSeatableSession(conn, session -> {
             RoomRegistry.JoinOutcome outcome = roomRegistry.joinRoom(r.roomId(), session);
             return switch (outcome) {
@@ -269,25 +270,25 @@ public class Lobby {
         });
     }
 
-    private String handlePlay(WebSocket conn, PlayCommand p) {
+    private String handlePlay(Object conn, PlayCommand p) {
         return requireSeatableSession(conn, session -> {
             matchmakingQueue.enqueue(session);
             return Protocol.encode(new MoveAccepted());
         });
     }
 
-    private String requireSeatableSession(WebSocket conn, Function<Session, String> onEligible) {
+    private String requireSeatableSession(Object conn, Function<Session, String> onEligible) {
         return requireSession(conn, session -> matchBySession.containsKey(session)
                 ? Protocol.encode(new MoveRejected("already_in_match"))
                 : onEligible.apply(session));
     }
 
-    private String requireSession(WebSocket conn, Function<Session, String> onPresent) {
+    private String requireSession(Object conn, Function<Session, String> onPresent) {
         Session session = sessionsByConnection.get(conn);
         return session == null ? Protocol.encode(new MoveRejected("not_logged_in")) : onPresent.apply(session);
     }
 
-    private String handleCancelPlay(WebSocket conn, CancelPlayCommand c) {
+    private String handleCancelPlay(Object conn, CancelPlayCommand c) {
         Session session = sessionsByConnection.get(conn);
         if (session != null) {
             matchmakingQueue.cancel(session);
@@ -295,7 +296,7 @@ public class Lobby {
         return Protocol.encode(new MoveAccepted());
     }
 
-    private String handleSelect(WebSocket conn, SelectCommand sel) {
+    private String handleSelect(Object conn, SelectCommand sel) {
         Session session = sessionsByConnection.get(conn);
         if (session != null) {
             session.selectedCell(sel.selected());
@@ -303,7 +304,7 @@ public class Lobby {
         return Protocol.encode(new MoveAccepted());
     }
 
-    private String handleNewGame(WebSocket conn, NewGameCommand ng) {
+    private String handleNewGame(Object conn, NewGameCommand ng) {
         return requireSession(conn, session -> {
             if (session.role() == Session.Role.SPECTATOR) {
                 return Protocol.encode(new MoveRejected("spectator"));
@@ -320,7 +321,7 @@ public class Lobby {
         });
     }
 
-    private String handleLogin(WebSocket conn, LoginCommand l) {
+    private String handleLogin(Object conn, LoginCommand l) {
         Optional<ReconnectManager.Pending> pending = reconnectManager.pendingFor(l.username());
         if (pending.isPresent()) {
             if (!userStore.checkPassword(l.username(), l.password())) {
@@ -342,15 +343,15 @@ public class Lobby {
         } else {
             user = userStore.createUser(l.username(), l.password());
         }
-        Session session = new Session(conn::send, l.username(), user.rating());
+        Session session = new Session(connectionResolver.apply(conn), l.username(), user.rating());
         sessionsByConnection.put(conn, session);
         activityLog.log(l.username() + " logged in (rating " + user.rating() + ")");
         return Protocol.encode(new Welcome(user.rating()));
     }
 
-    private String reconnectSession(WebSocket conn, ReconnectManager.Pending pending) {
+    private String reconnectSession(Object conn, ReconnectManager.Pending pending) {
         Session session = pending.session();
-        session.connection(conn::send);
+        session.connection(connectionResolver.apply(conn));
         sessionsByConnection.put(conn, session);
         activityLog.log(session.username() + " reconnected");
         Session opponent = pending.match().seated().stream().filter(s -> s != session).findFirst().orElse(null);
@@ -360,7 +361,7 @@ public class Lobby {
         return Protocol.encode(new WelcomeBack(session.rating()));
     }
 
-    private String handleMove(WebSocket conn, MoveCommand m) {
+    private String handleMove(Object conn, MoveCommand m) {
         String rejection = validateSeatedAction(conn, m.color(), m.kind(), m.from());
         if (rejection != null) {
             return Protocol.encode(new MoveRejected(rejection));
@@ -371,7 +372,7 @@ public class Lobby {
                 : Protocol.encode(new MoveRejected(result.reason()));
     }
 
-    private String handleJump(WebSocket conn, JumpCommand j) {
+    private String handleJump(Object conn, JumpCommand j) {
         String rejection = validateSeatedAction(conn, j.color(), j.kind(), j.at());
         if (rejection != null) {
             return Protocol.encode(new MoveRejected(rejection));
@@ -380,7 +381,7 @@ public class Lobby {
         return Protocol.encode(new MoveAccepted());
     }
 
-    private String validateSeatedAction(WebSocket conn, Piece.Color color, Piece.Kind kind, Position position) {
+    private String validateSeatedAction(Object conn, Piece.Color color, Piece.Kind kind, Position position) {
         if (isSpectator(conn)) {
             return "spectator";
         }
@@ -394,12 +395,12 @@ public class Lobby {
         return null;
     }
 
-    private boolean ownsColor(WebSocket conn, Piece.Color declaredColor) {
+    private boolean ownsColor(Object conn, Piece.Color declaredColor) {
         Session session = sessionsByConnection.get(conn);
         return session != null && session.assignedColor() == declaredColor;
     }
 
-    private boolean isSpectator(WebSocket conn) {
+    private boolean isSpectator(Object conn) {
         Session session = sessionsByConnection.get(conn);
         return session != null && session.role() == Session.Role.SPECTATOR;
     }

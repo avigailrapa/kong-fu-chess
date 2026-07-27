@@ -1,0 +1,6 @@
+out/
+.git/
+.idea/
+*.iml
+client-data/
+server-data/

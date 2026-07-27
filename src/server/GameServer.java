@@ -14,7 +14,8 @@ public class GameServer extends WebSocketServer {
     public GameServer(InetSocketAddress address, UserStore userStore, long tickIntervalMs,
                        int disconnectCountdownSeconds, ActivityLog activityLog) {
         super(address);
-        this.lobby = new Lobby(userStore, tickIntervalMs, disconnectCountdownSeconds, activityLog);
+        this.lobby = new Lobby(userStore, tickIntervalMs, disconnectCountdownSeconds, activityLog,
+                conn -> ((WebSocket) conn)::send);
     }
 
     public Match matchFor(WebSocket conn) {

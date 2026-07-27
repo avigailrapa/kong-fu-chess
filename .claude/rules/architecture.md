@@ -20,8 +20,12 @@ class-level detail behind each box.
   `CollisionResolver`/`PathCrossingResolver` are its internal collaborators (collision = two
   pieces targeting the same square; path-crossing = two pieces' straight-line paths intersect
   mid-flight). Depends on `IBoard` (not concrete `Board`) plus `view.AnimationConfig` (accepted
-  exception, for per-piece speed from the asset JSON). Zero knowledge of `GameState` — king
-  capture is only *reported* via `ArrivalEvent`, never acted on here.
+  exception, for per-piece speed from the asset JSON). Its own `DEFAULT_PIECES_ROOT` constant
+  (`"assets/pieces"`, used by the convenience one-`IBoard`-arg constructor) is a private literal,
+  not sourced from `view.Renderer` — the design PDF's layer table forbids `RealTimeArbiter` from
+  owning rendering, and the dependency direction must never point from a core layer up to `view`,
+  even for a single default-path string. Zero knowledge of `GameState` — king capture is only
+  *reported* via `ArrivalEvent`, never acted on here.
 - **`src/engine/`** — `GameEngine` is the application service and only public command boundary
   (`requestMove`, `requestJump`, `waitMs`, `snapshot`). Composes `Board`+`GameState`+`RuleEngine`+
   `RealTimeArbiter`; the one place allowed to construct `view` DTOs. `MoveObserver`/`MoveLogger`
@@ -34,8 +38,17 @@ class-level detail behind each box.
 - **`src/input/`** — `ClickHandler` (GUI path: pixel click → `BoardMapper.pixelToCell` →
   `GameCommands` call, implemented by `GameEngine`) and `CommandParser`/`CommandRunner`/
   `ConsoleRunner` (text-DSL path, used by both `app/Main.java` and `test/integration/` — see
-  text-dsl.md). Neither depends on `RuleEngine`/`RealTimeArbiter`/`Board` directly; both only call
-  through `GameEngine`/`GameCommands`.
+  text-dsl.md). `ClickHandler` never depends on `RuleEngine`/`RealTimeArbiter`/`Board` directly; it
+  only calls through `GameEngine`/`GameCommands`. `CommandRunner` is the exception, matching the
+  design PDF's own `ScriptRunner`/`TextTestRunner`: it holds the concrete `Board` produced by
+  `BoardParser.parse` so it can hand it to `GameEngine.fromBoard` (initial state), read
+  `board.width()`/`board.height()` to size `BoardMapper`, and pass it straight to
+  `BoardPrinter.print` for `print board` — the PDF's API table types `BoardPrinter.print` as taking
+  `game_state or snapshot` directly, not only a `GameEngine`-derived snapshot. What `CommandRunner`
+  must never do, per the PDF's one forbidden shortcut ("ScriptRunner directly calls
+  `Board.move_piece`"), is mutate the `Board` itself or otherwise duplicate move/game logic; it
+  reads `Board` only for construction-time sizing and read-only printing, and reaches
+  `GameEngine`/`ClickHandler` for every actual command.
 - **`src/net/`** — wire protocol shared by client and server, plus the client-side network
   adapter, split into two subpackages: `src/net/messages/` holds `WireMessage` and every class it
   `permits` (a sealed interface's permitted subclasses must share its package in an unnamed

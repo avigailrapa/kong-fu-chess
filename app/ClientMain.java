@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 
 public class ClientMain {
 
-    private static final String DEFAULT_SERVER_URL = "ws://localhost:" + ServerMain.PORT;
+    private static final String DEFAULT_SERVER_URL = "ws://localhost:8887";
     private static final long REQUEST_TIMEOUT_MS = 2000;
     private static final long CONNECT_TIMEOUT_SECONDS = 5;
     private static final long INITIAL_STATE_TIMEOUT_MS = 5000;
