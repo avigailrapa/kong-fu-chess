@@ -1,8 +1,8 @@
 package app;
 
-import src.server.ActivityLog;
 import src.server.GameServer;
 import src.server.auth.UserStore;
+import src.server.core.ActivityLog;
 
 import java.io.File;
 import java.io.FileInputStream;

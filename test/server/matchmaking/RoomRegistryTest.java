@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 import src.engine.GameEngine;
 import src.io.BoardParser;
 import src.model.Board;
-import src.server.Match;
+import src.server.core.Match;
+import src.server.core.Session;
 import src.server.matchmaking.RoomRegistry;
-import src.server.Session;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

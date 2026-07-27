@@ -1,4 +1,4 @@
-package src.server;
+package src.server.core;
 
 import java.io.FileWriter;
 import java.io.IOException;

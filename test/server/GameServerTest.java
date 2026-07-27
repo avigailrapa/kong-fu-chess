@@ -5,10 +5,10 @@ import org.junit.jupiter.api.Test;
 import src.engine.GameOverEvent;
 import src.model.Piece;
 import src.model.Position;
-import src.server.ActivityLog;
 import src.server.GameServer;
-import src.server.Match;
 import src.server.auth.UserStore;
+import src.server.core.ActivityLog;
+import src.server.core.Match;
 
 import java.io.File;
 import java.net.InetSocketAddress;

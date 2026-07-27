@@ -4,6 +4,8 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import src.server.auth.UserStore;
+import src.server.core.ActivityLog;
+import src.server.core.Match;
 
 import java.net.InetSocketAddress;
 

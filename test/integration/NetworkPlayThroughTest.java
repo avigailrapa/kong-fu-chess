@@ -9,9 +9,9 @@ import src.net.client.NetworkGameProxy;
 import src.net.client.RoomCreateResult;
 import src.net.client.RoomJoinResult;
 import src.net.messages.MatchFound;
-import src.server.ActivityLog;
 import src.server.GameServer;
 import src.server.auth.UserStore;
+import src.server.core.ActivityLog;
 import src.view.snapshot.GameSnapshot;
 
 import java.io.File;

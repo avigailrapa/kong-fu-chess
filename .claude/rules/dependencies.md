@@ -7,8 +7,12 @@ anything placed there automatically.
 - **Java-WebSocket-1.6.0.jar** — used by `src/net/`/`src/server/`.
 - **slf4j-api-2.0.13.jar** — a real runtime dependency of Java-WebSocket despite its own docs
   calling it dependency-free. Without it, anything using `GameServer`/`NetworkGameProxy` throws
-  `NoClassDefFoundError` the first time the library logs. With just the API jar and no logging
-  backend, SLF4J 2.x prints one harmless one-time "no providers found" warning instead of failing.
+  `NoClassDefFoundError` the first time the library logs.
+- **slf4j-simple-2.0.13.jar** — the actual logging backend for `slf4j-api`, same version pinned
+  to avoid a provider mismatch. Without it present, SLF4J 2.x falls back to a no-op logger and
+  prints one harmless one-time "no providers found" warning; with it, `GameServer`/library log
+  lines actually print (`[thread] LEVEL logger - message` to stderr) instead of being silently
+  dropped.
 - **lombok-1.18.46.jar** — compile-time only (an annotation processor, not a runtime dependency),
   but must be on `-processorpath`, not just `-cp`. On this project's JDK (26), implicit
   annotation-processor discovery via plain `-cp` does not run Lombok at all — no warning, it

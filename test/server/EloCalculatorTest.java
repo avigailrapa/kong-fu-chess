@@ -1,7 +1,7 @@
 package server;
 
 import org.junit.jupiter.api.Test;
-import src.server.EloCalculator;
+import src.server.core.EloCalculator;
 
 import static org.junit.jupiter.api.Assertions.*;
 

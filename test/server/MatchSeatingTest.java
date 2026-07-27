@@ -10,8 +10,8 @@ import src.realtime.RealTimeArbiter;
 import src.rules.PieceRules;
 import src.rules.pieces.RookRule;
 import src.rules.RuleEngine;
-import src.server.Match;
-import src.server.Session;
+import src.server.core.Match;
+import src.server.core.Session;
 
 import java.util.Map;
 import java.util.Optional;

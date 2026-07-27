@@ -10,7 +10,7 @@ import src.realtime.RealTimeArbiter;
 import src.rules.PieceRules;
 import src.rules.pieces.RookRule;
 import src.rules.RuleEngine;
-import src.server.Match;
+import src.server.core.Match;
 
 import java.util.ArrayList;
 import java.util.List;

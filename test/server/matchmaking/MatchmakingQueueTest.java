@@ -1,8 +1,8 @@
 package server.matchmaking;
 
 import org.junit.jupiter.api.Test;
+import src.server.core.Session;
 import src.server.matchmaking.MatchmakingQueue;
-import src.server.Session;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,7 +1,7 @@
 package src.server.matchmaking;
 
 import lombok.RequiredArgsConstructor;
-import src.server.Session;
+import src.server.core.Session;
 
 import java.util.ArrayList;
 import java.util.List;

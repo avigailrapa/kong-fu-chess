@@ -1,7 +1,7 @@
 package src.server.cluster;
 
 import io.nats.client.Connection;
-import src.server.ClientConnection;
+import src.server.core.ClientConnection;
 
 import java.nio.charset.StandardCharsets;
 

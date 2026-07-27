@@ -1,4 +1,4 @@
-package src.server;
+package src.server.core;
 
 import lombok.Getter;
 import lombok.Setter;

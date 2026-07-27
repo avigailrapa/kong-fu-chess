@@ -2,11 +2,11 @@ package app;
 
 import io.nats.client.Connection;
 import io.nats.client.Nats;
-import src.server.ActivityLog;
 import src.server.Lobby;
 import src.server.auth.UserStore;
 import src.server.cluster.GameNodeBridge;
 import src.server.cluster.NatsClientConnection;
+import src.server.core.ActivityLog;
 
 import java.io.File;
 
