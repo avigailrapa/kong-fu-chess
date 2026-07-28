@@ -1,5 +1,7 @@
 package src.server.handlers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.engine.MoveResult;
 import src.model.Piece;
 import src.model.Position;
@@ -16,6 +18,8 @@ import src.view.snapshot.PieceSnapshot;
 
 public class GameActionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GameActionHandler.class);
+
     private final SessionRegistry sessionRegistry;
 
     public GameActionHandler(SessionRegistry sessionRegistry) {
@@ -25,6 +29,7 @@ public class GameActionHandler {
     public String handleMove(Object conn, MoveCommand m) {
         String rejection = validateSeatedAction(conn, m.color(), m.kind(), m.from());
         if (rejection != null) {
+            log.warn("illegal move rejected: {}", rejection);
             return Protocol.encode(new MoveRejected(rejection));
         }
         MoveResult result = sessionRegistry.matchFor(conn).engine().requestMove(m.from(), m.to());
@@ -36,6 +41,7 @@ public class GameActionHandler {
     public String handleJump(Object conn, JumpCommand j) {
         String rejection = validateSeatedAction(conn, j.color(), j.kind(), j.at());
         if (rejection != null) {
+            log.warn("illegal jump rejected: {}", rejection);
             return Protocol.encode(new MoveRejected(rejection));
         }
         sessionRegistry.matchFor(conn).engine().requestJump(j.at());

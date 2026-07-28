@@ -1,8 +1,9 @@
 package src.server.handlers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.net.Protocol;
 import src.net.messages.DisconnectCountdown;
-import src.server.core.ActivityLog;
 import src.server.core.Match;
 import src.server.core.Session;
 import src.server.core.SessionRegistry;
@@ -10,19 +11,19 @@ import src.server.matchmaking.ReconnectManager;
 
 public class DisconnectHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(DisconnectHandler.class);
+
     private final SessionRegistry sessionRegistry;
     private final MatchOrchestrator matchOrchestrator;
     private final ReconnectManager reconnectManager;
     private final MatchBroadcaster broadcaster;
-    private final ActivityLog activityLog;
 
     public DisconnectHandler(SessionRegistry sessionRegistry, MatchOrchestrator matchOrchestrator,
-                              ReconnectManager reconnectManager, MatchBroadcaster broadcaster, ActivityLog activityLog) {
+                              ReconnectManager reconnectManager, MatchBroadcaster broadcaster) {
         this.sessionRegistry = sessionRegistry;
         this.matchOrchestrator = matchOrchestrator;
         this.reconnectManager = reconnectManager;
         this.broadcaster = broadcaster;
-        this.activityLog = activityLog;
     }
 
     public void disconnect(Object conn) {
@@ -42,11 +43,11 @@ public class DisconnectHandler {
         if (opponent == null) {
             return;
         }
-        activityLog.log(disconnected.username() + " disconnected - starting resign countdown");
+        log.info("{} disconnected - starting resign countdown", disconnected.username());
         reconnectManager.startCountdown(match, disconnected,
                 secondsRemaining -> broadcaster.sendQuietly(opponent, Protocol.encode(new DisconnectCountdown(secondsRemaining))),
                 () -> {
-                    activityLog.log(disconnected.username() + " did not reconnect - auto-resigning");
+                    log.warn("{} did not reconnect - auto-resigning", disconnected.username());
                     match.submit(() -> match.engine().resign(disconnected.assignedColor()));
                 });
     }

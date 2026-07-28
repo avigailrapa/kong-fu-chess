@@ -6,7 +6,6 @@ import src.server.Lobby;
 import src.server.auth.UserStore;
 import src.server.cluster.GameNodeBridge;
 import src.server.cluster.NatsClientConnection;
-import src.server.core.ActivityLog;
 
 import java.io.File;
 
@@ -30,10 +29,9 @@ public class GameNodeMain {
 
         new File(dataDir).mkdirs();
         UserStore userStore = new UserStore(postgresUrl);
-        ActivityLog activityLog = new ActivityLog(dataDir + "/" + ActivityLog.DEFAULT_FILENAME);
 
         Connection nats = Nats.connect(natsUrl);
-        Lobby lobby = new Lobby(userStore, tickIntervalMs, disconnectCountdownSeconds, activityLog,
+        Lobby lobby = new Lobby(userStore, tickIntervalMs, disconnectCountdownSeconds,
                 connId -> new NatsClientConnection(nats, (String) connId));
         new GameNodeBridge(lobby, nats).start();
 

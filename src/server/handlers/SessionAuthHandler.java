@@ -1,5 +1,7 @@
 package src.server.handlers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.net.Protocol;
 import src.net.messages.LoginCommand;
 import src.net.messages.MoveRejected;
@@ -8,7 +10,6 @@ import src.net.messages.Welcome;
 import src.net.messages.WelcomeBack;
 import src.server.auth.UserRecord;
 import src.server.auth.UserStore;
-import src.server.core.ActivityLog;
 import src.server.core.ClientConnection;
 import src.server.core.Session;
 import src.server.core.SessionRegistry;
@@ -19,21 +20,21 @@ import java.util.function.Function;
 
 public class SessionAuthHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(SessionAuthHandler.class);
+
     private final UserStore userStore;
     private final ReconnectManager reconnectManager;
     private final SessionRegistry sessionRegistry;
     private final MatchBroadcaster broadcaster;
-    private final ActivityLog activityLog;
     private final Function<Object, ClientConnection> connectionResolver;
 
     public SessionAuthHandler(UserStore userStore, ReconnectManager reconnectManager, SessionRegistry sessionRegistry,
-                               MatchBroadcaster broadcaster, ActivityLog activityLog,
+                               MatchBroadcaster broadcaster,
                                Function<Object, ClientConnection> connectionResolver) {
         this.userStore = userStore;
         this.reconnectManager = reconnectManager;
         this.sessionRegistry = sessionRegistry;
         this.broadcaster = broadcaster;
-        this.activityLog = activityLog;
         this.connectionResolver = connectionResolver;
     }
 
@@ -41,7 +42,7 @@ public class SessionAuthHandler {
         Optional<ReconnectManager.Pending> pending = reconnectManager.pendingFor(l.username());
         if (pending.isPresent()) {
             if (!userStore.checkPassword(l.username(), l.password())) {
-                activityLog.log(l.username() + " login rejected: bad_credentials");
+                log.warn("{} login rejected: bad_credentials", l.username());
                 return Protocol.encode(new MoveRejected("bad_credentials"));
             }
             reconnectManager.cancelCountdown(l.username());
@@ -52,7 +53,7 @@ public class SessionAuthHandler {
         UserRecord user;
         if (existing.isPresent()) {
             if (!userStore.checkPassword(l.username(), l.password())) {
-                activityLog.log(l.username() + " login rejected: bad_credentials");
+                log.warn("{} login rejected: bad_credentials", l.username());
                 return Protocol.encode(new MoveRejected("bad_credentials"));
             }
             user = existing.get();
@@ -61,7 +62,7 @@ public class SessionAuthHandler {
         }
         Session session = new Session(connectionResolver.apply(conn), l.username(), user.rating());
         sessionRegistry.register(conn, session);
-        activityLog.log(l.username() + " logged in (rating " + user.rating() + ")");
+        log.info("{} logged in (rating {})", l.username(), user.rating());
         return Protocol.encode(new Welcome(user.rating()));
     }
 
@@ -69,7 +70,7 @@ public class SessionAuthHandler {
         Session session = pending.session();
         session.connection(connectionResolver.apply(conn));
         sessionRegistry.register(conn, session);
-        activityLog.log(session.username() + " reconnected");
+        log.info("{} reconnected", session.username());
         Session opponent = pending.match().seated().stream().filter(s -> s != session).findFirst().orElse(null);
         if (opponent != null) {
             broadcaster.sendQuietly(opponent, Protocol.encode(new OpponentReconnected()));

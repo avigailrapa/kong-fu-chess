@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import src.bus.EventBus;
 import src.engine.GameCommands;
@@ -49,8 +51,10 @@ import java.util.function.Function;
 
 public class NetworkGameProxy extends WebSocketClient implements GameCommands {
 
+    private static final Logger log = LoggerFactory.getLogger(NetworkGameProxy.class);
+
     private final long requestTimeoutMs;
-  
+
     private final LinkedBlockingQueue<CompletableFuture<WireMessage>> pendingReplies = new LinkedBlockingQueue<>();
     @Getter
     @Accessors(fluent = true)
@@ -62,16 +66,9 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     @Accessors(fluent = true)
     private volatile int latestRating;
 
-    private final ClientActivityLog activityLog;
-
     public NetworkGameProxy(URI serverUri, long requestTimeoutMs) {
-        this(serverUri, requestTimeoutMs, null);
-    }
-
-    public NetworkGameProxy(URI serverUri, long requestTimeoutMs, ClientActivityLog activityLog) {
         super(serverUri);
         this.requestTimeoutMs = requestTimeoutMs;
-        this.activityLog = activityLog;
     }
 
     @Override
@@ -81,8 +78,8 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     }
 
     private void logDirection(String direction, String text) {
-        if (activityLog != null && !text.startsWith("STATE ")) {
-            activityLog.log(direction + " " + text);
+        if (!text.startsWith("STATE ")) {
+            log.debug("{} {}", direction, text);
         }
     }
 
@@ -97,6 +94,7 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
         try {
             parsed = Protocol.parse(message);
         } catch (MalformedMessageException e) {
+            log.warn("malformed message from server: {}", message);
             return;
         }
         switch (parsed) {
@@ -150,7 +148,7 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
 
     @Override
     public void onError(Exception ex) {
-        ex.printStackTrace();
+        log.error("WebSocket client error", ex);
     }
 
     @Override

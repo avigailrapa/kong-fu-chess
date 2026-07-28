@@ -1,5 +1,7 @@
 package src.server.handlers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
 import src.model.Position;
@@ -7,7 +9,6 @@ import src.net.Protocol;
 import src.net.messages.GameOverMessage;
 import src.net.messages.MoveOccurred;
 import src.net.messages.StateMessage;
-import src.server.core.ActivityLog;
 import src.server.core.Match;
 import src.server.core.Session;
 import src.view.snapshot.GameSnapshot;
@@ -15,11 +16,7 @@ import src.view.snapshot.PieceSnapshot;
 
 public class MatchBroadcaster {
 
-    private final ActivityLog activityLog;
-
-    public MatchBroadcaster(ActivityLog activityLog) {
-        this.activityLog = activityLog;
-    }
+    private static final Logger log = LoggerFactory.getLogger(MatchBroadcaster.class);
 
     public void broadcastState(Match match) {
         GameSnapshot boardState = match.engine().snapshot(null);
@@ -36,7 +33,7 @@ public class MatchBroadcaster {
     }
 
     public void broadcastGameOver(Match match, GameOverEvent event) {
-        activityLog.log("game over - winner: " + (event.winner() == null ? "draw" : event.winner()));
+        log.info("game over - winner: {}", event.winner() == null ? "draw" : event.winner());
         broadcastToMatch(match, Protocol.encode(new GameOverMessage(event)));
     }
 
@@ -54,12 +51,13 @@ public class MatchBroadcaster {
         try {
             session.connection().send(text);
         } catch (RuntimeException e) {
+            log.warn("failed to send message to {}", session.username(), e);
         }
     }
 
     private void logOutgoing(String text) {
         if (!text.startsWith("STATE ")) {
-            activityLog.log("SERVER_TO_CLIENT " + text);
+            log.debug("SERVER_TO_CLIENT {}", text);
         }
     }
 

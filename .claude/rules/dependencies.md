@@ -8,11 +8,15 @@ anything placed there automatically.
 - **slf4j-api-2.0.13.jar** — a real runtime dependency of Java-WebSocket despite its own docs
   calling it dependency-free. Without it, anything using `GameServer`/`NetworkGameProxy` throws
   `NoClassDefFoundError` the first time the library logs.
-- **slf4j-simple-2.0.13.jar** — the actual logging backend for `slf4j-api`, same version pinned
-  to avoid a provider mismatch. Without it present, SLF4J 2.x falls back to a no-op logger and
-  prints one harmless one-time "no providers found" warning; with it, `GameServer`/library log
-  lines actually print (`[thread] LEVEL logger - message` to stderr) instead of being silently
-  dropped.
+- **logback-classic-1.5.13.jar** / **logback-core-1.5.13.jar** — the logging backend for
+  `slf4j-api`, replacing the earlier `slf4j-simple` (removed — it can only write to one target at
+  a time, not console *and* file simultaneously). Configured by the single `logback.xml` at the
+  project root, which writes to both the console and a `${LOG_FILE}`-named file; each `app.*Main`
+  entry point sets `System.setProperty("LOG_FILE", ...)` before its first logger call to pick
+  `server.log`/`client.log`. `logback.xml` is only found if the current directory is on the
+  classpath (see the `.;` in CLAUDE.md's Server/Client run commands) — without it, Logback falls
+  back to its built-in console-only default config, silently ignoring `logback.xml` and
+  `LOG_FILE`.
 - **lombok-1.18.46.jar** — compile-time only (an annotation processor, not a runtime dependency),
   but must be on `-processorpath`, not just `-cp`. On this project's JDK (26), implicit
   annotation-processor discovery via plain `-cp` does not run Lombok at all — no warning, it

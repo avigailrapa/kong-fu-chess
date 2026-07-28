@@ -1,5 +1,7 @@
 package src.server.handlers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.engine.GameEngine;
 import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
@@ -18,7 +20,6 @@ import src.net.messages.RoomCreateCommand;
 import src.net.messages.RoomId;
 import src.net.messages.RoomJoinCommand;
 import src.net.messages.Spectating;
-import src.server.core.ActivityLog;
 import src.server.core.Match;
 import src.server.core.Session;
 import src.server.core.SessionRegistry;
@@ -30,21 +31,20 @@ import java.util.function.Function;
 
 public class MatchOrchestrator {
 
+    private static final Logger log = LoggerFactory.getLogger(MatchOrchestrator.class);
     private static final long MATCHMAKING_TIMEOUT_MS = 60_000;
     private static final int RATING_WINDOW = 100;
 
     private final long tickIntervalMs;
-    private final ActivityLog activityLog;
     private final SessionRegistry sessionRegistry;
     private final MatchBroadcaster broadcaster;
     private final RatingService ratingService;
     private final MatchmakingQueue matchmakingQueue;
     private final RoomRegistry roomRegistry;
 
-    public MatchOrchestrator(long tickIntervalMs, ActivityLog activityLog, SessionRegistry sessionRegistry,
+    public MatchOrchestrator(long tickIntervalMs, SessionRegistry sessionRegistry,
                               MatchBroadcaster broadcaster, RatingService ratingService) {
         this.tickIntervalMs = tickIntervalMs;
-        this.activityLog = activityLog;
         this.sessionRegistry = sessionRegistry;
         this.broadcaster = broadcaster;
         this.ratingService = ratingService;
@@ -75,7 +75,7 @@ public class MatchOrchestrator {
     public String handleRoomCreate(Object conn, RoomCreateCommand r) {
         return requireSeatableSession(conn, session -> {
             String roomId = roomRegistry.createRoom(session);
-            activityLog.log(session.username() + " created room " + roomId);
+            log.info("{} created room {}", session.username(), roomId);
             return Protocol.encode(new RoomId(roomId));
         });
     }
@@ -85,11 +85,11 @@ public class MatchOrchestrator {
             RoomRegistry.JoinOutcome outcome = roomRegistry.joinRoom(r.roomId(), session);
             return switch (outcome) {
                 case SEATED_BLACK -> {
-                    activityLog.log(session.username() + " joined room " + r.roomId() + " as black");
+                    log.info("{} joined room {} as black", session.username(), r.roomId());
                     yield Protocol.encode(new RoomId(r.roomId()));
                 }
                 case SPECTATING -> {
-                    activityLog.log(session.username() + " is spectating room " + r.roomId());
+                    log.info("{} is spectating room {}", session.username(), r.roomId());
                     yield Protocol.encode(new Spectating());
                 }
                 case NOT_FOUND -> Protocol.encode(new MoveRejected("room_not_found"));
@@ -136,7 +136,7 @@ public class MatchOrchestrator {
         List<Session> seated = match.seated();
         Session a = seated.get(0);
         Session b = seated.get(1);
-        activityLog.log(a.username() + " vs " + b.username() + " - match started");
+        log.info("{} vs {} - match started", a.username(), b.username());
         broadcaster.sendQuietly(a, Protocol.encode(new MatchFound(b.username(), a.assignedColor(), b.rating())));
         broadcaster.sendQuietly(b, Protocol.encode(new MatchFound(a.username(), b.assignedColor(), a.rating())));
     }

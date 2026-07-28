@@ -1,5 +1,7 @@
 package src.server;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.net.MalformedMessageException;
 import src.net.Protocol;
 import src.net.messages.CancelPlayCommand;
@@ -14,7 +16,6 @@ import src.net.messages.RoomJoinCommand;
 import src.net.messages.SelectCommand;
 import src.net.messages.WireMessage;
 import src.server.auth.UserStore;
-import src.server.core.ActivityLog;
 import src.server.core.ClientConnection;
 import src.server.core.Match;
 import src.server.core.Session;
@@ -31,7 +32,8 @@ import java.util.function.Function;
 
 public class Lobby {
 
-    private final ActivityLog activityLog;
+    private static final Logger log = LoggerFactory.getLogger(Lobby.class);
+
     private final Function<Object, ClientConnection> connectionResolver;
     private final SessionRegistry sessionRegistry;
     private final MatchBroadcaster broadcaster;
@@ -40,21 +42,20 @@ public class Lobby {
     private final GameActionHandler gameActionHandler;
     private final DisconnectHandler disconnectHandler;
 
-    public Lobby(UserStore userStore, long tickIntervalMs, int disconnectCountdownSeconds, ActivityLog activityLog,
+    public Lobby(UserStore userStore, long tickIntervalMs, int disconnectCountdownSeconds,
                  Function<Object, ClientConnection> connectionResolver) {
-        this.activityLog = activityLog;
         this.connectionResolver = connectionResolver;
         this.sessionRegistry = new SessionRegistry();
-        this.broadcaster = new MatchBroadcaster(activityLog);
+        this.broadcaster = new MatchBroadcaster();
         RatingService ratingService = new RatingService(userStore, broadcaster);
         ReconnectManager reconnectManager = new ReconnectManager(disconnectCountdownSeconds);
-        this.matchOrchestrator = new MatchOrchestrator(tickIntervalMs, activityLog, sessionRegistry, broadcaster,
+        this.matchOrchestrator = new MatchOrchestrator(tickIntervalMs, sessionRegistry, broadcaster,
                 ratingService);
         this.authHandler = new SessionAuthHandler(userStore, reconnectManager, sessionRegistry, broadcaster,
-                activityLog, connectionResolver);
+                connectionResolver);
         this.gameActionHandler = new GameActionHandler(sessionRegistry);
         this.disconnectHandler = new DisconnectHandler(sessionRegistry, matchOrchestrator, reconnectManager,
-                broadcaster, activityLog);
+                broadcaster);
     }
 
     public Match matchFor(Object conn) {
@@ -67,12 +68,12 @@ public class Lobby {
     }
 
     public void receive(Object conn, String message) {
-        activityLog.log("CLIENT_TO_SERVER " + message);
+        log.debug("CLIENT_TO_SERVER {}", message);
         Match match = matchFor(conn);
         Runnable task = () -> {
             String reply = handleMessage(conn, message);
             connectionFor(conn).send(reply);
-            activityLog.log("SERVER_TO_CLIENT " + reply);
+            log.debug("SERVER_TO_CLIENT {}", reply);
             if (match != null) {
                 broadcaster.broadcastState(match);
             }
@@ -93,6 +94,7 @@ public class Lobby {
         try {
             parsed = Protocol.parse(message);
         } catch (MalformedMessageException e) {
+            log.warn("malformed message: {}", message);
             return Protocol.encode(new MoveRejected("malformed"));
         }
         return switch (parsed) {

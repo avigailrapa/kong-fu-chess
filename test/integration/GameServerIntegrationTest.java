@@ -3,9 +3,7 @@ package integration;
 import org.junit.jupiter.api.Test;
 import src.server.GameServer;
 import src.server.auth.UserStore;
-import src.server.core.ActivityLog;
 
-import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -22,9 +20,8 @@ public class GameServerIntegrationTest {
 
     @Test
     public void testRealSocketRoundTripAcceptsAMoveAndBroadcastsState() throws Exception {
-        ActivityLog activityLog = new ActivityLog(File.createTempFile("kongfu-activity", ".log").getAbsolutePath());
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 100, 20, activityLog);
+                new UserStore("jdbc:sqlite::memory:"), 100, 20);
         server.start();
 
         WebSocket clientA = null;

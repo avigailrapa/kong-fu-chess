@@ -1,9 +1,10 @@
 package app;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.input.BoardMapper;
 import src.input.ClickHandler;
 import src.model.Position;
-import src.net.client.ClientActivityLog;
 import src.net.client.LoginResult;
 import src.net.client.NetworkGameProxy;
 import src.net.client.RoomCreateResult;
@@ -43,48 +44,48 @@ public class ClientMain {
     private static final String DATA_DIR = "data/client";
 
     public static void main(String[] args) throws Exception {
-        String serverUrl = args.length > 0 ? args[0] : DEFAULT_SERVER_URL;
         new File(DATA_DIR).mkdirs();
-        ClientActivityLog activityLog = new ClientActivityLog(DATA_DIR + "/" + ClientActivityLog.DEFAULT_FILENAME);
+        System.setProperty("LOG_FILE", DATA_DIR + "/client.log");
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
 
-        NetworkGameProxy proxy = new NetworkGameProxy(URI.create(serverUrl), REQUEST_TIMEOUT_MS, activityLog);
+        String serverUrl = args.length > 0 ? args[0] : DEFAULT_SERVER_URL;
+        NetworkGameProxy proxy = new NetworkGameProxy(URI.create(serverUrl), REQUEST_TIMEOUT_MS);
         try {
             if (!proxy.connectBlocking(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                System.err.println("Could not connect to server at " + serverUrl);
+                log.error("Could not connect to server at {}", serverUrl);
                 proxy.close();
                 System.exit(1);
             }
-            activityLog.log("connected to " + serverUrl);
+            log.info("connected to {}", serverUrl);
         } catch (Exception e) {
-            System.err.println("Failed to connect to server at " + serverUrl + ": " + e.getMessage());
+            log.error("Failed to connect to server at {}", serverUrl, e);
             proxy.close();
             System.exit(1);
         }
 
         AppSupport.disableHiDpiScaling();
 
-        SwingUtilities.invokeLater(() -> openLoginScreen(proxy, activityLog));
+        SwingUtilities.invokeLater(() -> openLoginScreen(proxy));
     }
 
-    private static void openLoginScreen(NetworkGameProxy proxy, ClientActivityLog activityLog) {
+    private static void openLoginScreen(NetworkGameProxy proxy) {
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
         AtomicReference<LoginScreen> loginScreenRef = new AtomicReference<>();
         LoginScreen loginScreen = new LoginScreen((username, password) -> {
             loginScreenRef.get().setBusy(true);
             LoginResult result = proxy.login(username, password);
             if (!result.accepted()) {
-                activityLog.log("login rejected: " + result.reason());
+                log.warn("login rejected: {}", result.reason());
                 loginScreenRef.get().showError(describeLoginRejection(result.reason()));
                 return;
             }
-            activityLog.log(username + " logged in (rating " + result.rating() + ")");
-            System.out.println("Welcome, " + username + " (rating " + result.rating() + ")");
+            log.info("{} logged in (rating {})", username, result.rating());
             loginScreenRef.get().close();
             if ("reconnected".equals(result.reason())) {
-                activityLog.log(username + " reconnected to an active match");
-                System.out.println("Reconnected to your active match");
+                log.info("{} reconnected to an active match", username);
                 enterGameWindow(proxy);
             } else {
-                openHomeScreen(proxy, activityLog);
+                openHomeScreen(proxy);
             }
         });
         loginScreenRef.set(loginScreen);
@@ -99,11 +100,12 @@ public class ClientMain {
         };
     }
 
-    private static void openHomeScreen(NetworkGameProxy proxy, ClientActivityLog activityLog) {
+    private static void openHomeScreen(NetworkGameProxy proxy) {
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
         AtomicReference<HomeScreen> homeScreenRef = new AtomicReference<>();
         HomeScreen homeScreen = new HomeScreen(
                 () -> {
-                    activityLog.log("play clicked");
+                    log.debug("play clicked");
                     proxy.play();
                     homeScreenRef.get().showSearching();
                 },
@@ -111,14 +113,14 @@ public class ClientMain {
                     proxy.cancelPlay();
                     homeScreenRef.get().hideSearching();
                 },
-                () -> handleRoomCreate(proxy, homeScreenRef.get(), activityLog),
-                roomId -> handleRoomJoin(proxy, homeScreenRef.get(), activityLog, roomId));
+                () -> handleRoomCreate(proxy, homeScreenRef.get()),
+                roomId -> handleRoomJoin(proxy, homeScreenRef.get(), roomId));
         homeScreenRef.set(homeScreen);
 
         proxy.eventBus().subscribe(MatchFound.class, matchFound -> SwingUtilities.invokeLater(() -> {
             homeScreen.closeRoomDialog();
             homeScreen.close();
-            startMatch(proxy, matchFound, activityLog);
+            startMatch(proxy, matchFound);
         }));
         proxy.eventBus().subscribe(MatchTimeout.class,
                 matchTimeout -> SwingUtilities.invokeLater(homeScreen::showCantFindMatch));
@@ -126,19 +128,19 @@ public class ClientMain {
         homeScreen.open();
     }
 
-    private static void handleRoomCreate(NetworkGameProxy proxy, HomeScreen homeScreen,
-                                          ClientActivityLog activityLog) {
+    private static void handleRoomCreate(NetworkGameProxy proxy, HomeScreen homeScreen) {
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
         RoomCreateResult result = proxy.createRoom();
         if (!result.accepted()) {
             JOptionPane.showMessageDialog(null, "Could not create room: " + result.reason());
             return;
         }
-        activityLog.log("created room " + result.roomId());
+        log.info("created room {}", result.roomId());
         homeScreen.showRoomId(result.roomId());
     }
 
-    private static void handleRoomJoin(NetworkGameProxy proxy, HomeScreen homeScreen,
-                                        ClientActivityLog activityLog, String roomId) {
+    private static void handleRoomJoin(NetworkGameProxy proxy, HomeScreen homeScreen, String roomId) {
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
         if (roomId.isBlank()) {
             return;
         }
@@ -147,19 +149,19 @@ public class ClientMain {
             JOptionPane.showMessageDialog(null, "Could not join room: " + result.reason());
             return;
         }
-        activityLog.log((result.spectating() ? "spectating" : "joined") + " room " + roomId);
+        log.info("{} room {}", result.spectating() ? "spectating" : "joined", roomId);
         homeScreen.closeRoomDialog();
         if (result.spectating()) {
             homeScreen.close();
-            startSpectating(proxy, activityLog);
+            startSpectating(proxy);
         }
     }
 
-    private static void startMatch(NetworkGameProxy proxy, MatchFound matchFound, ClientActivityLog activityLog) {
+    private static void startMatch(NetworkGameProxy proxy, MatchFound matchFound) {
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
         proxy.resetSnapshot();
-        activityLog.log("match found vs " + matchFound.opponentUsername());
-        System.out.println("Match found vs " + matchFound.opponentUsername() + " (rating "
-                + matchFound.opponentRating() + "), playing as " + matchFound.assignedColor());
+        log.info("match found vs {} (rating {}), playing as {}", matchFound.opponentUsername(),
+                matchFound.opponentRating(), matchFound.assignedColor());
         enterGameWindow(proxy);
     }
 
@@ -174,10 +176,10 @@ public class ClientMain {
         openWindow(proxy, window);
     }
 
-    private static void startSpectating(NetworkGameProxy proxy, ClientActivityLog activityLog) {
+    private static void startSpectating(NetworkGameProxy proxy) {
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
         proxy.resetSnapshot();
-        activityLog.log("spectating a match");
-        System.out.println("Spectating a match");
+        log.info("spectating a match");
 
         Supplier<GameWindow.GameComponents> gameFactory = () -> createGame(proxy);
         GameWindow window = new GameWindow(gameFactory);
@@ -212,7 +214,8 @@ public class ClientMain {
             return true;
         };
         DoubleFunction<GameSnapshot> snapshotSupplier = zoom -> proxy.latestSnapshot().withZoom(zoom);
-        proxy.eventBus().subscribe(RatingChanged.class, r -> System.out.println("New rating: " + r.newRating()));
+        Logger log = LoggerFactory.getLogger(ClientMain.class);
+        proxy.eventBus().subscribe(RatingChanged.class, r -> log.info("New rating: {}", r.newRating()));
         EffectsController effects = AppSupport.startEffects(proxy.eventBus());
         return new GameWindow.GameComponents(tickSource, snapshotSupplier, clickHandler, renderer, effects);
     }

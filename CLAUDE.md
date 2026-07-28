@@ -43,11 +43,13 @@ javac -d out -cp $cp $files
 **Run** (entry points live in the `app` package, so classes are referenced fully-qualified):
 - GUI: `javaw -cp out app.GuiMain`
 - Console/DSL: `java -cp out app.Main < path\to\script.kfc`
-- Server: `java -cp "out;lib\*" app.ServerMain`
-- Client: `java -cp "out;lib\*" app.ClientMain [wsUrl]` (defaults to `ws://localhost:8887`)
+- Server: `java -cp ".;out;lib\*" app.ServerMain`
+- Client: `java -cp ".;out;lib\*" app.ClientMain [wsUrl]` (defaults to `ws://localhost:8887`)
 
 GUI/console stay `-cp out` (no jars — neither imports `src/net`/`src/server`); server/client need
-`lib\*` since they pull in the WebSocket jar transitively.
+`lib\*` since they pull in the WebSocket jar transitively, and the leading `.` since Logback only
+finds the project-root `logback.xml` when the current directory is on the classpath — without it,
+Logback silently falls back to its console-only default config (@.claude/rules/dependencies.md).
 
 **Test:** no `junit-platform-console-standalone.jar` in `lib/` — run tests via a hand-written
 JUnit `Launcher` driver class, not a single `java -jar` command (@.claude/rules/testing.md).

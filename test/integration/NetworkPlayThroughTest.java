@@ -11,10 +11,8 @@ import src.net.client.RoomJoinResult;
 import src.net.messages.MatchFound;
 import src.server.GameServer;
 import src.server.auth.UserStore;
-import src.server.core.ActivityLog;
 import src.view.snapshot.GameSnapshot;
 
-import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
@@ -24,14 +22,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class NetworkPlayThroughTest {
 
-    private ActivityLog tempActivityLog() throws Exception {
-        return new ActivityLog(File.createTempFile("kongfu-activity", ".log").getAbsolutePath());
-    }
-
     @Test
     public void testMoveRequestedThroughProxyIsAcceptedAndSnapshotUpdates() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 100, 20, tempActivityLog());
+                new UserStore("jdbc:sqlite::memory:"), 100, 20);
         server.start();
 
         int port = waitForBoundPort(server);
@@ -75,7 +69,7 @@ public class NetworkPlayThroughTest {
     @Test
     public void testOpponentDisconnectResignsAndUpdatesBothRatings() throws Exception {
         UserStore userStore = new UserStore("jdbc:sqlite::memory:");
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 100, 1, tempActivityLog());
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 100, 1);
         server.start();
 
         int port = waitForBoundPort(server);
@@ -112,7 +106,7 @@ public class NetworkPlayThroughTest {
     @Test
     public void testRoomCreateJoinAndSpectateFlow() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 100, 20, tempActivityLog());
+                new UserStore("jdbc:sqlite::memory:"), 100, 20);
         server.start();
 
         int port = waitForBoundPort(server);

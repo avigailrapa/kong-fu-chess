@@ -7,10 +7,8 @@ import src.model.Piece;
 import src.model.Position;
 import src.server.GameServer;
 import src.server.auth.UserStore;
-import src.server.core.ActivityLog;
 import src.server.core.Match;
 
-import java.io.File;
 import java.net.InetSocketAddress;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,17 +20,8 @@ public class GameServerTest {
 
     private ServerAndStore freshServerAndStore() {
         UserStore userStore = new UserStore("jdbc:sqlite::memory:");
-        ActivityLog activityLog = tempActivityLog();
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 1000, 20, activityLog);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 1000, 20);
         return new ServerAndStore(server, userStore);
-    }
-
-    private ActivityLog tempActivityLog() {
-        try {
-            return new ActivityLog(File.createTempFile("kongfu-activity", ".log").getAbsolutePath());
-        } catch (java.io.IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private GameServer freshServer() {
@@ -455,9 +444,8 @@ public class GameServerTest {
 
     @Test
     public void testReconnectWithinCountdownCancelsAutoResignAndResumesMatch() throws InterruptedException {
-        ActivityLog activityLog = tempActivityLog();
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 1000, 2, activityLog);
+                new UserStore("jdbc:sqlite::memory:"), 1000, 2);
         WebSocket whiteConn = new FakeWebSocket();
         WebSocket blackConn = new FakeWebSocket();
         login(server, whiteConn, "alice");
@@ -479,9 +467,8 @@ public class GameServerTest {
 
     @Test
     public void testReconnectWithWrongPasswordIsRejectedAndCountdownContinues() throws InterruptedException {
-        ActivityLog activityLog = tempActivityLog();
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 1000, 1, activityLog);
+                new UserStore("jdbc:sqlite::memory:"), 1000, 1);
         WebSocket whiteConn = new FakeWebSocket();
         WebSocket blackConn = new FakeWebSocket();
         login(server, whiteConn, "alice");
@@ -501,9 +488,8 @@ public class GameServerTest {
 
     @Test
     public void testDisconnectedSpectatorDoesNotStartResignCountdown() throws InterruptedException {
-        ActivityLog activityLog = tempActivityLog();
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 1000, 1, activityLog);
+                new UserStore("jdbc:sqlite::memory:"), 1000, 1);
         WebSocket creatorConn = new FakeWebSocket();
         WebSocket joinerConn = new FakeWebSocket();
         WebSocket spectatorConn = new FakeWebSocket();

@@ -1,8 +1,9 @@
 package app;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import src.server.GameServer;
 import src.server.auth.UserStore;
-import src.server.core.ActivityLog;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -32,17 +33,19 @@ public class ServerMain {
         String databaseFilename = requireProperty(config, "databaseFilename");
 
         new File(dataDir).mkdirs();
+        System.setProperty("LOG_FILE", dataDir + "/server.log");
+        Logger log = LoggerFactory.getLogger(ServerMain.class);
+
         UserStore userStore = new UserStore("jdbc:sqlite:" + dataDir + "/" + databaseFilename);
-        ActivityLog activityLog = new ActivityLog(dataDir + "/" + ActivityLog.DEFAULT_FILENAME);
         GameServer server = new GameServer(new InetSocketAddress(port), userStore, TICK_INTERVAL_MS,
-                DISCONNECT_COUNTDOWN_SECONDS, activityLog);
+                DISCONNECT_COUNTDOWN_SECONDS);
 
         server.start();
         if (!waitForBoundPort(server)) {
-            System.err.println("Server failed to bind to port " + port + " within " + BIND_TIMEOUT_MS + "ms");
+            log.error("Server failed to bind to port {} within {}ms", port, BIND_TIMEOUT_MS);
             System.exit(1);
         }
-        System.out.println("KongFu Chess server listening on port " + port);
+        log.info("KongFu Chess server listening on port {}", port);
     }
 
     private static String requireProperty(Properties config, String key) {
