@@ -15,6 +15,7 @@ import src.net.messages.RoomCreateCommand;
 import src.net.messages.RoomJoinCommand;
 import src.net.messages.SelectCommand;
 import src.net.messages.WireMessage;
+import src.model.Piece;
 import src.server.auth.UserStore;
 import src.server.core.ClientConnection;
 import src.server.core.Match;
@@ -28,9 +29,13 @@ import src.server.handlers.RatingService;
 import src.server.handlers.SessionAuthHandler;
 import src.server.matchmaking.ReconnectManager;
 
+import java.util.List;
 import java.util.function.Function;
 
 public class Lobby {
+
+    public record AssignedPlayer(String connectionId, String username, int rating, Piece.Color color) {
+    }
 
     private static final Logger log = LoggerFactory.getLogger(Lobby.class);
 
@@ -48,7 +53,7 @@ public class Lobby {
         this.sessionRegistry = new SessionRegistry();
         this.broadcaster = new MatchBroadcaster();
         RatingService ratingService = new RatingService(userStore, broadcaster);
-        ReconnectManager reconnectManager = new ReconnectManager(disconnectCountdownSeconds);
+        ReconnectManager<Match> reconnectManager = new ReconnectManager<>(disconnectCountdownSeconds);
         this.matchOrchestrator = new MatchOrchestrator(tickIntervalMs, sessionRegistry, broadcaster,
                 ratingService);
         this.authHandler = new SessionAuthHandler(userStore, reconnectManager, sessionRegistry, broadcaster,
@@ -60,6 +65,19 @@ public class Lobby {
 
     public Match matchFor(Object conn) {
         return sessionRegistry.matchFor(conn);
+    }
+
+    public Match createAssignedMatch(String matchId, List<AssignedPlayer> assignments) {
+        List<Session> sessions = assignments.stream().map(a -> {
+            Session session = new Session(connectionResolver.apply(a.connectionId()), a.username(), a.rating());
+            session.assignedColor(a.color());
+            session.role(a.color() == Piece.Color.WHITE ? Session.Role.WHITE : Session.Role.BLACK);
+            return session;
+        }).toList();
+        for (int i = 0; i < assignments.size(); i++) {
+            sessionRegistry.register(assignments.get(i).connectionId(), sessions.get(i));
+        }
+        return matchOrchestrator.createAssignedMatch(matchId, sessions);
     }
 
     private ClientConnection connectionFor(Object conn) {
@@ -87,6 +105,10 @@ public class Lobby {
 
     public void disconnect(Object conn) {
         disconnectHandler.disconnect(conn);
+    }
+
+    public void reconnectFromCluster(String connectionId, String username) {
+        authHandler.reconnectFromCluster(connectionId, username);
     }
 
     public String handleMessage(Object conn, String message) {

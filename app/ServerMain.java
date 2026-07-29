@@ -30,13 +30,13 @@ public class ServerMain {
         }
         int port = Integer.parseInt(requireProperty(config, "port"));
         String dataDir = requireProperty(config, "dataDir");
-        String databaseFilename = requireProperty(config, "databaseFilename");
+        String postgresUrl = requireProperty(config, "postgresUrl");
 
         new File(dataDir).mkdirs();
         System.setProperty("LOG_FILE", dataDir + "/server.log");
         Logger log = LoggerFactory.getLogger(ServerMain.class);
 
-        UserStore userStore = new UserStore("jdbc:sqlite:" + dataDir + "/" + databaseFilename);
+        UserStore userStore = new UserStore(postgresUrl);
         GameServer server = new GameServer(new InetSocketAddress(port), userStore, TICK_INTERVAL_MS,
                 DISCONNECT_COUNTDOWN_SECONDS);
 

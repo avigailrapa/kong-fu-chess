@@ -40,7 +40,7 @@ public class MatchOrchestrator {
     private final MatchBroadcaster broadcaster;
     private final RatingService ratingService;
     private final MatchmakingQueue matchmakingQueue;
-    private final RoomRegistry roomRegistry;
+    private final RoomRegistry<Match> roomRegistry;
 
     public MatchOrchestrator(long tickIntervalMs, SessionRegistry sessionRegistry,
                               MatchBroadcaster broadcaster, RatingService ratingService) {
@@ -50,7 +50,7 @@ public class MatchOrchestrator {
         this.ratingService = ratingService;
         this.matchmakingQueue = new MatchmakingQueue(this::onPaired, this::onMatchTimeout,
                 MATCHMAKING_TIMEOUT_MS, RATING_WINDOW);
-        this.roomRegistry = new RoomRegistry(this::newMatch, this::seat, this::wireAndStartMatch, this::addSpectator);
+        this.roomRegistry = new RoomRegistry<>(this::newMatch, this::seat, this::wireAndStartMatch, this::addSpectator);
     }
 
     public void cancelMatchmaking(Session session) {
@@ -112,6 +112,17 @@ public class MatchOrchestrator {
             match.newGame(freshEngine());
             return Protocol.encode(new MoveAccepted());
         });
+    }
+
+    public Match createAssignedMatch(String matchId, List<Session> sessions) {
+        Match match = newMatch();
+        match.matchId(matchId);
+        for (Session session : sessions) {
+            match.addSession(session);
+            sessionRegistry.bind(session, match);
+        }
+        wireAndStartMatch(match);
+        return match;
     }
 
     private Match newMatch() {

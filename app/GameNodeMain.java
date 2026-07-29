@@ -17,11 +17,13 @@ public class GameNodeMain {
     private static final String DEFAULT_POSTGRES_URL =
             "jdbc:postgresql://localhost:5432/kongfu?user=kongfu&password=kongfu";
     private static final String DEFAULT_DATA_DIR = "data/server";
+    private static final String DEFAULT_NODE_ID = "node-1";
 
     public static void main(String[] args) throws Exception {
         String natsUrl = AppSupport.env("NATS_URL", DEFAULT_NATS_URL);
         String postgresUrl = AppSupport.env("POSTGRES_URL", DEFAULT_POSTGRES_URL);
         String dataDir = AppSupport.env("DATA_DIR", DEFAULT_DATA_DIR);
+        String nodeId = AppSupport.env("NODE_ID", DEFAULT_NODE_ID);
         long tickIntervalMs = Long.parseLong(
                 AppSupport.env("TICK_INTERVAL_MS", String.valueOf(DEFAULT_TICK_INTERVAL_MS)));
         int disconnectCountdownSeconds = Integer.parseInt(
@@ -33,9 +35,9 @@ public class GameNodeMain {
         Connection nats = Nats.connect(natsUrl);
         Lobby lobby = new Lobby(userStore, tickIntervalMs, disconnectCountdownSeconds,
                 connId -> new NatsClientConnection(nats, (String) connId));
-        new GameNodeBridge(lobby, nats).start();
+        new GameNodeBridge(lobby, nats, nodeId).start();
 
-        System.out.println("KongFu game-node connected to NATS at " + natsUrl);
+        System.out.println("KongFu game-node " + nodeId + " connected to NATS at " + natsUrl);
         Thread.currentThread().join();
     }
 }

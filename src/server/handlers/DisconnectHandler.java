@@ -15,11 +15,11 @@ public class DisconnectHandler {
 
     private final SessionRegistry sessionRegistry;
     private final MatchOrchestrator matchOrchestrator;
-    private final ReconnectManager reconnectManager;
+    private final ReconnectManager<Match> reconnectManager;
     private final MatchBroadcaster broadcaster;
 
     public DisconnectHandler(SessionRegistry sessionRegistry, MatchOrchestrator matchOrchestrator,
-                              ReconnectManager reconnectManager, MatchBroadcaster broadcaster) {
+                              ReconnectManager<Match> reconnectManager, MatchBroadcaster broadcaster) {
         this.sessionRegistry = sessionRegistry;
         this.matchOrchestrator = matchOrchestrator;
         this.reconnectManager = reconnectManager;

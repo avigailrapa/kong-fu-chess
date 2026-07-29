@@ -1,6 +1,7 @@
 package integration;
 
 import org.junit.jupiter.api.Test;
+import server.auth.TestDatabase;
 import src.engine.MoveResult;
 import src.model.Piece;
 import src.model.Position;
@@ -25,7 +26,7 @@ public class NetworkPlayThroughTest {
     @Test
     public void testMoveRequestedThroughProxyIsAcceptedAndSnapshotUpdates() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 100, 20);
+                TestDatabase.freshUserStore(), 100, 20);
         server.start();
 
         int port = waitForBoundPort(server);
@@ -68,7 +69,7 @@ public class NetworkPlayThroughTest {
 
     @Test
     public void testOpponentDisconnectResignsAndUpdatesBothRatings() throws Exception {
-        UserStore userStore = new UserStore("jdbc:sqlite::memory:");
+        UserStore userStore = TestDatabase.freshUserStore();
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 100, 1);
         server.start();
 
@@ -106,7 +107,7 @@ public class NetworkPlayThroughTest {
     @Test
     public void testRoomCreateJoinAndSpectateFlow() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 100, 20);
+                TestDatabase.freshUserStore(), 100, 20);
         server.start();
 
         int port = waitForBoundPort(server);

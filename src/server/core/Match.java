@@ -1,14 +1,15 @@
 package src.server.core;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import src.engine.GameEngine;
 import src.engine.MoveLogger;
 import src.model.Piece;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -21,13 +22,15 @@ public class Match {
     private GameEngine engine;
     @Getter
     private MoveLogger moveLogger;
+    @Getter
+    @Setter
+    private String matchId;
     private final long tickIntervalMs;
     private final ScheduledExecutorService executor;
-    private final List<Session> seated = new ArrayList<>();
-    private final List<Session> spectators = new ArrayList<>();
+    private final List<Session> seated = new CopyOnWriteArrayList<>();
+    private final List<Session> spectators = new CopyOnWriteArrayList<>();
     private Runnable onTick;
-    private Runnable onNewGame = () -> {
-    };
+    private final List<Runnable> onNewGameListeners = new CopyOnWriteArrayList<>();
     private ScheduledFuture<?> tickTask;
 
     public Match(GameEngine engine, long tickIntervalMs) {
@@ -37,12 +40,12 @@ public class Match {
     }
 
     public void onNewGame(Runnable listener) {
-        this.onNewGame = listener;
+        onNewGameListeners.add(listener);
     }
 
     public void newGame(GameEngine engine) {
         rewire(engine);
-        onNewGame.run();
+        onNewGameListeners.forEach(Runnable::run);
     }
 
     private void rewire(GameEngine engine) {

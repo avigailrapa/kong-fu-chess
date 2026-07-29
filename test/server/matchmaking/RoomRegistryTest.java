@@ -25,8 +25,8 @@ public class RoomRegistryTest {
         return new Match(GameEngine.fromBoard(board), 1000);
     }
 
-    private RoomRegistry freshRegistry(AtomicInteger onMatchReadyCalls) {
-        return new RoomRegistry(this::freshMatch,
+    private RoomRegistry<Match> freshRegistry(AtomicInteger onMatchReadyCalls) {
+        return new RoomRegistry<>(this::freshMatch,
                 (match, session) -> match.addSession(session),
                 match -> onMatchReadyCalls.incrementAndGet(),
                 (match, session) -> match.addSpectator(session));
@@ -34,7 +34,7 @@ public class RoomRegistryTest {
 
     @Test
     public void testCreateRoomReturnsNonBlankRoomId() {
-        RoomRegistry registry = freshRegistry(new AtomicInteger());
+        RoomRegistry<Match> registry = freshRegistry(new AtomicInteger());
 
         String roomId = registry.createRoom(session("alice"));
 
@@ -45,7 +45,7 @@ public class RoomRegistryTest {
     @Test
     public void testFirstJoinIsSeatedBlackAndTriggersOnMatchReady() {
         AtomicInteger onMatchReadyCalls = new AtomicInteger();
-        RoomRegistry registry = freshRegistry(onMatchReadyCalls);
+        RoomRegistry<Match> registry = freshRegistry(onMatchReadyCalls);
         String roomId = registry.createRoom(session("alice"));
 
         RoomRegistry.JoinOutcome outcome = registry.joinRoom(roomId, session("bob"));
@@ -57,7 +57,7 @@ public class RoomRegistryTest {
     @Test
     public void testSecondJoinOnwardsIsSpectatingAndDoesNotRetriggerOnMatchReady() {
         AtomicInteger onMatchReadyCalls = new AtomicInteger();
-        RoomRegistry registry = freshRegistry(onMatchReadyCalls);
+        RoomRegistry<Match> registry = freshRegistry(onMatchReadyCalls);
         String roomId = registry.createRoom(session("alice"));
         registry.joinRoom(roomId, session("bob"));
 
@@ -71,7 +71,7 @@ public class RoomRegistryTest {
 
     @Test
     public void testJoiningUnknownRoomReturnsNotFound() {
-        RoomRegistry registry = freshRegistry(new AtomicInteger());
+        RoomRegistry<Match> registry = freshRegistry(new AtomicInteger());
 
         RoomRegistry.JoinOutcome outcome = registry.joinRoom("NOSUCHROOM", session("bob"));
 

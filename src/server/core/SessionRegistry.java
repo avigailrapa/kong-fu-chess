@@ -1,12 +1,12 @@
 package src.server.core;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SessionRegistry {
 
-    private final Map<Object, Session> sessionsByConnection = new HashMap<>();
-    private final Map<Session, Match> matchBySession = new HashMap<>();
+    private final Map<Object, Session> sessionsByConnection = new ConcurrentHashMap<>();
+    private final Map<Session, Match> matchBySession = new ConcurrentHashMap<>();
 
     public Session sessionFor(Object conn) {
         return sessionsByConnection.get(conn);

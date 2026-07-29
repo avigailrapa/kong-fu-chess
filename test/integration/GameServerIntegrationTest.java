@@ -1,8 +1,8 @@
 package integration;
 
 import org.junit.jupiter.api.Test;
+import server.auth.TestDatabase;
 import src.server.GameServer;
-import src.server.auth.UserStore;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -21,7 +21,7 @@ public class GameServerIntegrationTest {
     @Test
     public void testRealSocketRoundTripAcceptsAMoveAndBroadcastsState() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                new UserStore("jdbc:sqlite::memory:"), 100, 20);
+                TestDatabase.freshUserStore(), 100, 20);
         server.start();
 
         WebSocket clientA = null;
