@@ -1,6 +1,7 @@
 package server.auth;
 
 import src.server.auth.UserStore;
+import src.server.history.GameStore;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -23,5 +24,15 @@ public final class TestDatabase {
             throw new IllegalStateException("Failed to reset test database at " + JDBC_URL, e);
         }
         return new UserStore(JDBC_URL);
+    }
+
+    public static GameStore freshGameStore() {
+        try (Connection connection = DriverManager.getConnection(JDBC_URL);
+             Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE IF EXISTS games");
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to reset test database at " + JDBC_URL, e);
+        }
+        return new GameStore(JDBC_URL);
     }
 }

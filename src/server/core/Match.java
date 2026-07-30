@@ -89,6 +89,14 @@ public class Match {
         return List.copyOf(seated);
     }
 
+    public Session seatedWhite() {
+        return seated.stream().filter(s -> s.assignedColor() == Piece.Color.WHITE).findFirst().orElse(null);
+    }
+
+    public Session seatedBlack() {
+        return seated.stream().filter(s -> s.assignedColor() == Piece.Color.BLACK).findFirst().orElse(null);
+    }
+
     public void addSpectator(Session session) {
         spectators.add(session);
     }

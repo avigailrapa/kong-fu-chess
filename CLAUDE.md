@@ -6,9 +6,10 @@ Guidance for Claude Code when working in this repository.
 
 "Kung Fu Chess" — a real-time chess variant: moves travel over simulated time instead of
 teleporting, pieces rest/cool down after moving, and two pieces can race for a square or cross
-paths mid-flight. Two front ends over one engine: a Swing GUI (`app/GuiMain.java`) and a
-text-command console runner (`app/Main.java`) reading a small DSL from stdin
-(@.claude/rules/text-dsl.md).
+paths mid-flight. Played only through the server: a Swing GUI client (`app/ClientMain.java`)
+talks over WebSocket to a server, either the monolithic `app/ServerMain.java` or the clustered
+deployment (`app/WsGatewayMain.java`/`MatchmakerMain.java`/`GameAllocatorMain.java`/
+`GameNodeMain.java`/`ApiGatewayMain.java`).
 
 Plain `javac`-compiled — no Maven/Gradle/build.xml. `KongFu.iml` is the IntelliJ project file
 (source roots: project root, `src/`, `test/`). Dependency jars live in `lib/`, fetched by hand, not
@@ -41,15 +42,13 @@ javac -d out -cp $cp $files
 ```
 
 **Run** (entry points live in the `app` package, so classes are referenced fully-qualified):
-- GUI: `javaw -cp out app.GuiMain`
-- Console/DSL: `java -cp out app.Main < path\to\script.kfc`
 - Server: `java -cp ".;out;lib\*" app.ServerMain`
 - Client: `java -cp ".;out;lib\*" app.ClientMain [wsUrl]` (defaults to `ws://localhost:8887`)
 
-GUI/console stay `-cp out` (no jars — neither imports `src/net`/`src/server`); server/client need
-`lib\*` since they pull in the WebSocket jar transitively, and the leading `.` since Logback only
-finds the project-root `logback.xml` when the current directory is on the classpath — without it,
-Logback silently falls back to its console-only default config (@.claude/rules/dependencies.md).
+Both need `lib\*` since they pull in the WebSocket jar transitively, and the leading `.` since
+Logback only finds the project-root `logback.xml` when the current directory is on the classpath
+— without it, Logback silently falls back to its console-only default config
+(@.claude/rules/dependencies.md).
 
 **Test:** no `junit-platform-console-standalone.jar` in `lib/` — run tests via a hand-written
 JUnit `Launcher` driver class, not a single `java -jar` command (@.claude/rules/testing.md).
@@ -69,7 +68,7 @@ depends only on the ones below it, never sideways or up. Full per-class contract
 ```
 model  →  rules  →  realtime  →  engine  →  view (DTOs only)
                                    ↑  ↑  ↑
-                                bus │  │  input (ClickHandler / CommandParser+Runner)
+                                bus │  │  input (ClickHandler)
                                     │  net (wire protocol, NetworkGameProxy) / server (GameServer, Match)
                                     engine also publishes to bus; view/sound subscribes
 ```
@@ -78,10 +77,10 @@ model  →  rules  →  realtime  →  engine  →  view (DTOs only)
 - `rules` — read-only move legality (`PieceRules`, `RuleEngine`); never mutates `Board`.
 - `realtime` — `RealTimeArbiter` resolves all in-flight motion, jumps, rests, arrivals, races.
 - `engine` — `GameEngine`, the one public command boundary; only place allowed to build `view` DTOs.
-- `input` — GUI click path and text-DSL path; both call through `GameEngine`/`GameCommands` only.
+- `input` — `ClickHandler`, the GUI click path; calls through `GameEngine`/`GameCommands` only.
 - `net` / `server` — WebSocket wire protocol, client proxy, match/session/rating server.
 - `view` — `Renderer`/`GameWindow` see only `GameSnapshot` DTOs, never live model/engine objects.
-- `io` — plain-text board serialization, model-only dependency.
+- `io` — plain-text board serialization (`BoardParser`), model-only dependency.
 
 Piece asset layout (`assets/pieces/...config.json`): @.claude/rules/text-dsl.md.
 

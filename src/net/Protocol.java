@@ -5,6 +5,7 @@ import src.engine.GameOverEvent;
 import src.engine.MoveEvent;
 import src.model.Piece;
 import src.model.Position;
+import src.net.messages.AuthCommand;
 import src.net.messages.CancelPlayCommand;
 import src.net.messages.DisconnectCountdown;
 import src.net.messages.GameOverMessage;
@@ -45,6 +46,7 @@ public final class Protocol {
     private static final Pattern MOVE_PATTERN = Pattern.compile("^[WB][KQRBNP][a-h][1-8][a-h][1-8]$");
     private static final Pattern JUMP_PATTERN = Pattern.compile("^JUMP ([WB])([KQRBNP])([a-h][1-8])$");
     private static final Pattern LOGIN_PATTERN = Pattern.compile("^LOGIN (\\S+) (\\S+)$");
+    private static final Pattern AUTH_PATTERN = Pattern.compile("^AUTH (\\S+)$");
     private static final Pattern WELCOME_PATTERN = Pattern.compile("^WELCOME (-?\\d+)$");
     private static final Pattern WELCOME_BACK_PATTERN = Pattern.compile("^WELCOME_BACK (-?\\d+)$");
     private static final Pattern SELECT_COMMAND_PATTERN = Pattern.compile("^SELECT (-|[a-h][1-8])$");
@@ -80,6 +82,10 @@ public final class Protocol {
         Matcher loginMatcher = LOGIN_PATTERN.matcher(frameBody);
         if (loginMatcher.matches()) {
             return new LoginCommand(loginMatcher.group(1), loginMatcher.group(2));
+        }
+        Matcher authMatcher = AUTH_PATTERN.matcher(frameBody);
+        if (authMatcher.matches()) {
+            return new AuthCommand(authMatcher.group(1));
         }
         Matcher welcomeBackMatcher = WELCOME_BACK_PATTERN.matcher(frameBody);
         if (welcomeBackMatcher.matches()) {
@@ -171,6 +177,7 @@ public final class Protocol {
             case MoveRejected r -> REJECT_PREFIX + r.reason();
             case StateMessage s -> encodeState(s);
             case LoginCommand l -> "LOGIN " + l.username() + " " + l.password();
+            case AuthCommand a -> "AUTH " + a.token();
             case Welcome w -> "WELCOME " + w.rating();
             case SelectCommand sel -> "SELECT " + (sel.selected() == null ? "-" : AlgebraicNotation.toSquare(sel.selected()));
             case MoveOccurred mo -> encodeMoveEvent(mo.event());

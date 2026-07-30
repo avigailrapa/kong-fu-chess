@@ -1,11 +1,11 @@
 package src.server.cluster;
 
 import io.nats.client.Connection;
-import src.server.coordinator.Coordinator;
+import src.server.matchmaker.Matchmaker;
 
 import java.util.List;
 
-public class NatsMatchDispatcher implements Coordinator.MatchDispatcher {
+public class NatsMatchDispatcher implements Matchmaker.MatchDispatcher {
 
     private final Connection nats;
 
@@ -14,12 +14,12 @@ public class NatsMatchDispatcher implements Coordinator.MatchDispatcher {
     }
 
     @Override
-    public void createMatch(String nodeId, String matchId, List<Coordinator.PlayerAssignment> players) {
+    public void assign(String matchId, List<Matchmaker.PlayerAssignment> players) {
         List<ClusterProtocol.PlayerAssignment> wirePlayers = players.stream()
                 .map(p -> new ClusterProtocol.PlayerAssignment(p.connectionId(), p.username(), p.rating(),
                         p.color().name()))
                 .toList();
-        nats.publish(ClusterProtocol.createMatchSubject(nodeId),
+        nats.publish(ClusterProtocol.ASSIGN_SUBJECT,
                 ClusterProtocol.encodeCreateMatch(new ClusterProtocol.CreateMatchCommand(matchId, wirePlayers)));
     }
 

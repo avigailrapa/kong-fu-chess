@@ -17,6 +17,7 @@ import src.net.messages.CancelPlayCommand;
 import src.net.messages.DisconnectCountdown;
 import src.net.messages.GameOverMessage;
 import src.net.messages.JumpCommand;
+import src.net.messages.AuthCommand;
 import src.net.messages.LoginCommand;
 import src.net.messages.MatchFound;
 import src.net.messages.MatchTimeout;
@@ -123,6 +124,8 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
             case Spectating s -> completeOldestPendingReply(s);
             case LoginCommand _ -> {
             }
+            case AuthCommand _ -> {
+            }
             case PlayCommand _ -> {
             }
             case CancelPlayCommand _ -> {
@@ -202,6 +205,12 @@ public class NetworkGameProxy extends WebSocketClient implements GameCommands {
     public LoginResult login(String username, String password) {
         CompletableFuture<WireMessage> reply = enqueuePendingReply();
         send(Protocol.encode(new LoginCommand(username, password)));
+        return awaitLoginReply(reply);
+    }
+
+    public LoginResult auth(String token) {
+        CompletableFuture<WireMessage> reply = enqueuePendingReply();
+        send(Protocol.encode(new AuthCommand(token)));
         return awaitLoginReply(reply);
     }
 

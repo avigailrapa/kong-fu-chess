@@ -21,7 +21,7 @@ public class GameServerIntegrationTest {
     @Test
     public void testRealSocketRoundTripAcceptsAMoveAndBroadcastsState() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                TestDatabase.freshUserStore(), 100, 20);
+                TestDatabase.freshUserStore(), TestDatabase.freshGameStore(), 100, 20);
         server.start();
 
         WebSocket clientA = null;

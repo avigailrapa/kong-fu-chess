@@ -5,10 +5,12 @@ import org.slf4j.LoggerFactory;
 import src.input.BoardMapper;
 import src.input.ClickHandler;
 import src.model.Position;
+import src.net.client.ApiGatewayClient;
 import src.net.client.LoginResult;
 import src.net.client.NetworkGameProxy;
 import src.net.client.RoomCreateResult;
 import src.net.client.RoomJoinResult;
+import src.net.client.TokenResult;
 import src.net.messages.DisconnectCountdown;
 import src.net.messages.MatchFound;
 import src.net.messages.MatchTimeout;
@@ -34,6 +36,7 @@ import java.util.function.Supplier;
 public class ClientMain {
 
     private static final String DEFAULT_SERVER_URL = "ws://localhost:" + WsGatewayMain.DEFAULT_PORT;
+    private static final String DEFAULT_API_URL = "http://localhost:" + ApiGatewayMain.DEFAULT_PORT;
     private static final long REQUEST_TIMEOUT_MS = 2000;
     private static final long CONNECT_TIMEOUT_SECONDS = 5;
     private static final long INITIAL_STATE_TIMEOUT_MS = 5000;
@@ -49,6 +52,7 @@ public class ClientMain {
         Logger log = LoggerFactory.getLogger(ClientMain.class);
 
         String serverUrl = args.length > 0 ? args[0] : DEFAULT_SERVER_URL;
+        String apiUrl = args.length > 1 ? args[1] : DEFAULT_API_URL;
         NetworkGameProxy proxy = new NetworkGameProxy(URI.create(serverUrl), REQUEST_TIMEOUT_MS);
         try {
             if (!proxy.connectBlocking(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -65,15 +69,16 @@ public class ClientMain {
 
         AppSupport.disableHiDpiScaling();
 
-        SwingUtilities.invokeLater(() -> openLoginScreen(proxy));
+        ApiGatewayClient apiClient = new ApiGatewayClient(apiUrl);
+        SwingUtilities.invokeLater(() -> openLoginScreen(proxy, apiClient));
     }
 
-    private static void openLoginScreen(NetworkGameProxy proxy) {
+    private static void openLoginScreen(NetworkGameProxy proxy, ApiGatewayClient apiClient) {
         Logger log = LoggerFactory.getLogger(ClientMain.class);
         AtomicReference<LoginScreen> loginScreenRef = new AtomicReference<>();
         LoginScreen loginScreen = new LoginScreen((username, password) -> {
             loginScreenRef.get().setBusy(true);
-            LoginResult result = proxy.login(username, password);
+            LoginResult result = authenticate(proxy, apiClient, username, password);
             if (!result.accepted()) {
                 log.warn("login rejected: {}", result.reason());
                 loginScreenRef.get().showError(describeLoginRejection(result.reason()));
@@ -90,6 +95,18 @@ public class ClientMain {
         });
         loginScreenRef.set(loginScreen);
         loginScreen.open();
+    }
+
+    private static LoginResult authenticate(NetworkGameProxy proxy, ApiGatewayClient apiClient, String username,
+            String password) {
+        TokenResult tokenResult = apiClient.login(username, password);
+        if (tokenResult.accepted()) {
+            return proxy.auth(tokenResult.token());
+        }
+        if ("unreachable".equals(tokenResult.reason())) {
+            return proxy.login(username, password);
+        }
+        return new LoginResult(false, 0, tokenResult.reason());
     }
 
     private static String describeLoginRejection(String reason) {

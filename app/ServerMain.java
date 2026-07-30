@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import src.server.GameServer;
 import src.server.auth.UserStore;
+import src.server.history.GameStore;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -37,7 +38,8 @@ public class ServerMain {
         Logger log = LoggerFactory.getLogger(ServerMain.class);
 
         UserStore userStore = new UserStore(postgresUrl);
-        GameServer server = new GameServer(new InetSocketAddress(port), userStore, TICK_INTERVAL_MS,
+        GameStore gameStore = new GameStore(postgresUrl);
+        GameServer server = new GameServer(new InetSocketAddress(port), userStore, gameStore, TICK_INTERVAL_MS,
                 DISCONNECT_COUNTDOWN_SECONDS);
 
         server.start();

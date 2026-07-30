@@ -21,7 +21,8 @@ public class GameServerTest {
 
     private ServerAndStore freshServerAndStore() {
         UserStore userStore = TestDatabase.freshUserStore();
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 1000, 20);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore,
+                TestDatabase.freshGameStore(), 1000, 20);
         return new ServerAndStore(server, userStore);
     }
 
@@ -446,7 +447,7 @@ public class GameServerTest {
     @Test
     public void testReconnectWithinCountdownCancelsAutoResignAndResumesMatch() throws InterruptedException {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                TestDatabase.freshUserStore(), 1000, 2);
+                TestDatabase.freshUserStore(), TestDatabase.freshGameStore(), 1000, 2);
         WebSocket whiteConn = new FakeWebSocket();
         WebSocket blackConn = new FakeWebSocket();
         login(server, whiteConn, "alice");
@@ -469,7 +470,7 @@ public class GameServerTest {
     @Test
     public void testReconnectWithWrongPasswordIsRejectedAndCountdownContinues() throws InterruptedException {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                TestDatabase.freshUserStore(), 1000, 1);
+                TestDatabase.freshUserStore(), TestDatabase.freshGameStore(), 1000, 1);
         WebSocket whiteConn = new FakeWebSocket();
         WebSocket blackConn = new FakeWebSocket();
         login(server, whiteConn, "alice");
@@ -490,7 +491,7 @@ public class GameServerTest {
     @Test
     public void testDisconnectedSpectatorDoesNotStartResignCountdown() throws InterruptedException {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                TestDatabase.freshUserStore(), 1000, 1);
+                TestDatabase.freshUserStore(), TestDatabase.freshGameStore(), 1000, 1);
         WebSocket creatorConn = new FakeWebSocket();
         WebSocket joinerConn = new FakeWebSocket();
         WebSocket spectatorConn = new FakeWebSocket();

@@ -3,6 +3,40 @@
 A real-time game, 100M registered users, 10M concurrent players, each match
 lasts 30-90 seconds, one action per player every 2 seconds.
 
+## Current implementation status
+
+Everything below this line describes the **target** architecture at 100M-user scale. What
+actually runs today is a small, single-machine version of the same shape, not the scaled-out
+counts in the table:
+
+| Target row | What runs today |
+|---|---|
+| Gateway (~200) | One `WsGateway` (WebSocket) + one `ApiGatewayMain` (REST: `/login`, `/history/{username}`) |
+| Matchmaking (~50-100) | One `Matchmaker` service (`app.MatchmakerMain`) |
+| Allocator (~10-20) | One `GameAllocator` service (`app.GameAllocatorMain`), round-robin only (no least-loaded/health-aware picking yet) |
+| Game Node (~700-800) | Two (`game-node-1`/`game-node-2`, `app.GameNodeMain`) |
+| Presence/Reconnect | Folded into `Matchmaker` (`ConnectionDirectory`, Redis-backed) + each Game Node's existing `ReconnectManager`/`DisconnectHandler`, not a separate service |
+| Rating Worker | Runs inline on the Game Node that hosted the match (`RatingService`, a `GameOverEvent` subscriber), not a separate worker/queue |
+| User DB (32-64 shards) | One unsharded, unreplicated PostgreSQL instance |
+| Redis (16-32 shards) | One unsharded Redis instance, and only for connection routing + REST auth tokens — the matchmaking queue and room registry are still in-process memory inside `Matchmaker`, not in Redis |
+
+Two things from the target design that **are** already true today, at small scale: (1) the
+database is only touched once a match ends (`RatingService`/`GameHistoryService`, both
+`GameOverEvent` subscribers — nothing queries Postgres mid-match), and (2) room/matchmaking
+routing across processes already relies on shared state (`ConnectionDirectory` in Redis) rather
+than any one process's local memory, so a Game Node crashing only takes down the matches it was
+hosting, not global matchmaking state.
+
+Not built at any scale yet: Kafka (rating updates go straight to Postgres, no queue), DB
+sharding/replication, and the load-bearing traffic-shape argument in "Why this design meets the
+requirements" below (events-only outbound, no snapshot-per-tick) — the current wire protocol still
+sends full `STATE` snapshots on tick, `EVENT_MOVE` exists but hasn't replaced snapshot broadcasting
+as the primary channel.
+
+Deployable today two ways: `docker-compose.yml` (one process per service, single machine) and
+`k8s/` (the same set of services as Kubernetes Deployments/Services, verified against Docker
+Desktop's local Kubernetes — not a real multi-node cluster).
+
 ## Which servers are needed, and what each one does
 
 | Server | Role | Rough count |

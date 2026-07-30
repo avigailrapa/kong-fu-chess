@@ -36,30 +36,19 @@ class-level detail behind each box.
   `AlgebraicNotation` converts `Position` to/from a 2-char algebraic square string (`"e7"`) both
   ways; `MoveEvent.algebraicMove()` delegates to it.
 - **`src/input/`** — `ClickHandler` (GUI path: pixel click → `BoardMapper.pixelToCell` →
-  `GameCommands` call, implemented by `GameEngine`) and `CommandParser`/`CommandRunner`/
-  `ConsoleRunner` (text-DSL path, used by both `app/Main.java` and `test/integration/` — see
-  text-dsl.md). `ClickHandler` never depends on `RuleEngine`/`RealTimeArbiter`/`Board` directly; it
-  only calls through `GameEngine`/`GameCommands`. `CommandRunner` is the exception, matching the
-  design PDF's own `ScriptRunner`/`TextTestRunner`: it holds the concrete `Board` produced by
-  `BoardParser.parse` so it can hand it to `GameEngine.fromBoard` (initial state), read
-  `board.width()`/`board.height()` to size `BoardMapper`, and pass it straight to
-  `BoardPrinter.print` for `print board` — the PDF's API table types `BoardPrinter.print` as taking
-  `game_state or snapshot` directly, not only a `GameEngine`-derived snapshot. What `CommandRunner`
-  must never do, per the PDF's one forbidden shortcut ("ScriptRunner directly calls
-  `Board.move_piece`"), is mutate the `Board` itself or otherwise duplicate move/game logic; it
-  reads `Board` only for construction-time sizing and read-only printing, and reaches
-  `GameEngine`/`ClickHandler` for every actual command.
+  `GameCommands` call, implemented by `GameEngine`). Never depends on
+  `RuleEngine`/`RealTimeArbiter`/`Board` directly; only calls through `GameEngine`/`GameCommands`.
 - **`src/net/`** — wire protocol shared by client and server, plus the client-side network
   adapter, split into two subpackages: `src/net/messages/` holds `WireMessage` and every class it
   `permits` (a sealed interface's permitted subclasses must share its package in an unnamed
   module, so these can't be split further), `src/net/client/` holds the client-only
-  `NetworkGameProxy`/`ClientActivityLog`/`LoginResult`/`RoomCreateResult`/`RoomJoinResult`;
+  `NetworkGameProxy`/`LoginResult`/`RoomCreateResult`/`RoomJoinResult`;
   `Protocol.java` and `MalformedMessageException.java` stay directly under `src/net/` since both
   client and server import them. `WireMessage` is a sealed interface (`MoveCommand`/`JumpCommand`/`MoveAccepted`/
   `MoveRejected`/`StateMessage`/`LoginCommand`/`Welcome`/`SelectCommand`/`MoveOccurred`/
   `GameOverMessage`/`NewGameCommand`/`RatingChanged`/`PlayCommand`/`CancelPlayCommand`/
   `MatchFound`/`MatchTimeout`/`DisconnectCountdown`/`RoomCreateCommand`/`RoomJoinCommand`/
-  `RoomId`/`Spectating`/`WelcomeBack`/`OpponentReconnected`). `Protocol.parse(String)`/
+  `RoomId`/`Spectating`/`WelcomeBack`/`OpponentReconnected`/`AuthCommand`). `Protocol.parse(String)`/
   `encode(WireMessage)` convert to/from the text
   sent over a WebSocket text frame: a bare 6-char move token (e.g. `WQe2e5`, no verb prefix),
   `JUMP <token>`, `OK`, `REJECT <reason>`, `NEWGAME` (client asks the server for a fresh game —
@@ -76,7 +65,13 @@ class-level detail behind each box.
   players' post-game ratings differ. `LOGIN <username> <password>` / `WELCOME <rating>` round out
   the ordinary login exchange — `WELCOME` carries no color because login no longer seats a player
   (see `src/server/` below); color is only learned once `MATCH_FOUND` arrives, whether pairing came
-  from matchmaking or a filled room. If the same username has a pending disconnect countdown (see
+  from matchmaking or a filled room. `AUTH <token>` is an additive sibling to `LOGIN` (never
+  replaces it — `LoginCommand` keeps working exactly as before, for the monolithic path and any
+  client that still wants to send a password directly over the wire): a client that already holds
+  a token from `app.ApiGatewayMain`'s `POST /login` sends `AUTH <token>` instead of resending its
+  password, and gets back the same `WELCOME`/`WELCOME_BACK` reply `LOGIN` would have produced.
+  Only `Matchmaker` handles `AUTH` — the monolithic `Lobby`/`SessionAuthHandler` never learned it,
+  by design (no `ApiGatewayMain` exists for that deployment shape). If the same username has a pending disconnect countdown (see
   `ReconnectManager` below), `LOGIN` resolves to `WELCOME_BACK <rating>` instead and the
   *opponent's* connection gets an unsolicited `OPPONENT_RECONNECTED` so its client can clear any
   "waiting for reconnect" UI. Rejection
@@ -101,10 +96,7 @@ class-level detail behind each box.
   bus; also tracks the latest `RatingChanged`/`Welcome` value via `latestRating()`. `RoomId`/
   `Spectating` are *not* published on the bus — they complete the pending `createRoom`/`joinRoom`
   future directly, since (unlike `MatchFound`) they're always a direct reply to a request the same
-  client just made. `ClientActivityLog` (append-only timestamped log to a file + stdout) lives here
-  rather than in `src/server/` purely so the client doesn't have to depend on the server package
-  for it — it's a near-duplicate of `src/server/ActivityLog.java`, kept as two small classes rather
-  than one shared one to respect the one-directional layering.
+  client just made.
 - **`src/server/`** — `Match` owns a `GameEngine` + a `MoveLogger` wired to it, on its own
   single-threaded `ScheduledExecutorService`; `start(Runnable onTick)` schedules a periodic
   `engine.waitMs(tickIntervalMs)` followed by the callback, `submit(Runnable)` funnels any other
@@ -130,7 +122,7 @@ class-level detail behind each box.
   session/match state itself.
 
   `Lobby` is where the composition unlike Level 2-3 actually lives: it owns the single `UserStore`,
-  `ActivityLog`, `MatchmakingQueue`, `RoomRegistry`, and `ReconnectManager`, plus
+  `MatchmakingQueue`, `RoomRegistry`, and `ReconnectManager`, plus
   `Map<WebSocket, Session> sessionsByConnection` and `Map<Session, Match> matchBySession` — the
   latter is what lets arbitrarily many matches run concurrently, each ticking on its own executor.
   `Lobby.receive` logs the raw inbound text, resolves the connection's current `Match` (if any) via
@@ -186,23 +178,124 @@ class-level detail behind each box.
   for each (K=32, draws split 0.5/0.5 when `GameOverEvent.winner()` is `null`), persists both via
   `UserStore.updateRating`, updates each in-memory `Session.rating()` in place (so a same-session
   rematch after `NEWGAME` starts from the just-updated rating), and sends each player their own
-  `RatingChanged`. `handleNewGame`
+  `RatingChanged`. A second `GameOverEvent` subscriber on the same `subscribeToEngineEvents`,
+  `GameHistoryService.recordGameOver` (in `src/server/handlers/`, alongside `RatingService` —
+  see `src/server/history/` below), fires right next to `RatingService` and persists the completed
+  game; it's a fire-and-forget subscriber, so tests that don't care about history are unaffected by
+  its presence. `handleNewGame`
   requires an existing session (`not_logged_in` otherwise), rejects spectators, and requires the
-  match to actually be over (`game_in_progress` otherwise). `ActivityLog` (`log(String)` — appends
-  an ISO-8601-timestamped line to a file and echoes it to stdout, one `PrintWriter` held open for
-  the instance's lifetime) records logins (including rejected ones), room create/join/spectate,
-  match start, game over, and disconnect/auto-resign; `ServerMain` points it at
-  `server-data/activity.log`. `UserStore` (`jdbc:sqlite:<url>`, one `Connection` held open for the
-  store's whole lifetime — required for `jdbc:sqlite::memory:` to work at all across multiple
-  calls, since a fresh connection to `:memory:` gets its own empty database) owns the `users` table
+  match to actually be over (`game_in_progress` otherwise). `UserStore` (in `src/server/auth/`, plain `jdbc:postgresql:...` URL —
+  originally SQLite, migrated to Postgres for the reasons in Server_Design.md's SQLite section; one
+  `Connection` held open for the store's whole lifetime, no pooling) owns the `users` table
   (`username` primary key, `password_hash`/`password_salt`, `rating` defaulting to 1200) and
-  creates it if missing on construction; `ServerMain` points it at `server-data/kongfu.db`,
-  creating that directory first since the SQLite driver creates the database file but not missing
-  parent directories. `PasswordHasher` is SHA-256 salted with `SecureRandom` (JDK-only — course
-  project, not handling real user data). `EloCalculator.updatedRating` is the standard
-  logistic-expectation formula, `K=32`.
-- **`src/io/`** — `BoardParser`/`BoardPrinter`, plain-text board serialization, model-only
-  dependency.
+  creates it if missing on construction; `ServerMain` reads the Postgres URL from
+  `server.properties` (`postgresUrl` key), `app.GameNodeMain`/`app.MatchmakerMain`/
+  `app.ApiGatewayMain` from the `POSTGRES_URL` env var. `PasswordHasher` is SHA-256 salted with
+  `SecureRandom` (JDK-only — course project, not handling real user data). `EloCalculator.updatedRating`
+  is the standard logistic-expectation formula, `K=32`. Note `Lobby` (and therefore
+  `RatingService`/`GameHistoryService`/`ReconnectManager`/`EloCalculator`) is not
+  monolithic-`GameServer`-only — `app.GameNodeMain` constructs the identical `Lobby` class per
+  Game Node in the clustered deployment (see `src/server/cluster/` below), so all of this applies
+  equally to both deployment shapes. `src/server/auth/` also holds `TokenStore` (interface:
+  `mint(username) -> token`, `resolve(token) -> Optional<username>`) with `RedisTokenStore` (real,
+  `SETEX`-backed with a TTL — same key-prefix/TTL shape as `RedisConnectionDirectory` below) and
+  `InMemoryTokenStore` (test fake) implementations — minted by `app.ApiGatewayMain`'s `POST
+  /login`, resolved by `Matchmaker`'s `AUTH <token>` handler (see `src/net/` and
+  `src/server/matchmaker/` below). Unlike `UserStore`, `TokenStore` is never touched by the
+  monolithic `Lobby`/`GameServer` path — only `Matchmaker` and `ApiGatewayMain` use it.
+- **`src/server/cluster/`** — the NATS wire bridge that makes the monolithic `Lobby`/`GameServer`
+  shape into several independently-deployable processes (`app.WsGatewayMain`/`MatchmakerMain`/
+  `GameAllocatorMain`/`GameNodeMain`/`ApiGatewayMain`, wired up in `docker-compose.yml` and
+  `k8s/`) without changing `Lobby`/`MatchOrchestrator`/`GameActionHandler` themselves — every
+  cluster process still ends up calling the same `Lobby.receive`/`disconnect` methods the
+  monolithic `GameServer` calls directly. `ClusterProtocol` is the subject-naming/encoding
+  authority: `ws.in.lobby`/`ws.disconnect.lobby` (pre-match traffic → `Matchmaker`),
+  `ws.in.node.<nodeId>`/`ws.disconnect.node.<nodeId>` (in-match traffic → that Game Node's
+  `Lobby`), `game-allocator.assign` (`Matchmaker` → `GameAllocator`, no node id yet — allocation
+  hasn't happened), `gamenode.create-match.<nodeId>`/`gamenode.reconnect.<nodeId>`
+  (`GameAllocator`/`Matchmaker` → a specific Game Node — named `gamenode.*` not `coordinator.*`
+  since `GameNodeBridge` is the actual subscriber regardless of who publishes),
+  `gamenode.match-ended` (a Game Node → `Matchmaker`, so `Matchmaker` can
+  `ConnectionDirectory.clear(...)` both players), `ws.out.<connId>` (any process → `WsGateway`,
+  the only subject a WS client's replies ever travel on). `WsGateway extends
+  org.java_websocket.server.WebSocketServer`: classifies each inbound frame with a cheap prefix
+  check (`LOGIN`/`AUTH`/`PLAY`/`CANCEL_PLAY`/`ROOM_CREATE`/`ROOM_JOIN` → `ws.in.lobby`; anything
+  else → `ConnectionDirectory.nodeForConnection` → that node's subject, or a direct
+  `REJECT not_in_match` with zero NATS round-trip if the connection isn't routed to a match yet)
+  — it never imports `RuleEngine`/`GameEngine`/`Lobby`, matching the design PDF's "Gateway holds
+  no game state" rule from Server_Design.md. `GameNodeBridge` (owned by each `app.GameNodeMain`)
+  subscribes only its own node's four subjects, builds a fresh `Match`+`Session`s via
+  `Lobby.createAssignedMatch` on `gamenode.create-match.<nodeId>`, and publishes
+  `gamenode.match-ended` from a `GameOverEvent` subscriber re-registered on every `newGame()` (the
+  same re-registration pattern `MatchOrchestrator.subscribeToEngineEvents` already uses).
+  `MatchmakerBridge` is the equivalent for `Matchmaker` (subscribes the three lobby-facing
+  subjects). `NatsMatchDispatcher implements Matchmaker.MatchDispatcher` — `assign(matchId,
+  players)` publishes to `game-allocator.assign`, `reconnect(nodeId, username, connectionId)`
+  publishes straight to that node's `gamenode.reconnect.<nodeId>` (a lookup, not an allocation
+  decision, so it skips `GameAllocator` entirely). `NatsClientConnection implements
+  ClientConnection` — `send(text)` just publishes to `ClusterProtocol.outboundSubject(connectionId)`;
+  every cluster `Session` holds one of these instead of a raw `WebSocket`, which is what lets the
+  exact same `Lobby`/`RatingService`/`GameHistoryService` code path work identically whether a
+  reply is going out over a real socket (`GameServer`) or over NATS to whichever `WsGateway`
+  happens to hold that connection.
+- **`src/server/matchmaker/`** — `Matchmaker` is the pre-match half of what used to be the
+  single-process `Coordinator` (Phase 1; superseded, package removed): owns `SessionRegistry`,
+  `MatchmakingQueue`, `RoomRegistry<RoomState>` (all reused unchanged from `src/server/matchmaking/`
+  — the same classes the monolithic `MatchOrchestrator` uses), and a **read-only**
+  `ConnectionDirectory` (`nodeForUser` for reconnect detection, `clearConnection`/`clearUser` on
+  disconnect/match-end). Handles `LOGIN`/`AUTH`/`PLAY`/`CANCEL_PLAY`/`ROOM_CREATE`/`ROOM_JOIN`;
+  `handleLogin`/`handleAuth` both funnel into a shared private `establishSession` (reconnect check,
+  then either dispatch a reconnect or register a fresh `Session` and reply `WELCOME`) so the two
+  entry points can't drift. Unlike the old `Coordinator`, `Matchmaker` does **not** decide which
+  Game Node a match runs on and does **not** write to `ConnectionDirectory` — `dispatchNewMatch`
+  builds the colored `PlayerAssignment` list exactly as before, then hands it to
+  `MatchDispatcher.assign(matchId, players)` (no `nodeId` parameter — that decision belongs to
+  `GameAllocator` now) instead of picking a node and dispatching itself.
+- **`src/server/allocator/`** — the node-placement half of the old `Coordinator`, now its own
+  service. `Allocator.pickNode()` is unchanged (round-robin over the `GAME_NODE_IDS` env var).
+  `ConnectionDirectory` (interface: `assign`/`nodeFor`/`clear`, both connection- and
+  username-keyed) moved here from the removed `coordinator` package since `GameAllocator` is now
+  the sole **writer** (`Matchmaker` only reads it) — `RedisConnectionDirectory` (`kongfu:conn:*`/
+  `kongfu:user:*` keys, 24h TTL via `JedisPooled`) is the real implementation, shared by
+  `WsGateway`/`Matchmaker`/`GameAllocator`; `InMemoryConnectionDirectory` is the test fake.
+  `GameAllocator` subscribes `game-allocator.assign`, decodes the
+  `ClusterProtocol.CreateMatchCommand` payload `Matchmaker` published, calls `allocator.pickNode()`,
+  writes both players into `ConnectionDirectory`, then **republishes the identical payload bytes**
+  (no re-encoding) to `ClusterProtocol.createMatchSubject(nodeId)` — `GameNodeBridge` doesn't
+  change at all, it never knew or cared that the publisher used to be `Coordinator` and is now
+  `GameAllocator`. Fire-and-forget by design, same as the dispatch it replaced; a `log.warn` on the
+  decode-failure path is the only defense against a malformed message, no retry/timeout — matches
+  this project's course-scope tolerance for "best effort" cluster messaging.
+- **`src/server/history/`** — `GameStore` (mirrors `UserStore`'s exact JDBC shape: one long-lived
+  `Connection`, `CREATE TABLE IF NOT EXISTS` on construct, try-with-resources `PreparedStatement`
+  per call) owns the `games` table (`game_id` primary key — a fresh `UUID` per completed game, not
+  `Match.matchId()`, since the same `Match`/room can be replayed via `NEWGAME` and each play
+  deserves its own history row; `white`/`black`/`winner` — `Piece.Color.letter()` or `"-"` for a
+  draw, same convention `Protocol`'s `EVENT_GAMEOVER`/`STATE` encoding already uses;
+  `white_moves`/`black_moves` — `;`-joined `MoveEvent.algebraicMove()` strings, a plain TEXT
+  column rather than a JSON library, matching this project's established
+  regex-over-JSON-library convention (`view.AnimationConfig`); `ended_at`). `GameHistoryService`
+  (in `src/server/handlers/`, not here — mirrors `RatingService`'s shape and lives beside it)
+  is the actual `GameOverEvent` subscriber that calls `GameStore.save(...)`; `GameStore` itself
+  has no engine-event knowledge. `GET /history/{username}` on `app.ApiGatewayMain` is the only
+  reader, via `GameStore.forUser` (a small `GameRecord` list — move history intentionally left out
+  of that endpoint, would need a `forMatch`-style lookup to add later if wanted).
+- **`src/server/health/`** — `HealthServer` wraps a plain JDK `com.sun.net.httpserver.HttpServer`
+  (zero new dependency): ctor takes a port and a `Supplier<Map<String, Object>>` for one
+  service-specific gauge, `GET /health` hand-builds `{"status":"ok","uptimeMs":N,...gauges}` (same
+  no-JSON-library convention as `src/server/history/` above). Every `app.*Main` for the clustered
+  deployment starts one on a `HEALTH_PORT` env var right before blocking on
+  `Thread.currentThread().join()`: `WsGatewayMain` reports `connections`
+  (`WsGateway.connectionCount()`), `GameNodeMain` reports `activeMatches`
+  (`Lobby.activeMatchCount()`, via `SessionRegistry.activeMatchCount()` — distinct `Match`
+  objects across all bound sessions), `MatchmakerMain` reports `queuedPlayers`
+  (`Matchmaker.queuedPlayerCount()`, via `MatchmakingQueue.size()`), `GameAllocatorMain` reports
+  `matchesAllocated` (a plain `AtomicLong` on `GameAllocator`), `ApiGatewayMain` reports no extra
+  gauge. `docker-compose.yml`'s `healthcheck:` blocks and `k8s/`'s `readinessProbe`/`livenessProbe`
+  both point at this same endpoint — deliberately lightweight (logs + health checks only, no
+  metrics/tracing/alerting stack) per explicit user decision, not a partial implementation of a
+  bigger observability plan.
+- **`src/io/`** — `BoardParser`, plain-text board serialization, model-only dependency.
 - **`src/view/`** — `GameSnapshot`/`PieceSnapshot`/`SelectionSnapshot` are passive, read-only DTOs
   built by `GameEngine.snapshot(...)` (pre-computed pixel positions, move-log text, legal-
   destination set — nothing in `view` re-derives game logic). `Renderer.render(GameSnapshot)` is a
@@ -210,14 +303,14 @@ class-level detail behind each box.
   `src.engine`/`src.model`/`src.realtime` beyond value types like `Piece.Color`/`Position`.
   `GameWindow` is the Swing shell (JFrame + mouse input + repaint loop) and must never import
   `GameEngine` either — it only holds a `Supplier<GameSnapshot>`, a `ClickHandler`, a `Renderer`, a
-  `GameLoop`, and an `EffectsController`. `GameLoop` and `EffectsController` are the two classes in
-  `view` allowed to reach into `engine`. `GameLoop` holds a `GameEngine` reference directly; its
-  only job is advancing simulated time each tick (`engine.waitMs`) and reporting whether anything
-  changed. `EffectsController` doesn't hold a `GameEngine` reference — it subscribes to `engine`-
-  defined event records (`MoveEvent`, `GameOverEvent`) published on an `EventBus` to trigger one-
-  shot sounds and a short "GAME START!" banner; `GuiMain` hands it `GameEngine`'s own bus directly,
-  `ClientMain` hands it `NetworkGameProxy.eventBus()` — `EffectsController` doesn't know or care
-  which mode it's in. `EffectsController`, its `SoundPlayer` interface, and the real
+  `LongPredicate tickSource`, and an `EffectsController`. `tickSource` is what actually reaches
+  into `engine` on each repaint tick; `app/ClientMain.java` supplies an inline lambda that just
+  pushes the current click selection to `NetworkGameProxy` and always returns `true` —
+  `GameWindow` itself never touches `engine` directly. `EffectsController` is the one class in
+  `view` allowed to reach into `engine` — it doesn't hold a `GameEngine` reference, it subscribes
+  to `engine`-defined event records (`MoveEvent`, `GameOverEvent`) published on an `EventBus` to
+  trigger one-shot sounds and a short "GAME START!" banner; `ClientMain` hands it
+  `NetworkGameProxy.eventBus()`. `EffectsController`, its `SoundPlayer` interface, and the real
   `ClipSoundPlayer` implementation (tries `<root>/<name>.wav` via `javax.sound.sampled`, falls back
   to `Toolkit.beep()`) live in `src/view/sound/` — the one nested package in this project, kept
   separate so `EffectsController`'s tests can inject a fake `SoundPlayer` without touching real

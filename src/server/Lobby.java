@@ -23,10 +23,12 @@ import src.server.core.Session;
 import src.server.core.SessionRegistry;
 import src.server.handlers.DisconnectHandler;
 import src.server.handlers.GameActionHandler;
+import src.server.handlers.GameHistoryService;
 import src.server.handlers.MatchBroadcaster;
 import src.server.handlers.MatchOrchestrator;
 import src.server.handlers.RatingService;
 import src.server.handlers.SessionAuthHandler;
+import src.server.history.GameStore;
 import src.server.matchmaking.ReconnectManager;
 
 import java.util.List;
@@ -47,15 +49,16 @@ public class Lobby {
     private final GameActionHandler gameActionHandler;
     private final DisconnectHandler disconnectHandler;
 
-    public Lobby(UserStore userStore, long tickIntervalMs, int disconnectCountdownSeconds,
+    public Lobby(UserStore userStore, GameStore gameStore, long tickIntervalMs, int disconnectCountdownSeconds,
                  Function<Object, ClientConnection> connectionResolver) {
         this.connectionResolver = connectionResolver;
         this.sessionRegistry = new SessionRegistry();
         this.broadcaster = new MatchBroadcaster();
         RatingService ratingService = new RatingService(userStore, broadcaster);
+        GameHistoryService gameHistoryService = new GameHistoryService(gameStore);
         ReconnectManager<Match> reconnectManager = new ReconnectManager<>(disconnectCountdownSeconds);
         this.matchOrchestrator = new MatchOrchestrator(tickIntervalMs, sessionRegistry, broadcaster,
-                ratingService);
+                ratingService, gameHistoryService);
         this.authHandler = new SessionAuthHandler(userStore, reconnectManager, sessionRegistry, broadcaster,
                 connectionResolver);
         this.gameActionHandler = new GameActionHandler(sessionRegistry);
@@ -65,6 +68,10 @@ public class Lobby {
 
     public Match matchFor(Object conn) {
         return sessionRegistry.matchFor(conn);
+    }
+
+    public int activeMatchCount() {
+        return sessionRegistry.activeMatchCount();
     }
 
     public Match createAssignedMatch(String matchId, List<AssignedPlayer> assignments) {

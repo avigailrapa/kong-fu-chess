@@ -36,4 +36,8 @@ public class SessionRegistry {
     public boolean isBound(Session session) {
         return matchBySession.containsKey(session);
     }
+
+    public int activeMatchCount() {
+        return (int) matchBySession.values().stream().distinct().count();
+    }
 }

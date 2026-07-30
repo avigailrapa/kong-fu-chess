@@ -26,7 +26,7 @@ public class NetworkPlayThroughTest {
     @Test
     public void testMoveRequestedThroughProxyIsAcceptedAndSnapshotUpdates() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                TestDatabase.freshUserStore(), 100, 20);
+                TestDatabase.freshUserStore(), TestDatabase.freshGameStore(), 100, 20);
         server.start();
 
         int port = waitForBoundPort(server);
@@ -70,7 +70,8 @@ public class NetworkPlayThroughTest {
     @Test
     public void testOpponentDisconnectResignsAndUpdatesBothRatings() throws Exception {
         UserStore userStore = TestDatabase.freshUserStore();
-        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore, 100, 1);
+        GameServer server = new GameServer(new InetSocketAddress("localhost", 0), userStore,
+                TestDatabase.freshGameStore(), 100, 1);
         server.start();
 
         int port = waitForBoundPort(server);
@@ -107,7 +108,7 @@ public class NetworkPlayThroughTest {
     @Test
     public void testRoomCreateJoinAndSpectateFlow() throws Exception {
         GameServer server = new GameServer(new InetSocketAddress("localhost", 0),
-                TestDatabase.freshUserStore(), 100, 20);
+                TestDatabase.freshUserStore(), TestDatabase.freshGameStore(), 100, 20);
         server.start();
 
         int port = waitForBoundPort(server);

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-node-1
+  namespace: kongfu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: game-node-1
+  template:
+    metadata:
+      labels:
+        app: game-node-1
+    spec:
+      containers:
+        - name: game-node-1
+          image: kongfu-app
+          imagePullPolicy: IfNotPresent
+          command: ["java", "-cp", "out:lib/*", "app.GameNodeMain"]
+          env:
+            - name: NATS_URL
+              value: nats://nats:4222
+            - name: POSTGRES_URL
+              value: jdbc:postgresql://postgres:5432/kongfu?user=kongfu&password=kongfu
+            - name: DATA_DIR
+              value: /kongfu/data/server
+            - name: NODE_ID
+              value: node-1
+            - name: HEALTH_PORT
+              value: "8082"
+          ports:
+            - containerPort: 8082
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: game-node-1
+  namespace: kongfu
+spec:
+  selector:
+    app: game-node-1
+  ports:
+    - port: 8082
+      targetPort: 8082

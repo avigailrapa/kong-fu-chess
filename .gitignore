@@ -32,3 +32,6 @@ bin/
 ### Runtime data ###
 data/
 *.log
+
+### Hand-fetched native test tooling ###
+/tools/

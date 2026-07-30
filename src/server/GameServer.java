@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import src.server.auth.UserStore;
 import src.server.core.Match;
+import src.server.history.GameStore;
 
 import java.net.InetSocketAddress;
 
@@ -16,10 +17,10 @@ public class GameServer extends WebSocketServer {
 
     private final Lobby lobby;
 
-    public GameServer(InetSocketAddress address, UserStore userStore, long tickIntervalMs,
+    public GameServer(InetSocketAddress address, UserStore userStore, GameStore gameStore, long tickIntervalMs,
                        int disconnectCountdownSeconds) {
         super(address);
-        this.lobby = new Lobby(userStore, tickIntervalMs, disconnectCountdownSeconds,
+        this.lobby = new Lobby(userStore, gameStore, tickIntervalMs, disconnectCountdownSeconds,
                 conn -> ((WebSocket) conn)::send);
     }
 

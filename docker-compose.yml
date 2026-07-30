@@ -13,7 +13,49 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-  game-node:
+  redis:
+    image: redis:7-alpine
+
+  matchmaker:
+    build: .
+    image: kongfu-app
+    command: ["java", "-cp", "out:lib/*", "app.MatchmakerMain"]
+    environment:
+      NATS_URL: nats://nats:4222
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/kongfu?user=kongfu&password=kongfu
+      REDIS_URL: redis://redis:6379
+      HEALTH_PORT: 8083
+    depends_on:
+      - nats
+      - postgres
+      - redis
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '(exec 3<>/dev/tcp/localhost/8083)' 2>/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  game-allocator:
+    build: .
+    image: kongfu-app
+    command: ["java", "-cp", "out:lib/*", "app.GameAllocatorMain"]
+    environment:
+      NATS_URL: nats://nats:4222
+      REDIS_URL: redis://redis:6379
+      GAME_NODE_IDS: node-1,node-2
+      HEALTH_PORT: 8084
+    depends_on:
+      - nats
+      - redis
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '(exec 3<>/dev/tcp/localhost/8084)' 2>/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  game-node-1:
     build: .
     image: kongfu-app
     command: ["java", "-cp", "out:lib/*", "app.GameNodeMain"]
@@ -21,12 +63,41 @@ services:
       NATS_URL: nats://nats:4222
       POSTGRES_URL: jdbc:postgresql://postgres:5432/kongfu?user=kongfu&password=kongfu
       DATA_DIR: /kongfu/data/server
+      NODE_ID: node-1
+      HEALTH_PORT: 8082
     volumes:
-      - ./data/server:/kongfu/data/server
+      - ./data/server/node-1:/kongfu/data/server
     depends_on:
       - nats
       - postgres
     restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '(exec 3<>/dev/tcp/localhost/8082)' 2>/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  game-node-2:
+    build: .
+    image: kongfu-app
+    command: ["java", "-cp", "out:lib/*", "app.GameNodeMain"]
+    environment:
+      NATS_URL: nats://nats:4222
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/kongfu?user=kongfu&password=kongfu
+      DATA_DIR: /kongfu/data/server
+      NODE_ID: node-2
+      HEALTH_PORT: 8082
+    volumes:
+      - ./data/server/node-2:/kongfu/data/server
+    depends_on:
+      - nats
+      - postgres
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '(exec 3<>/dev/tcp/localhost/8082)' 2>/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   ws-gateway:
     build: .
@@ -34,12 +105,41 @@ services:
     command: ["java", "-cp", "out:lib/*", "app.WsGatewayMain"]
     environment:
       NATS_URL: nats://nats:4222
+      REDIS_URL: redis://redis:6379
       WS_PORT: 8887
+      HEALTH_PORT: 8081
     ports:
-      - "8887:8887"
+      - "18887:8887"
     depends_on:
       - nats
+      - redis
     restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '(exec 3<>/dev/tcp/localhost/8081)' 2>/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  api-gateway:
+    build: .
+    image: kongfu-app
+    command: ["java", "-cp", "out:lib/*", "app.ApiGatewayMain"]
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/kongfu?user=kongfu&password=kongfu
+      REDIS_URL: redis://redis:6379
+      API_PORT: 8080
+      HEALTH_PORT: 8085
+    ports:
+      - "18080:8080"
+    depends_on:
+      - postgres
+      - redis
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '(exec 3<>/dev/tcp/localhost/8085)' 2>/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
 volumes:
   postgres-data:

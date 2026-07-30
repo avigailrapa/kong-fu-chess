@@ -45,6 +45,10 @@ public class MatchmakingQueue {
         }
     }
 
+    public synchronized int size() {
+        return waiting.size();
+    }
+
     private synchronized void handleTimeout(Session session) {
         if (waiting.remove(session)) {
             timeoutTasks.remove(session);

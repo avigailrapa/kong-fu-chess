@@ -39,15 +39,18 @@ public class MatchOrchestrator {
     private final SessionRegistry sessionRegistry;
     private final MatchBroadcaster broadcaster;
     private final RatingService ratingService;
+    private final GameHistoryService gameHistoryService;
     private final MatchmakingQueue matchmakingQueue;
     private final RoomRegistry<Match> roomRegistry;
 
     public MatchOrchestrator(long tickIntervalMs, SessionRegistry sessionRegistry,
-                              MatchBroadcaster broadcaster, RatingService ratingService) {
+                              MatchBroadcaster broadcaster, RatingService ratingService,
+                              GameHistoryService gameHistoryService) {
         this.tickIntervalMs = tickIntervalMs;
         this.sessionRegistry = sessionRegistry;
         this.broadcaster = broadcaster;
         this.ratingService = ratingService;
+        this.gameHistoryService = gameHistoryService;
         this.matchmakingQueue = new MatchmakingQueue(this::onPaired, this::onMatchTimeout,
                 MATCHMAKING_TIMEOUT_MS, RATING_WINDOW);
         this.roomRegistry = new RoomRegistry<>(this::newMatch, this::seat, this::wireAndStartMatch, this::addSpectator);
@@ -174,6 +177,7 @@ public class MatchOrchestrator {
         match.engine().eventBus().subscribe(MoveEvent.class, event -> broadcaster.broadcastMoveEvent(match, event));
         match.engine().eventBus().subscribe(GameOverEvent.class, event -> broadcaster.broadcastGameOver(match, event));
         match.engine().eventBus().subscribe(GameOverEvent.class, event -> ratingService.updateRatingsAfterGameOver(match, event));
+        match.engine().eventBus().subscribe(GameOverEvent.class, event -> gameHistoryService.recordGameOver(match, event));
         match.onNewGame(() -> subscribeToEngineEvents(match));
     }
 

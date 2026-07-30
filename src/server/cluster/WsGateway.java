@@ -7,6 +7,7 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import src.net.MalformedMessageException;
 import src.net.Protocol;
+import src.net.messages.AuthCommand;
 import src.net.messages.CancelPlayCommand;
 import src.net.messages.LoginCommand;
 import src.net.messages.MoveRejected;
@@ -14,7 +15,7 @@ import src.net.messages.PlayCommand;
 import src.net.messages.RoomCreateCommand;
 import src.net.messages.RoomJoinCommand;
 import src.net.messages.WireMessage;
-import src.server.coordinator.ConnectionDirectory;
+import src.server.allocator.ConnectionDirectory;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -48,6 +49,10 @@ public class WsGateway extends WebSocketServer {
             conn.send(new String(message.getData(), StandardCharsets.UTF_8));
         } catch (RuntimeException e) {
         }
+    }
+
+    public int connectionCount() {
+        return connsByConnectionId.size();
     }
 
     @Override
@@ -100,8 +105,9 @@ public class WsGateway extends WebSocketServer {
     }
 
     private static boolean isLobbyMessage(WireMessage parsed) {
-        return parsed instanceof LoginCommand || parsed instanceof PlayCommand || parsed instanceof CancelPlayCommand
-                || parsed instanceof RoomCreateCommand || parsed instanceof RoomJoinCommand;
+        return parsed instanceof LoginCommand || parsed instanceof AuthCommand || parsed instanceof PlayCommand
+                || parsed instanceof CancelPlayCommand || parsed instanceof RoomCreateCommand
+                || parsed instanceof RoomJoinCommand;
     }
 
     @Override

@@ -3,13 +3,9 @@
 A real-time chess variant: moves travel over simulated time instead of teleporting instantly,
 pieces rest/cool down after moving, and two pieces can race for a square or cross paths mid-flight.
 
-Two front ends over one engine:
-- A Swing GUI (`app/GuiMain.java`) for local play.
-- A text-command console runner (`app/Main.java`) reading a small DSL from stdin — see
-  `.claude/rules/text-dsl.md`.
-
-Plus a WebSocket client/server pair for online play (`app/ServerMain.java` / `app/ClientMain.java`),
-with login/rating, matchmaking, private rooms with spectating, and disconnect/reconnect handling.
+Played only through the server: a WebSocket client/server pair (`app/ServerMain.java` /
+`app/ClientMain.java`, or the clustered deployment — see `.claude/rules/architecture.md`), with
+login/rating, matchmaking, private rooms with spectating, and disconnect/reconnect handling.
 
 ## Requirements
 
@@ -34,20 +30,12 @@ javac -d out -encoding UTF-8 -cp $cp -processorpath $proc $files
 
 ## Run
 
-- **GUI (local play):**
-  ```powershell
-  javaw -cp out app.GuiMain
-  ```
-- **Console / text DSL:**
-  ```powershell
-  java -cp out app.Main < path\to\script.kfc
-  ```
 - **Server:**
   ```powershell
   java -cp "out;lib\*" app.ServerMain
   ```
-  Listens on port 8887; stores accounts/ratings in `server-data/kongfu.db` (SQLite) and an
-  append-only log at `server-data/activity.log`.
+  Reads `port`/`dataDir`/`postgresUrl` from `server.properties`; stores accounts/ratings/game
+  history in Postgres (see `.claude/rules/dependencies.md`) and logs to `<dataDir>/server.log`.
 - **Client:**
   ```powershell
   java -cp "out;lib\*" app.ClientMain [wsUrl]
@@ -55,8 +43,7 @@ javac -d out -encoding UTF-8 -cp $cp -processorpath $proc $files
   `wsUrl` defaults to `ws://localhost:8887`. Shows a home screen to log in, then play via
   matchmaking or create/join a private room.
 
-GUI/console stay `-cp out` (no jars needed); server/client need `lib\*` since they pull in the
-WebSocket jar transitively.
+Both need `lib\*` since they pull in the WebSocket jar transitively.
 
 ## Test
 
@@ -79,7 +66,8 @@ java -cp "out;lib\*;." RunTests
 
 ## Project layout
 
-- `app/` — entry points (`GuiMain`, `Main`, `ServerMain`, `ClientMain`), package `app`.
+- `app/` — entry points (`ServerMain`, `ClientMain`, and the clustered-deployment mains), package
+  `app`.
 - `src/` — the layered engine (`model` → `rules` → `realtime` → `engine` → `view`, plus
   `input`/`net`/`server`). See `.claude/rules/architecture.md` for full per-class contracts.
 - `test/` — mirrors `src/` and `app/` package-for-package (minus the `src.` prefix).

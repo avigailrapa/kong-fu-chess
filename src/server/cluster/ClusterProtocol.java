@@ -15,10 +15,11 @@ public class ClusterProtocol {
     public static final String LOBBY_INBOUND_SUBJECT = "ws.in.lobby";
     public static final String LOBBY_DISCONNECT_SUBJECT = "ws.disconnect.lobby";
     public static final String MATCH_ENDED_SUBJECT = "gamenode.match-ended";
+    public static final String ASSIGN_SUBJECT = "game-allocator.assign";
     private static final String NODE_INBOUND_PREFIX = "ws.in.node.";
     private static final String NODE_DISCONNECT_PREFIX = "ws.disconnect.node.";
-    private static final String CREATE_MATCH_PREFIX = "coordinator.create-match.";
-    private static final String RECONNECT_PREFIX = "coordinator.reconnect.";
+    private static final String CREATE_MATCH_PREFIX = "gamenode.create-match.";
+    private static final String RECONNECT_PREFIX = "gamenode.reconnect.";
 
     private static final char UNIT_SEPARATOR = (char) 31;
     private static final char RECORD_SEPARATOR = (char) 30;

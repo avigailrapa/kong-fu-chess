@@ -9,8 +9,6 @@ import src.server.core.EloCalculator;
 import src.server.core.Match;
 import src.server.core.Session;
 
-import java.util.List;
-
 public class RatingService {
 
     private final UserStore userStore;
@@ -22,9 +20,8 @@ public class RatingService {
     }
 
     public void updateRatingsAfterGameOver(Match match, GameOverEvent event) {
-        List<Session> seated = match.seated();
-        Session white = seated.stream().filter(s -> s.assignedColor() == Piece.Color.WHITE).findFirst().orElse(null);
-        Session black = seated.stream().filter(s -> s.assignedColor() == Piece.Color.BLACK).findFirst().orElse(null);
+        Session white = match.seatedWhite();
+        Session black = match.seatedBlack();
         if (white == null || black == null) {
             return;
         }
